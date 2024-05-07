@@ -1,18 +1,15 @@
 import os
-from torch import optim, nn, utils, Tensor, device, cuda
-from torchvision.datasets import MNIST
-from torchvision.transforms import ToTensor
+from torch import optim, nn, utils, Tensor, device, cuda, transpose
 from model import EncoderRNN, DecoderRNN, VAE
 import lightning as L
 import pandas as pd
 import wandb
+from lightning.pytorch.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
-# Read the CSV file into a DataFrame
 import pandas as pd
 import numpy as np
 from  torch import tensor
-from torch.nn.utils.rnn import pad_sequence
 
 def to_one_hot(x):
     alphabet = list('ACDEFGHIKLMNPQRSTVWY')
@@ -20,6 +17,9 @@ def to_one_hot(x):
     aa_encoding = dict(zip(alphabet, classes))
     return [[aa_encoding[aa] for aa in seq] for seq in x]
 
+def from_one_hot(encoded_seqs):
+    alphabet = list('ACDEFGHIKLMNPQRSTVWY')
+    return [''.join([alphabet[idx.item()] for idx in seq]) for seq in encoded_seqs]
 
 def pad(x, max_length: int = 25) -> np.ndarray:
     # Pad sequences
@@ -45,13 +45,18 @@ padded_tab = pad(tab)
 x_tensor = tensor(padded_tab)
 y_tensor = tensor(y)
 dataset = utils.data.TensorDataset(x_tensor, y_tensor)
-train_loader = utils.data.DataLoader(dataset, batch_size=1)
+train_loader = utils.data.DataLoader(dataset, batch_size=512)
 e = EncoderRNN(25, 512, 100, 2, bidirectional=True).to(DEVICE)
-d = DecoderRNN(100, 512, 25, 2).to(DEVICE)
+d = DecoderRNN(100, 512, 21, 2).to(DEVICE)
 autoencoder = VAE(e, d)
 wandb_logger = WandbLogger(project='my-awesome-project')
-wandb_logger.experiment.config["batch_size"] = 32        #, logger=wandb_logger
-trainer = L.Trainer(limit_train_batches=100, max_epochs=1)
+wandb_logger.experiment.config["batch_size"] = 512
+checkpoint_callback = ModelCheckpoint(dirpath=r'C:\Users\olagw\vae\pytorch-text-vae\checkpoints', filename='model-{epoch}')
+trainer = L.Trainer(max_epochs=100, callbacks=[checkpoint_callback], logger=wandb_logger)
 model = trainer.fit(model=autoencoder, train_dataloaders=train_loader)
+trainer.save_checkpoint(r'C:\Users\olagw\vae\pytorch-text-vae\checkpoints\model.ckpt')
+# loaded_model = VAE.load_from_checkpoint('checkpoints/model.ckpt')
 wandb.finish()
-# d.generate(100, None, 25, 1.0, DEVICE)
+d = d.to(DEVICE)
+seq, _ = d.generate(2)
+print(from_one_hot(transpose(seq,0,1)))

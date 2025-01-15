@@ -19,11 +19,11 @@ import itertools
 from pathlib import Path
 from tqdm import tqdm
 import data.dataset as dataset
+from model.constants import MIN_LENGTH, MAX_LENGTH
 
-MIN_LENGTH = 0
-MAX_LENGTH = 25
 ROOT_DIR = Path(__file__).parent.parent
 DATA_DIR = ROOT_DIR / "data"
+<<<<<<< HEAD
 MODELS_DIR = ROOT_DIR
 from typing import Optional, Literal
 
@@ -94,7 +94,7 @@ params = {
     "latent_dim": 64,
     "encoding": "add",
     "dropout": 0.1,
-    "batch_size": 16,
+    "batch_size": 256,
     "lr": 0.001,
     "kl_beta": 0.1,
     "train_size": None,
@@ -147,14 +147,30 @@ def report_sequence_char(
     pred_len_mae = np.abs(len_true - len_pred).mean()
 
     correct, overall = 0, 0
+    amino_correct, amino_total = 0, 0
+    empty_correct, empty_total = 0, 0
+
     for len_ in range(len_pred.max() + 1):
         idx = len_pred == len_
         true_sub, pred_sub = seq_true[:len_, idx], seq_pred[:len_, idx]
 
+        # Overall token accuracy
         correct += (true_sub == pred_sub).sum()
         overall += len_ * idx.sum()
 
+        # Amino accuracy (non-padding tokens)
+        amino_mask = true_sub > 0  # Assuming "amino" tokens are non-zero
+        amino_correct += (true_sub[amino_mask] == pred_sub[amino_mask]).sum()
+        amino_total += amino_mask.sum()
+
+        # Empty accuracy (padding tokens)
+        empty_mask = true_sub == 0  # Assuming "empty" tokens are zeros
+        empty_correct += (true_sub[empty_mask] == pred_sub[empty_mask]).sum()
+        empty_total += empty_mask.sum()
+
     on_predicted_acc = correct / overall if overall > 0 else 0
+    amino_acc = amino_correct / amino_total if amino_total > 0 else 0
+    empty_acc = empty_correct / empty_total if empty_total > 0 else 0
 
     logger.report_scalar(
         title="Length Prediction Accuracy",
@@ -170,6 +186,12 @@ def report_sequence_char(
         series=series,
         value=on_predicted_acc,
         iteration=epoch,
+    )
+    logger.report_scalar(
+        title="Amino Token Accuracy", series=series, value=amino_acc, iteration=epoch
+    )
+    logger.report_scalar(
+        title="Empty Token Accuracy", series=series, value=empty_acc, iteration=epoch
     )
 
 def run_epoch_vae(
@@ -339,7 +361,7 @@ run()
 # plt.show()
 
 # wandb.finish()
-
-d = d.to(DEVICE)
-seq, _ = d.generate(10)
-print(from_one_hot(transpose(seq,0,1)))
+# d = d.to(DEVICE)
+# seq, _ = d.generate(10)
+# print(from_one_hot(transpose(seq,0,1)))
+>>>>>>> 736e1d73ff86436c465cce4a4bc7b4035ce5f17a

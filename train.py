@@ -23,7 +23,6 @@ from model.constants import MIN_LENGTH, MAX_LENGTH
 
 ROOT_DIR = Path(__file__).parent.parent
 DATA_DIR = ROOT_DIR / "data"
-<<<<<<< HEAD
 MODELS_DIR = ROOT_DIR
 from typing import Optional, Literal
 
@@ -364,4 +363,3 @@ run()
 # d = d.to(DEVICE)
 # seq, _ = d.generate(10)
 # print(from_one_hot(transpose(seq,0,1)))
->>>>>>> 736e1d73ff86436c465cce4a4bc7b4035ce5f17a

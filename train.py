@@ -2,10 +2,10 @@ import os
 from torch import optim, nn, utils, load, device, cuda, save, zeros, float32, transpose, LongTensor, zeros_like, ones_like
 from torch.distributions import Normal
 from model.model import EncoderRNN, DecoderRNN#, VAE
-import lightning as L
+# import lightning as L
 import pandas as pd
 # import wandb
-from pytorch_lightning.loggers import WandbLogger
+# from pytorch_lightning.loggers import WandbLogger
 DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
 import pandas as pd
 import numpy as np
@@ -13,7 +13,7 @@ from  torch import tensor, long
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import clearml
-from typing import Optional, Literal
+from typing import Optional, Literal, List, Tuple
 from torch.optim import Adam
 import itertools
 from pathlib import Path
@@ -23,8 +23,8 @@ import data.dataset as dataset
 MIN_LENGTH = 0
 MAX_LENGTH = 25
 ROOT_DIR = Path(__file__).parent.parent
-# DATA_DIR = ROOT_DIR / "data"
-# MODELS_DIR = ROOT_DIR / "pytorch-text-vae"
+DATA_DIR = ROOT_DIR / "data"
+MODELS_DIR = ROOT_DIR
 from typing import Optional, Literal
 
 # def to_one_hot(x):
@@ -56,8 +56,8 @@ from typing import Optional, Literal
 #         padded_sequences.append(padded_seq)
 #     return padded_sequences
 data_manager = dataset.AMPDataManager(
-    'c:/Users/olagw/ar-vae/AR-VAE/data/unlabelled_positive.csv',
-    'c:/Users/olagw/ar-vae/AR-VAE/data/unlabelled_negative.csv',
+    DATA_DIR / 'unlabelled_positive.csv',
+    DATA_DIR / 'unlabelled_negative.csv',
     min_len=MIN_LENGTH,
     max_len=MAX_LENGTH)
 
@@ -127,7 +127,7 @@ def report_scalars(
     logger: clearml.Logger,
     series: str,
     epoch: int,
-    scalars: list[tuple[str, float]],
+    scalars: List[Tuple[str, float]],
 ):
     for name, val in scalars:
         logger.report_scalar(title=name, series=series, value=val, iteration=epoch)

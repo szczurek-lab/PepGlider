@@ -1,4 +1,4 @@
-from typing import Literal, OrderedDict, Tuple
+from typing import Literal, OrderedDict, Tuple, Union
 
 import torch
 from torch import nn
@@ -87,7 +87,7 @@ class DecoderRNN(nn.Module):
         pos_enc_type: Literal["add", "concat"],
         dropout: float = 0.1,
         layer_norm: bool = True,
-        zero_pad_value: float | None = 0,
+        zero_pad_value: Union[float, None] = 0,
     ):
         super().__init__()
         self.pos_encoder = EmbeddingPositionalEncoding(

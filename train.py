@@ -123,6 +123,20 @@ decoder = DecoderRNN(
     params["layer_norm"],
 )
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
+def get_model_arch_hash(model: nn.Module) -> int:
+    return hash(";".join(sorted([str(v.shape) for v in model.state_dict().values()])))
+
+def save_model(model: nn.Module, name: str, with_hash: bool = True) -> None:
+    if with_hash:
+        short_hash = str(get_model_arch_hash(model)).removeprefix("-")[:5]
+        model_name = f"{short_hash}_{name}"
+    else:
+        model_name = name
+    save(
+        model.state_dict(), (MODELS_DIR / "hydramp" / model_name).with_suffix(".pt")
+    )
+
 def report_scalars(
     logger: clearml.Logger,
     hue: str,
@@ -386,18 +400,7 @@ def run():
                 eval_mode=eval_mode,
                 iwae_samples=params["iwae_samples"],
             )
-            # if loss < best_loss and False:
-            #     best_loss = loss
-            #     save_model(
-            #         encoder,
-            #         f"{params['task_name']}_{params['model_name']}_best_encoder.pt",
-            #         with_hash=False,
-            #     )
-            #     save_model(
-            #         decoder,
-            #         f"{params['task_name']}_{params['model_name']}_best_decoder.pt",
-            #         with_hash=False,
-            #     )
+
             if epoch > 0 and epoch % params["save_model_every"] == 0:
                 save_model(
                     encoder,

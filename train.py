@@ -134,7 +134,7 @@ def save_model(model: nn.Module, name: str, with_hash: bool = True) -> None:
     else:
         model_name = name
     save(
-        model.state_dict(), (MODELS_DIR / "hydramp" / model_name).with_suffix(".pt")
+        model.state_dict(), (MODELS_DIR / model_name).with_suffix(".pt")
     )
 
 def report_scalars(

@@ -297,6 +297,8 @@ def run_epoch_iwae(
 
         if optimizer:
             loss.backward()
+            nn.utils.clip_grad_norm_(encoder.parameters(), max_norm=1.0)
+            nn.utils.clip_grad_norm_(decoder.parameters(), max_norm=1.0)
             optimizer.step()
 
         # reporting

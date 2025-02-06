@@ -13,7 +13,7 @@ from  torch import tensor, long
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import clearml
-from typing import Optional, Literal, List, Tuple
+from typing import Optional, Literal, List, Tuple, Union
 from torch.optim import Adam
 import itertools
 from pathlib import Path
@@ -127,7 +127,7 @@ def report_scalars(
     logger: clearml.Logger,
     hue: str,
     epoch: int,
-    scalars: list[tuple[str, float] | tuple[str, str, float]],
+    scalars: List[Union[Tuple[str, float], Tuple[str, str, float]]],
 ):
     for tpl in scalars:
         if len(tpl) == 2:

@@ -364,9 +364,6 @@ if params["use_clearml"]:
 else:
     logger = None
 
-def save_model(model, name):
-    save(model.state_dict(), MODELS_DIR / name)
-
 def run():
     best_loss = 1e18
     for epoch in tqdm(range(params["epochs"])):

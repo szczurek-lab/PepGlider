@@ -1,5 +1,5 @@
 import os
-from torch import optim, nn, utils, logsumexp, device, cuda, save, zeros, float32, transpose, LongTensor, zeros_like, ones_like
+from torch import optim, nn, utils, logsumexp, device, cuda, save, isinf, backends, manual_seed, LongTensor, zeros_like, ones_like, isnan
 from torch.distributions import Normal
 from model.model import EncoderRNN, DecoderRNN#, VAE
 # import lightning as L
@@ -16,6 +16,7 @@ import clearml
 from typing import Optional, Literal, List, Tuple, Union
 from torch.optim import Adam
 import itertools
+import random
 from pathlib import Path
 from tqdm import tqdm
 import data.dataset as dataset
@@ -24,8 +25,24 @@ from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
 ROOT_DIR = Path(__file__).parent#.parent
 DATA_DIR = ROOT_DIR / "data"
 MODELS_DIR = ROOT_DIR
-from typing import Optional, Literal
 
+def set_seed(seed: int = 42) -> None:
+    """
+    Source:
+    https://wandb.ai/sauravmaheshkar/RSNA-MICCAI/reports/How-to-Set-Random-Seeds-in-PyTorch-and-Tensorflow--VmlldzoxMDA2MDQy
+    """
+    np.random.seed(seed)
+    random.seed(seed)
+    manual_seed(seed)
+    cuda.manual_seed(seed)
+    # When running on the CuDNN backend, two further options must be set
+    backends.cudnn.deterministic = True
+    backends.cudnn.benchmark = False
+    # Set a fixed value for the hash seed
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    logger.info(f"Random seed set to {seed}")
+    return None
+set_seed()
 # def to_one_hot(x):
 #     alphabet = "ACDEFGHIKLMNPQRSTVWY0"
     # char_to_index = {char: idx for idx, char in enumerate(alphabet)}
@@ -95,13 +112,13 @@ params = {
     "dropout": 0.1,
     "batch_size": 512,
     "lr": 0.001,
-    "kl_beta_schedule": (0.1, 1.0, 2000),
+    "kl_beta_schedule": (0.0001, 0.01, 2000),
     "train_size": None,
     "epochs": 10000,
     "iwae_samples": 16,
     "model_name": "basic",
     "use_clearml": True,
-    "task_name": "iwae_progressive_beta_v7",
+    "task_name": "iwae_progressive_beta_v7_kl_less",
     "device": "cuda",
     "deeper_eval_every": 20,
     "save_model_every": 100,
@@ -258,7 +275,10 @@ def run_epoch_iwae(
             optimizer.zero_grad()
 
         # autoencoding
+
         mu, std = encoder(peptides)
+        assert not (isnan(mu).all() or isnan(std).all() ), f" contains all NaN values: {mu}, {std}"
+        assert not (isinf(mu).all() or isinf(std).all()), f" contains all Inf values: {mu}, {std}"
 
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
@@ -372,7 +392,7 @@ def run():
     for epoch in tqdm(range(params["epochs"])):
         eval_mode = "deep" if epoch % params["deeper_eval_every"] == 0 else "fast"
         beta_0, beta_1, t_1 = params["kl_beta_schedule"]
-        kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, 1.0)
+        kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, 0.01)
         run_epoch_iwae(
             mode="train",
             encoder=encoder,

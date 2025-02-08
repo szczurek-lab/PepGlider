@@ -63,7 +63,7 @@ class EncoderRNN(nn.Module):
     def forward(self, src: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """(seq_len, batch_size) -> tuple[(batch_size, latent_dim), (batch_size, latent_dim)]"""
         x = self.compute_representations(src)[0]  # cls token is first
-        x = self.linear(x)
+        x = self.linear(x) #czy on zwraca nan assert
         mu, std_out = torch.chunk(x, 2, dim=1)
         std = F.softplus(std_out) + self._EPS
         return mu, std

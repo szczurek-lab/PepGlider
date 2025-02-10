@@ -60,13 +60,19 @@ class TransformerLayer(nn.Module):
             )
         )
         self.layer_norm = (
-            nn.LayerNorm(n_features) if layer_norm else None
-        )  # ! TODO: eps -> 0.01
+            nn.LayerNorm(n_features) if layer_norm else None#, eps=1e-5
+        )
 
     def forward(self, src: torch.Tensor) -> torch.Tensor:
         """(seq_len, batch_size, n_features) -> (seq_len, batch_size, n_features)"""
         x = src + self.sa_dropout(self.self_attn(src, src, src)[0])
+        assert not (torch.isnan(x).all() ), f"sa_dropout contains all NaN values: {x}"
+        assert not (torch.isinf(x).all() ), f"sa_dropout contains all Inf values: {x}"
         x = x + self.feed_forward(x)
+        assert not (torch.isnan(x).all() ), f"feed_forward contains all NaN values: {x}"
+        assert not (torch.isinf(x).all() ), f"feed_forward contains all Inf values: {x}"
         if self.layer_norm:
             x = self.layer_norm(x)
+            assert not (torch.isnan(x).all() ), f"layer_norm contains all NaN values: {x}"
+            assert not (torch.isinf(x).all() ), f"layer_norm contains all Inf values: {x}"
         return x

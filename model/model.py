@@ -55,17 +55,25 @@ class EncoderRNN(nn.Module):
     def compute_representations(self, src: torch.Tensor) -> torch.Tensor:
         """(seq_len, batch_size) -> (seq_len + 1, batch_size, latent_dim)"""
         x = self._add_cls_token(src)
+        assert not (torch.isnan(x).all() ), f"add_cls_token contains all NaN values: {x}"
+        assert not (torch.isinf(x).all() ), f"add_cls_token contains all Inf values: {x}"
         x = self.embedding(x)
+        assert not (torch.isnan(x).all() ), f"embedding contains all NaN values: {x}"
+        assert not (torch.isinf(x).all() ), f"embedding contains all Inf values: {x}"
         x = self.pos_encoder(x)
+        assert not (torch.isnan(x).all() ), f"pos_encoder contains all NaN values: {x}"
+        assert not (torch.isinf(x).all() ), f"pos_encoder contains all Inf values: {x}"
         x = self.attention_layers(x)
+        assert not (torch.isnan(x).all() ), f"transformer contains all NaN values: {x}"
+        assert not (torch.isinf(x).all() ), f"transformer contains all Inf values: {x}"
         return x
 
     def forward(self, src: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """(seq_len, batch_size) -> tuple[(batch_size, latent_dim), (batch_size, latent_dim)]"""
         x = self.compute_representations(src)[0]  # cls token is first
         x = self.linear(x) #czy on zwraca nan assert
-        assert not (torch.isnan(x).all() ), f" contains all NaN values: {x}"
-        assert not (torch.isinf(x).all() ), f" contains all Inf values: {x}"
+        assert not (torch.isnan(x).all() ), f"linear contains all NaN values: {x}"
+        assert not (torch.isinf(x).all() ), f"linear contains all Inf values: {x}"
         mu, std_out = torch.chunk(x, 2, dim=1)
         std = F.softplus(std_out) + self._EPS
         return mu, std

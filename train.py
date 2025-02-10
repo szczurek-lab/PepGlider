@@ -40,7 +40,7 @@ def set_seed(seed: int = 42) -> None:
     backends.cudnn.benchmark = False
     # Set a fixed value for the hash seed
     os.environ["PYTHONHASHSEED"] = str(seed)
-    logger.info(f"Random seed set to {seed}")
+    # logger.info(f"Random seed set to {seed}")
     return None
 set_seed()
 # def to_one_hot(x):

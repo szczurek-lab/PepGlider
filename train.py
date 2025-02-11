@@ -111,7 +111,7 @@ params = {
     "encoding": "add",
     "dropout": 0.1,
     "batch_size": 512,
-    "lr": 0.0001,
+    "lr": 0.001,
     "kl_beta_schedule": (0.00001, 0.01, 5000),
     "train_size": None,
     "epochs": 10000,
@@ -189,19 +189,20 @@ def report_sequence_char(
 
     for len_ in range(len_pred.max() + 1):
         idx = len_pred == len_
-        true_sub, pred_sub = seq_true[:len_, idx], seq_pred[:len_, idx]
+        true_sub = seq_true[:, idx]
+        pred_sub = seq_pred[:, idx]
 
-        # Overall token accuracy
-        correct += (true_sub == pred_sub).sum()
+        # Overall token accuracy (within the predicted length)
+        correct += (true_sub[:len_].reshape(-1) == pred_sub[:len_].reshape(-1)).sum()
         overall += len_ * idx.sum()
 
-        # Amino accuracy (non-padding tokens)
-        amino_mask = true_sub > 0  # Assuming "amino" tokens are non-zero
+        # Amino acid accuracy (non-padding tokens)
+        amino_mask = true_sub > 0
         amino_correct += (true_sub[amino_mask] == pred_sub[amino_mask]).sum()
         amino_total += amino_mask.sum()
 
-        # Empty accuracy (padding tokens)
-        empty_mask = true_sub == 0  # Assuming "empty" tokens are zeros
+        # Empty (padding) token accuracy
+        empty_mask = true_sub == 0
         empty_correct += (true_sub[empty_mask] == pred_sub[empty_mask]).sum()
         empty_total += empty_mask.sum()
 

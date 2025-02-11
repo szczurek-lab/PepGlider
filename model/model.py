@@ -114,7 +114,7 @@ class DecoderRNN(nn.Module):
                 ]
             )
         )
-        out_dim = VOCAB_SIZE + 1 if zero_pad_value is None else VOCAB_SIZE
+        out_dim = VOCAB_SIZE + 1 #if zero_pad_value is None else VOCAB_SIZE
         self.linear = nn.Linear(latent_dim, out_dim)  # NOTE: 1 dim less
         self.zero_pad_value = zero_pad_value
         self._init_weights() 

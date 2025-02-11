@@ -128,7 +128,7 @@ class DecoderRNN(nn.Module):
     def _create_sequence(x: torch.Tensor) -> torch.Tensor:
         """(batch_size, latent_dim) -> (seq_len, batch_size, latent_dim)"""
         return x.unsqueeze(0).repeat(SEQ_LEN, 1, 1)
-
+    
     def forward(self, src: torch.Tensor) -> torch.Tensor:
         """Return unnormalized values for each token of the sequence.
 
@@ -140,11 +140,7 @@ class DecoderRNN(nn.Module):
 
         S, B, L = x.shape
         model_out = self.linear(x.reshape(S * B, L)).reshape(S, B, -1)
-        if self.zero_pad_value is None:
-            return model_out
-        zeros_out = torch.ones(S, B, 1, device=x.device) * self.zero_pad_value
-        out = torch.concatenate([zeros_out, model_out], dim=2)
-        return out
+        return model_out
 
     def decode(self, src: torch.Tensor) -> torch.Tensor:
         """Return predicted tokens.

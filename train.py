@@ -10,6 +10,7 @@ DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu
 import pandas as pd
 import numpy as np
 from  torch import tensor, long
+from torch.autograd import Variable
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import clearml
@@ -21,6 +22,10 @@ from pathlib import Path
 from tqdm import tqdm
 import data.dataset as dataset
 from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
+import json
+import modlamp.descriptors
+import modlamp.analysis
+import modlamp.sequences
 
 ROOT_DIR = Path(__file__).parent#.parent
 DATA_DIR = ROOT_DIR / "data"
@@ -43,58 +48,72 @@ def set_seed(seed: int = 42) -> None:
     # logger.info(f"Random seed set to {seed}")
     return None
 set_seed()
-# def to_one_hot(x):
-#     alphabet = "ACDEFGHIKLMNPQRSTVWY0"
-    # char_to_index = {char: idx for idx, char in enumerate(alphabet)}
-    # x_size = len(x)
-    # sequence_length = 25
-    # num_classes = len(alphabet)
-    # one_hot_sequence = zeros((x_size, sequence_length, num_classes), dtype=float32)
-    # for i, seq in enumerate(x):
-    #     for j, char in enumerate(seq):
-    #         one_hot_sequence[i, j, char_to_index[char]] = 1
-    # return one_hot_sequence
-    # alphabet = list('ACDEFGHIKLMNPQRSTVWY')
-#     classes = range(0, 21)
-#     aa_encoding = dict(zip(alphabet, classes))
-#     return [[aa_encoding[aa] for aa in seq] for seq in x]
 
-# def from_one_hot(encoded_seqs):
-#     alphabet = list('ACDEFGHIKLMNPQRSTVWY0')
-#     return [''.join([alphabet[idx.item()] for idx in seq]) for seq in encoded_seqs]
-
-# def pad(x, max_length: int = 25) -> np.ndarray:
-#     # Pad sequences
-#     padded_sequences = []
-#     for seq in x:
-#         padded_seq = list(seq)[:max_length] + ['0'] * (max_length - len(seq))
-#         # print(padded_seq)
-#         padded_sequences.append(padded_seq)
-#     return padded_sequences
 data_manager = dataset.AMPDataManager(
     DATA_DIR / 'unlabelled_positive.csv',
     DATA_DIR / 'unlabelled_negative.csv',
     min_len=MIN_LENGTH,
     max_len=MAX_LENGTH)
 
-amp_x, amp_y = data_manager.get_merged_data()
-# df1 = pd.read_csv("unlabelled_negative.csv")
-# df1['Label'] = 0
-# df2 = pd.read_csv("unlabelled_positive.csv")
-# df2['Label'] = 1
-# df = pd.concat([df1, df2], axis=0).sample(df1.shape[0]+df2.shape[0])
-# filtered_df = df[df['Sequence'].str.len() <= 25]
-# short = filtered_df.sample(500)
-# # print(filtered_df)
-# x = np.asarray(filtered_df['Sequence'].tolist())
-# y = np.asarray(filtered_df['Label'].tolist())
-# padded_tab = pad(x)
-# tab = to_one_hot(padded_tab)
-# # # print(tab.shape)
-# x_tensor = tensor(tab)
-# y_tensor = tensor(y)
-dataset = utils.data.TensorDataset(amp_x, tensor(amp_y, dtype=long))
+amp_x, amp_y, amp_x_raw = data_manager.get_merged_data()
+
+def calculate_length(data:list):
+    lengths = [len(x) for x in data]
+    return lengths
+
+def calculate_charge(data:list):
+    h = modlamp.analysis.GlobalAnalysis(data)
+    h.calc_charge()
+    return h.charge
+
+def calculate_isoelectricpoint(data:list):
+    h = modlamp.analysis.GlobalDescriptor(data)
+    h.isoelectric_point()
+    return list(h.descriptor.flatten())
+
+def calculate_aromaticity(data:list):
+    h = modlamp.analysis.GlobalDescriptor(data)
+    h.aromaticity()
+    return list(h.descriptor.flatten())
+
+def calculate_hydrophobicity(data:list):
+    h = modlamp.analysis.GlobalAnalysis(data)
+    h.calc_H(scale='eisenberg')
+    return list(h.H)
+
+def calculate_hydrophobicmoment(data:list):
+    h = modlamp.descriptors.PeptideDescriptor(data, 'eisenberg')
+    h.calculate_moment()
+    return list(h.descriptor.flatten())
+
+
+def calculate_physchem(peptides):
+    physchem = {}
+    physchem['dataset'] = []
+    physchem['length'] = []
+    physchem['charge'] = []
+    physchem['pi'] = []
+    physchem['aromacity'] = []
+    physchem['hydrophobicity'] = []
+    physchem['hm'] = []
+
+
+    for dataset, name in peptides:
+        physchem['dataset'] += len(dataset)
+        physchem['length'] += calculate_length(dataset)
+        physchem['charge'] += calculate_charge(dataset)[0].tolist()
+        physchem['pi'] += calculate_isoelectricpoint(dataset)
+        physchem['aromacity'] += calculate_aromaticity(dataset) 
+        physchem['hydrophobicity'] += calculate_hydrophobicity(dataset)[0].tolist()
+        physchem['hm'] += calculate_hydrophobicmoment(dataset)
+
+    return pd.DataFrame(dict([ (k, pd.Series(v)) for k,v in physchem.items() ]))
+
+# physchem = calculate_physchem([amp_x_raw.tolist()], ['amp_training_data'])
+
+dataset = utils.data.TensorDataset(amp_x)
 train_loader = utils.data.DataLoader(amp_x, batch_size=512, shuffle=True)
+# train_loader = utils.data.DataLoader(dataset, batch_size=512, shuffle=True)
 # e = EncoderRNN(25, 512, 100, 2, bidirectional=True).to(DEVICE)
 # d = DecoderRNN(100, 512, 21, 2).to(DEVICE)
 # autoencoder = VAE(e, d)
@@ -269,6 +288,7 @@ def run_epoch_iwae(
     C = VOCAB_SIZE + 1
 
     for batch in dataloader:
+        # physchem = calculate_physchem([batch.tolist()])
         # S x B
         peptides = batch.permute(1, 0).type(LongTensor).to(device)
         S, B = peptides.shape
@@ -284,6 +304,7 @@ def run_epoch_iwae(
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
         z = q_distr.rsample((K,))
+        # z_prior = q_distr.rsample((K,))
 
         # Kullback Leibler divergence
         log_qzx = q_distr.log_prob(z).sum(dim=2)
@@ -292,10 +313,14 @@ def run_epoch_iwae(
         kl_div = log_qzx - log_pz
 
         # reconstruction - cross entropy
+        sampled_peptide_logits = decoder(z.reshape(K * B, -1))
+        print(sampled_peptide_logits.shape)
         sampled_peptide_logits = decoder(z.reshape(K * B, -1)).reshape(S, K, B, C)
+        print(sampled_peptide_logits.shape)
         src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
         tgt = peptides.permute(1, 0).reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
-
+        
+        # physchem = calculate_physchem([batch.tolist()])
         # K x B
         cross_entropy = ce_loss_fun(
             src,
@@ -388,6 +413,81 @@ if params["use_clearml"]:
 else:
     logger = None
 
+def process_batch_data(self, batch):
+    inputs, labels = batch
+    inputs = Variable(inputs).cuda()
+    labels = Variable(labels).cuda()
+    return inputs, labels
+
+def model_go(batch):
+    K = params["iwae_samples"]
+    peptides = batch.permute(1, 0).type(LongTensor).to(device)
+    S, B = peptides.shape
+    if optimizer:
+        optimizer.zero_grad()
+
+    # autoencoding
+    mu, std = encoder(peptides)
+    assert not (isnan(mu).all() or isnan(std).all() ), f" contains all NaN values: {mu}, {std}"
+    assert not (isinf(mu).all() or isinf(std).all()), f" contains all Inf values: {mu}, {std}"
+
+    q_distr = Normal(mu, std)
+    z = q_distr.rsample((K,))
+    return z
+
+def _extract_relevant_attributes(attributes):
+    attr_list = [
+        attr for attr in attr_dict.keys() if attr != 'digit_identity' and attr != 'color'
+    ]
+    attr_idx_list = [
+        self.attr_dict[attr] for attr in attr_list
+    ]
+    attr_labels = attributes[:, attr_idx_list]
+    return attr_labels, attr_list
+
+def compute_representations(data_loader):
+    latent_codes = []
+    attributes = []
+    for sample_id, batch in tqdm(enumerate(data_loader)):
+        inputs, labels = process_batch_data(batch)
+        z_tilde = model_go(inputs)
+        latent_codes.append(z_tilde.cpu().numpy())
+        attributes.append(labels.numpy())
+        if sample_id == 200:
+            break
+    latent_codes = np.concatenate(latent_codes, 0)
+    attributes = np.concatenate(attributes, 0)
+    attributes, attr_list = _extract_relevant_attributes(attributes)
+    return latent_codes, attributes, attr_list
+
+def eval_model():
+    results_fp = os.path.join(
+    os.path.dirname(ROOT_DIR),
+        'results_dict.json'
+    )
+    if os.path.exists(results_fp):
+        with open(results_fp, 'r') as infile:
+            metrics = json.load(infile)
+    else:
+        data_loader = eval_loader
+        latent_codes, attributes, attr_list = compute_representations(data_loader)
+        interp_metrics = compute_interpretability_metric(
+            latent_codes, attributes, attr_list
+        )
+        self.metrics = {
+            "interpretability": interp_metrics
+        }
+        self.metrics.update(compute_correlation_score(latent_codes, attributes))
+        self.metrics.update(compute_modularity(latent_codes, attributes))
+        self.metrics.update(compute_mig(latent_codes, attributes))
+        self.metrics.update(compute_sap_score(latent_codes, attributes))
+        self.metrics.update(self.test_model(batch_size=batch_size))
+        if self.dataset_type == 'mnist':
+            self.metrics.update(self.get_resnet_accuracy())
+        with open(results_fp, 'w') as outfile:
+            json.dump(self.metrics, outfile, indent=2)
+    return self.metrics
+
 def run():
     best_loss = 1e18
     for epoch in tqdm(range(params["epochs"])):
@@ -433,6 +533,7 @@ def run():
                     f"{params['task_name']}_{params['model_name']}_epoch{epoch}_decoder.pt",
                     with_hash=False,
                 )
+    eval_model()
 run()
 # autoencoder.load_state_dict(load('./gmm_model.pt'))
 # autoencoder = autoencoder.to('cpu')  

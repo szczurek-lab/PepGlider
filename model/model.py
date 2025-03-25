@@ -7,7 +7,7 @@ from torch.nn import functional as F
 from model.constants import CLS_TOKEN, PAD_TOKEN, SEQ_LEN, VOCAB_SIZE
 from model.layer import EmbeddingPositionalEncoding, TransformerLayer
 
-
+DEVICE = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
 
 class EncoderRNN(nn.Module):
     _EPS = 1e-5
@@ -149,10 +149,12 @@ class DecoderRNN(nn.Module):
         """
         logits = self.forward(src)
         return logits.argmax(dim=2)
+    
+    def generate(self, batch_size):
+        input = torch.randn(batch_size, 56).to(DEVICE)
+        return self.forward(input)
 # Container
 # ------------------------------------------------------------------------------
-DEVICE = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
-
 
 # class VAE(L.LightningModule):
 #     def __init__(self, encoder, decoder, n_steps=None):

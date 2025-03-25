@@ -29,6 +29,18 @@ def to_one_hot(x):
     aa_encoding = dict(zip(alphabet, classes))
     return [[aa_encoding[aa] for aa in seq] for seq in x]
 
+def from_one_hot(encoded_seqs):
+    alphabet = list('ACDEFGHIKLMNPQRSTVWY')
+    classes = range(1, 21)
+    aa_encoding = dict(zip(classes, alphabet))
+    indices = encoded_seqs.argmax(dim=-1)
+    decoded_seqs = []
+    for i, seq in enumerate(indices):
+        decoded_seq = ''.join('0' if idx == 0 else aa_encoding[idx.item()] for idx in seq)
+        decoded_seqs.append(decoded_seq)
+
+    return decoded_seqs
+
 def pad(x: List[List[float]], max_length: int = 25) -> torch.Tensor:
     """
     Pads sequences to the same length using PyTorch. Sequences longer than `max_length` are truncated.
@@ -155,8 +167,8 @@ class AMPDataManager:
         merged = pd.concat([pos_dataset, neg_dataset])
         x = np.asarray(merged['Sequence'].tolist())
         y = np.asarray(merged['Label'].tolist())
-        x = pad(to_one_hot(x))
-        return x, y
+        x_changed = pad(to_one_hot(x))
+        return x_changed, y, x
 
     def get_data(self, balanced: bool = True):
         pos_dataset, neg_dataset = self._filter_data()

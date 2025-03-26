@@ -281,12 +281,12 @@ def reg_loss_sign(latent_code, attribute, factor=1.0):
         scalar, loss
     """
     # compute latent distance matrix
-    latent_code = latent_code.view(-1, 1).repeat(1, latent_code.shape[0])
-    lc_dist_mat = (latent_code - latent_code.transpose(1, 0)).view(-1, 1)
+    latent_code = latent_code.reshape(-1, 1).repeat(1, latent_code.shape[0])
+    lc_dist_mat = (latent_code - latent_code.transpose(1, 0)).reshape(-1, 1)
 
     # compute attribute distance matrix
-    attribute = attribute.view(-1, 1).repeat(1, attribute.shape[0])
-    attribute_dist_mat = (attribute - attribute.transpose(1, 0)).view(-1, 1)
+    attribute = attribute.reshape(-1, 1).repeat(1, attribute.shape[0])
+    attribute_dist_mat = (attribute - attribute.transpose(1, 0)).reshape(-1, 1)
 
     # compute regularization loss
     loss_fn = nn.L1Loss()
@@ -354,7 +354,7 @@ def run_epoch_iwae(
 
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
-        z = q_distr.rsample((K,))
+        z = q_distr.rsample((K,)) # K, B, L
         # z_prior = q_distr.rsample((K,))
 
         # Kullback Leibler divergence
@@ -367,7 +367,7 @@ def run_epoch_iwae(
         sampled_peptide_logits = decoder(z.reshape(K * B, -1)).reshape(S, K, B, C)
         src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
         src_avg_k = src.mean(dim=0) # C x B x S
-        src_decoded = src_avg_k.argmax(dim=0) # B x S
+        src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
         tgt = peptides.permute(1, 0).reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
         
         physchem_decoded = calculate_physchem(dataset_lib.decoded(src_decoded, ""))
@@ -381,7 +381,7 @@ def run_epoch_iwae(
         reg_loss = 0
         for dim in reg_dim:
             reg_loss += compute_reg_loss(
-            z, physchem_decoded.iloc[:, dim], dim, gamma=10.0, factor=1.0 #gamma i delta z papera
+            z.reshape(-1,z.shape[2]), physchem_decoded.iloc[:, dim], dim, gamma=10.0, factor=1.0 #gamma i delta z papera
         )
 
         loss = logsumexp(

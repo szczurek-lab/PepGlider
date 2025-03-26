@@ -95,8 +95,8 @@ load_model(
 DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
 
 decoder = decoder.to(DEVICE)
-seq = decoder.generate(1000)
-generated_sequences = dataset.from_one_hot(transpose(seq,0,1))
+seq = decoder.generate(1000, params['latent_dim'])
+generated_sequences = dataset.decoded(dataset.from_one_hot(transpose(seq,0,1)), "0")
 
 with open("sequences.csv", "w", newline="") as file:
     writer = csv.writer(file)

@@ -150,8 +150,9 @@ class DecoderRNN(nn.Module):
         logits = self.forward(src)
         return logits.argmax(dim=2)
     
-    def generate(self, batch_size):
-        input = torch.randn(batch_size, 56).to(DEVICE)
+    def generate(self, batch_size, latent_dim):
+        input = torch.randn(batch_size, latent_dim).to(DEVICE)
+        #(batch_size, latent_dim) -> (seq_len, batch_size, vocab_size + 1)
         return self.forward(input)
 # Container
 # ------------------------------------------------------------------------------

@@ -9,7 +9,7 @@ import pandas as pd
 DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
 import pandas as pd
 import numpy as np
-from  torch import tensor, long
+from  torch import tensor, long, tanh, sign
 from torch.autograd import Variable
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
@@ -20,7 +20,7 @@ import itertools
 import random
 from pathlib import Path
 from tqdm import tqdm
-import data.dataset as dataset
+import data.dataset as dataset_lib
 from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
 import json
 import modlamp.descriptors
@@ -49,7 +49,7 @@ def set_seed(seed: int = 42) -> None:
     return None
 set_seed()
 
-data_manager = dataset.AMPDataManager(
+data_manager = dataset_lib.AMPDataManager(
     DATA_DIR / 'unlabelled_positive.csv',
     DATA_DIR / 'unlabelled_negative.csv',
     min_len=MIN_LENGTH,
@@ -97,15 +97,13 @@ def calculate_physchem(peptides):
     physchem['hydrophobicity'] = []
     physchem['hm'] = []
 
-
-    for dataset, name in peptides:
-        physchem['dataset'] += len(dataset)
-        physchem['length'] += calculate_length(dataset)
-        physchem['charge'] += calculate_charge(dataset)[0].tolist()
-        physchem['pi'] += calculate_isoelectricpoint(dataset)
-        physchem['aromacity'] += calculate_aromaticity(dataset) 
-        physchem['hydrophobicity'] += calculate_hydrophobicity(dataset)[0].tolist()
-        physchem['hm'] += calculate_hydrophobicmoment(dataset)
+    # physchem['dataset'] = len(peptides)
+    physchem['length'] = calculate_length(peptides)
+    physchem['charge'] = calculate_charge(peptides)[0].tolist()
+    # physchem['pi'] = calculate_isoelectricpoint(peptides)
+    # physchem['aromacity'] = calculate_aromaticity(peptides)
+    physchem['hydrophobicity'] = calculate_hydrophobicity(peptides)[0].tolist()
+    # physchem['hm'] = calculate_hydrophobicmoment(peptides)
 
     return pd.DataFrame(dict([ (k, pd.Series(v)) for k,v in physchem.items() ]))
 
@@ -141,6 +139,7 @@ params = {
     "device": "cuda",
     "deeper_eval_every": 20,
     "save_model_every": 100,
+    "reg_dim": [0,1,2] # [length, charge, hydrophobicity]
 }
 encoder = EncoderRNN(
     params["num_heads"],
@@ -196,6 +195,7 @@ def report_sequence_char(
     model_out: np.ndarray,
 ):
     seq_pred = model_out.argmax(axis=2)
+    physchem_decoded = calculate_physchem(dataset_lib.decoded(seq_pred.permute(1, 0), ""))
     len_true = seq_true.argmin(axis=0)
     len_pred = seq_pred.argmin(axis=0)
 
@@ -250,6 +250,51 @@ def report_sequence_char(
     logger.report_scalar(
         title="Empty Token Accuracy", series=hue, value=empty_acc, iteration=epoch
     )
+    logger.report_scalar(
+        title="Average length metric from modlamp", series=hue, value=physchem_decoded.iloc[:,0].mean(), iteration=epoch
+    )
+    logger.report_scalar(
+        title="Average charge metric from modlamp", series=hue, value=physchem_decoded.iloc[:,1].mean(), iteration=epoch
+    )
+    logger.report_scalar(
+        title="Average hydrophobicity metric from modlamp", series=hue, value=physchem_decoded.iloc[:,2].mean(), iteration=epoch
+    )
+
+    # @staticmethod
+def compute_reg_loss(z, labels, reg_dim, gamma, factor=1.0):
+    """
+    Computes the regularization loss
+    """
+    x = z[:, reg_dim]
+    reg_loss = reg_loss_sign(x, labels, factor=factor)
+    return gamma * reg_loss
+
+    # @staticmethod
+def reg_loss_sign(latent_code, attribute, factor=1.0):
+    """
+    Computes the regularization loss given the latent code and attribute
+    Args:
+        latent_code: torch Variable, (N,)
+        attribute: torch Variable, (N,)
+        factor: parameter for scaling the loss
+    Returns
+        scalar, loss
+    """
+    # compute latent distance matrix
+    latent_code = latent_code.view(-1, 1).repeat(1, latent_code.shape[0])
+    lc_dist_mat = (latent_code - latent_code.transpose(1, 0)).view(-1, 1)
+
+    # compute attribute distance matrix
+    attribute = attribute.view(-1, 1).repeat(1, attribute.shape[0])
+    attribute_dist_mat = (attribute - attribute.transpose(1, 0)).view(-1, 1)
+
+    # compute regularization loss
+    loss_fn = nn.L1Loss()
+    lc_tanh = tanh(lc_dist_mat * factor)
+    attribute_sign = sign(attribute_dist_mat)
+    sign_loss = loss_fn(lc_tanh, attribute_sign.float())
+
+    return sign_loss
 
 def run_epoch_iwae(
     mode: Literal["test", "train"],
@@ -263,6 +308,7 @@ def run_epoch_iwae(
     optimizer: Optional[optim.Optimizer],
     eval_mode: Literal["fast", "deep"],
     iwae_samples: int,
+    reg_dim
 ):
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
     encoder.to(device), decoder.to(device)
@@ -288,9 +334,14 @@ def run_epoch_iwae(
     C = VOCAB_SIZE + 1
 
     for batch in dataloader:
-        # physchem = calculate_physchem([batch.tolist()])
-        # S x B
-        peptides = batch.permute(1, 0).type(LongTensor).to(device)
+        # decoded = dataset_lib.decoded(batch)
+        # for i in range(len(decoded)):
+        #     # print(batch[i])
+        #     physchem.append(calculate_physchem(decoded[i]))
+
+        physchem_original = calculate_physchem(dataset_lib.decoded(batch, ""))
+        
+        peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         S, B = peptides.shape
         if optimizer:
             optimizer.zero_grad()
@@ -313,22 +364,28 @@ def run_epoch_iwae(
         kl_div = log_qzx - log_pz
 
         # reconstruction - cross entropy
-        sampled_peptide_logits = decoder(z.reshape(K * B, -1))
-        print(sampled_peptide_logits.shape)
         sampled_peptide_logits = decoder(z.reshape(K * B, -1)).reshape(S, K, B, C)
-        print(sampled_peptide_logits.shape)
         src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
+        src_avg_k = src.mean(dim=0) # C x B x S
+        src_decoded = src_avg_k.argmax(dim=0) # B x S
         tgt = peptides.permute(1, 0).reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
         
-        # physchem = calculate_physchem([batch.tolist()])
+        physchem_decoded = calculate_physchem(dataset_lib.decoded(src_decoded, ""))
+
         # K x B
         cross_entropy = ce_loss_fun(
             src,
             tgt,
         ).sum(dim=2)
 
+        reg_loss = 0
+        for dim in reg_dim:
+            reg_loss += compute_reg_loss(
+            z, physchem_decoded.iloc[:, dim], dim, gamma=10.0, factor=1.0 #gamma i delta z papera
+        )
+
         loss = logsumexp(
-            cross_entropy + kl_beta * (log_qzx - log_pz), dim=0
+            cross_entropy + kl_beta * (log_qzx - log_pz) + reg_loss, dim=0
         ).mean(dim=0)
 
         # stats
@@ -353,7 +410,7 @@ def run_epoch_iwae(
             seq_true.append(peptides.cpu().detach().numpy())
             model_out.append(decoder(mu).cpu().detach().numpy())
             model_out_sampled.append(
-                sampled_peptide_logits[:, 0, :, :].cpu().detach().numpy()
+                sampled_peptide_logits.mean(dim=1).cpu().detach().numpy() #to ensure this is okay
             )
 
     if logger is not None:
@@ -506,6 +563,7 @@ def run():
             kl_beta=kl_beta,
             eval_mode=eval_mode,
             iwae_samples=params["iwae_samples"],
+            reg_dim=params["reg_dim"]
         )
         if eval_mode == "deep":
             loss = run_epoch_iwae(
@@ -520,6 +578,7 @@ def run():
                 kl_beta=kl_beta,
                 eval_mode=eval_mode,
                 iwae_samples=params["iwae_samples"],
+                reg_dim=params["reg_dim"]
             )
 
             if epoch > 0 and epoch % params["save_model_every"] == 0:

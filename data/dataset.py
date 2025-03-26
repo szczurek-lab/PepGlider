@@ -30,13 +30,15 @@ def to_one_hot(x):
     return [[aa_encoding[aa] for aa in seq] for seq in x]
 
 def from_one_hot(encoded_seqs):
+    return encoded_seqs.argmax(dim=-1)
+
+def decoded(encoded_seqs, mode):
     alphabet = list('ACDEFGHIKLMNPQRSTVWY')
     classes = range(1, 21)
     aa_encoding = dict(zip(classes, alphabet))
-    indices = encoded_seqs.argmax(dim=-1)
     decoded_seqs = []
-    for i, seq in enumerate(indices):
-        decoded_seq = ''.join('0' if idx == 0 else aa_encoding[idx.item()] for idx in seq)
+    for i, seq in enumerate(encoded_seqs):
+        decoded_seq = ''.join(mode if idx == 0 else str(aa_encoding[idx.item()]) for idx in seq)
         decoded_seqs.append(decoded_seq)
 
     return decoded_seqs

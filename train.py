@@ -30,6 +30,7 @@ import modlamp.sequences
 ROOT_DIR = Path(__file__).parent#.parent
 DATA_DIR = ROOT_DIR / "data"
 MODELS_DIR = ROOT_DIR
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 def set_seed(seed: int = 42) -> None:
     """
@@ -89,13 +90,13 @@ def calculate_hydrophobicmoment(data:list):
 
 def calculate_physchem(peptides):
     physchem = {}
-    physchem['dataset'] = []
+    #physchem['dataset'] = []
     physchem['length'] = []
     physchem['charge'] = []
-    physchem['pi'] = []
-    physchem['aromacity'] = []
+    #physchem['pi'] = []
+    #physchem['aromacity'] = []
     physchem['hydrophobicity'] = []
-    physchem['hm'] = []
+    #physchem['hm'] = []
 
     # physchem['dataset'] = len(peptides)
     physchem['length'] = calculate_length(peptides)
@@ -157,7 +158,6 @@ decoder = DecoderRNN(
     params["dropout"],
     params["layer_norm"],
 )
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 def get_model_arch_hash(model: nn.Module) -> int:
     return hash(";".join(sorted([str(v.shape) for v in model.state_dict().values()])))
@@ -195,7 +195,7 @@ def report_sequence_char(
     model_out: np.ndarray,
 ):
     seq_pred = model_out.argmax(axis=2)
-    physchem_decoded = calculate_physchem(dataset_lib.decoded(seq_pred.permute(1, 0), ""))
+    physchem_decoded = calculate_physchem(dataset_lib.decoded(tensor(seq_pred).permute(1, 0), ""))
     len_true = seq_true.argmin(axis=0)
     len_pred = seq_pred.argmin(axis=0)
 
@@ -285,8 +285,9 @@ def reg_loss_sign(latent_code, attribute, factor=1.0):
     lc_dist_mat = (latent_code - latent_code.transpose(1, 0)).reshape(-1, 1)
 
     # compute attribute distance matrix
-    attribute = attribute.reshape(-1, 1).repeat(1, attribute.shape[0])
-    attribute_dist_mat = (attribute - attribute.transpose(1, 0)).reshape(-1, 1)
+    attribute_tensor = tensor(attribute.values).to(DEVICE)
+    attribute_tensor = attribute_tensor.reshape(-1, 1).repeat(1, attribute_tensor.shape[0])
+    attribute_dist_mat = (attribute_tensor - attribute_tensor.transpose(1, 0)).reshape(-1, 1)
 
     # compute regularization loss
     loss_fn = nn.L1Loss()
@@ -339,7 +340,7 @@ def run_epoch_iwae(
         #     # print(batch[i])
         #     physchem.append(calculate_physchem(decoded[i]))
 
-        physchem_original = calculate_physchem(dataset_lib.decoded(batch, ""))
+        # physchem_original = calculate_physchem(dataset_lib.decoded(batch, ""))
         
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         S, B = peptides.shape
@@ -366,7 +367,7 @@ def run_epoch_iwae(
         # reconstruction - cross entropy
         sampled_peptide_logits = decoder(z.reshape(K * B, -1)).reshape(S, K, B, C)
         src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
-        src_avg_k = src.mean(dim=0) # C x B x S
+        # src_avg_k = src.mean(dim=0) # C x B x S
         src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
         tgt = peptides.permute(1, 0).reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
         
@@ -463,7 +464,7 @@ optimizer = Adam(
 
 if params["use_clearml"]:
     task = clearml.Task.init(
-        project_name="HYDRAMP - basic transformer", task_name=params["task_name"]
+        project_name="ar-vae", task_name=params["task_name"]
     )
     task.set_parameters(params)
     logger = task.logger

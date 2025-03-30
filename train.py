@@ -281,11 +281,11 @@ def reg_loss_sign(latent_code, attribute, factor=1.0):
         scalar, loss
     """
     # compute latent distance matrix
-    latent_code = latent_code.reshape(-1, 1)
+    latent_code = latent_code.to('cpu').reshape(-1, 1)
     lc_dist_mat = latent_code - latent_code.T
 
     # compute attribute distance matrix
-    attribute_tensor = tensor(attribute.values).to(DEVICE)
+    attribute_tensor = tensor(attribute.values).to('cpu')
     attribute_tensor = attribute_tensor.reshape(-1, 1)
     attribute_dist_mat = attribute_tensor - attribute_tensor.T
 
@@ -295,7 +295,7 @@ def reg_loss_sign(latent_code, attribute, factor=1.0):
     attribute_sign = sign(attribute_dist_mat)
     sign_loss = loss_fn(lc_tanh, attribute_sign.float())
 
-    return sign_loss
+    return sign_loss.to(DEVICE)
 
 def run_epoch_iwae(
     mode: Literal["test", "train"],

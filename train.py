@@ -595,44 +595,6 @@ def run():
                 )
     eval_model()
 
-def _build_run_command(self, intput_path: str, output_path: str) -> str:
-    full_cmd = (f"conda run -n {self._conda_env_name} "
-                f"bash -c 'CUDA_VISIBLE_DEVICES={CUDA} {self._inference_cmd} "
-                f"{self._get_path_from_model_dir(intput_path)} "
-                f"{self._get_path_from_model_dir(output_path)} '")
-    if self._additional_args:
-        full_cmd += ' '.join(list(self._additional_args.values()))
-    return full_cmd
-
- def _execute_shell(self, cmd: str) -> None:
-        env = {k: str(v) for k, v in os.environ.items() if v is not None}  # Convert all values to strings
-        env["CUDA_VISIBLE_DEVICES"] = CUDA
-
-        try:
-            process = subprocess.Popen(
-                cmd,
-                shell=True,
-                env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                bufsize=1  # Line-buffered output
-            )
-
-            # Print output in real-time
-            for line in iter(process.stdout.readline, ""):
-                sys.stdout.write(line)
-                sys.stdout.flush()  # Ensure immediate printing
-
-            for line in iter(process.stderr.readline, ""):
-                sys.stderr.write(line)
-                sys.stderr.flush()  # Ensure immediate printing of errors
-
-            process.wait()  # Wait for the process to finish
-
-
-        except subprocess.CalledProcessError as e:
-            print(f"⚠️ Warning: Command failed with exit code {e.returncode}. Continuing execution...")
 run()
 # autoencoder.load_state_dict(load('./gmm_model.pt'))
 # autoencoder = autoencoder.to('cpu')  

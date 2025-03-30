@@ -1,27 +1,28 @@
 nohup: ignoring input
-ClearML Task: created new task id=91e7bca1986b4e94b8b540bfbe2a12e6
+ClearML Task: overwriting (reusing) task id=46b8056198734c0b8e1f2407033722fa
 /home/gwiazale/AR-VAE/data/dataset.py:167: SettingWithCopyWarning: 
 A value is trying to be set on a copy of a slice from a DataFrame.
 Try using .loc[row_indexer,col_indexer] = value instead
 
 See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
   pos_dataset.loc[:, 'Label'] = 1
-======> WARNING! Git diff too large to store (569kb), skipping uncommitted changes <======
-ClearML results page: https://app.clear.ml/projects/71f35e5bb35c4f648885324bca6f98a9/experiments/91e7bca1986b4e94b8b540bfbe2a12e6/output/log
-  0%|          | 0/10000 [00:00<?, ?it/s]/home/gwiazale/myenv/lib/python3.8/site-packages/modlamp/descriptors.py:961: RuntimeWarning:
-
-invalid value encountered in divide
-
-  0%|          | 0/10000 [16:12<?, ?it/s]
+ClearML results page: https://app.clear.ml/projects/71f35e5bb35c4f648885324bca6f98a9/experiments/46b8056198734c0b8e1f2407033722fa/output/log
+  0%|          | 0/10000 [00:00<?, ?it/s]  0%|          | 0/10000 [00:10<?, ?it/s]
 Traceback (most recent call last):
   File "train.py", line 597, in <module>
     run()
-  File "train.py", line 570, in run
-    loss = run_epoch_iwae(
+  File "train.py", line 555, in run
+    run_epoch_iwae(
   File "train.py", line 384, in run_epoch_iwae
     reg_loss += compute_reg_loss(
   File "train.py", line 269, in compute_reg_loss
     reg_loss = reg_loss_sign(x, labels, factor=factor)
-  File "train.py", line 289, in reg_loss_sign
-    attribute_tensor = attribute_tensor.reshape(-1, 1).repeat(1, attribute_tensor.shape[0])
-torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB (GPU 0; 10.75 GiB total capacity; 9.41 GiB already allocated; 199.62 MiB free; 9.64 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setting max_split_size_mb to avoid fragmentation.  See documentation for Memory Management and PYTORCH_CUDA_ALLOC_CONF
+  File "train.py", line 296, in reg_loss_sign
+    sign_loss = loss_fn(lc_tanh, attribute_sign.float())
+  File "/home/gwiazale/myenv/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1501, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/gwiazale/myenv/lib/python3.8/site-packages/torch/nn/modules/loss.py", line 101, in forward
+    return F.l1_loss(input, target, reduction=self.reduction)
+  File "/home/gwiazale/myenv/lib/python3.8/site-packages/torch/nn/functional.py", line 3264, in l1_loss
+    return torch._C._nn.l1_loss(expanded_input, expanded_target, _Reduction.get_enum(reduction))
+torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 256.00 MiB (GPU 0; 10.75 GiB total capacity; 6.67 GiB already allocated; 21.62 MiB free; 6.71 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setting max_split_size_mb to avoid fragmentation.  See documentation for Memory Management and PYTORCH_CUDA_ALLOC_CONF

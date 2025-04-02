@@ -89,7 +89,6 @@ def calculate_hydrophobicmoment(data:list):
 
 
 def calculate_physchem(peptides):
-    peptides = [item for item in peptides if item.strip()]
     physchem = {}
     #physchem['dataset'] = []
     physchem['length'] = []
@@ -196,7 +195,9 @@ def report_sequence_char(
     model_out: np.ndarray,
 ):
     seq_pred = model_out.argmax(axis=2)
-    physchem_decoded = calculate_physchem(dataset_lib.decoded(tensor(seq_pred).permute(1, 0), ""))
+    src_pred = dataset_lib.decoded(tensor(seq_pred).permute(1, 0), "")
+    filtered_list = [item for item in src_pred if item.strip()]
+    physchem_decoded = calculate_physchem(filtered_list)
     len_true = seq_true.argmin(axis=0)
     len_pred = seq_pred.argmin(axis=0)
 
@@ -371,8 +372,10 @@ def run_epoch_iwae(
         # src_avg_k = src.mean(dim=0) # C x B x S
         src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
         tgt = peptides.permute(1, 0).reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
-        
-        physchem_decoded = calculate_physchem(dataset_lib.decoded(src_decoded, ""))
+        src_decoded = dataset_lib.decoded(src_decoded, "")
+        indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
+        filtered_list = [item for item in src_decoded if item.strip()]
+        physchem_decoded = calculate_physchem(filtered_list)
 
         # K x B
         cross_entropy = ce_loss_fun(
@@ -383,7 +386,7 @@ def run_epoch_iwae(
         reg_loss = 0
         for dim in reg_dim:
             reg_loss += compute_reg_loss(
-            z.reshape(-1,z.shape[2]), physchem_decoded.iloc[:, dim], dim, gamma=10.0, factor=1.0 #gamma i delta z papera
+            z[:,indexes,:].reshape(-1,z.shape[2]), physchem_decoded.iloc[:, dim], dim, gamma=10.0, factor=1.0 #gamma i delta z papera
         )
 
         loss = logsumexp(

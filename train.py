@@ -89,6 +89,7 @@ def calculate_hydrophobicmoment(data:list):
 
 
 def calculate_physchem(peptides):
+    peptides = [item for item in peptides if item.strip()]
     physchem = {}
     #physchem['dataset'] = []
     physchem['length'] = []

@@ -9,7 +9,7 @@ import pandas as pd
 DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
 import pandas as pd
 import numpy as np
-from  torch import tensor, long, tanh, sign
+from  torch import tensor, long, tanh, sign, isnan
 from torch.autograd import Variable
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
@@ -268,6 +268,7 @@ def compute_reg_loss(z, labels, reg_dim, gamma, factor=1.0):
     Computes the regularization loss
     """
     x = z[:, reg_dim]
+    print(isnan(x).sum().item()/x.numel())
     reg_loss = reg_loss_sign(x, labels, factor=factor)
     return gamma * reg_loss
 
@@ -283,6 +284,7 @@ def reg_loss_sign(latent_code, attribute, factor=1.0):
         scalar, loss
     """
     # compute latent distance matrix
+    print(isnan(latent_code).sum().item()/latent_code.numel())
     latent_code = latent_code.to('cpu').reshape(-1, 1)
     lc_dist_mat = latent_code - latent_code.T
 

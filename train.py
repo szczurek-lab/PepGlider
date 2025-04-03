@@ -268,7 +268,6 @@ def compute_reg_loss(z, labels, reg_dim, gamma, factor=1.0):
     Computes the regularization loss
     """
     x = z[:, reg_dim]
-    print(isnan(x).sum().item()/x.numel())
     reg_loss = reg_loss_sign(x, labels, factor=factor)
     return gamma * reg_loss
 
@@ -284,7 +283,6 @@ def reg_loss_sign(latent_code, attribute, factor=1.0):
         scalar, loss
     """
     # compute latent distance matrix
-    print(isnan(latent_code).sum().item()/latent_code.numel())
     latent_code = latent_code.to('cpu').reshape(-1, 1)
     lc_dist_mat = latent_code - latent_code.T
 
@@ -388,7 +386,7 @@ def run_epoch_iwae(
         reg_loss = 0
         for dim in reg_dim:
             reg_loss += compute_reg_loss(
-            z[:,indexes,:].reshape(-1,z.shape[2]), physchem_decoded.iloc[:, dim], dim, gamma=10.0, factor=1.0 #gamma i delta z papera
+            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=10.0, factor=1.0 #gamma i delta z papera
         )
 
         loss = logsumexp(

@@ -197,7 +197,10 @@ def report_sequence_char(
     seq_pred = model_out.argmax(axis=2)
     src_pred = dataset_lib.decoded(tensor(seq_pred).permute(1, 0), "")
     filtered_list = [item for item in src_pred if item.strip()]
-    physchem_decoded = calculate_physchem(filtered_list)
+    if not filtered_list:
+        print('All predicted sequences are empty')
+    else:
+        physchem_decoded = calculate_physchem(filtered_list)
     len_true = seq_true.argmin(axis=0)
     len_pred = seq_pred.argmin(axis=0)
 
@@ -252,15 +255,16 @@ def report_sequence_char(
     logger.report_scalar(
         title="Empty Token Accuracy", series=hue, value=empty_acc, iteration=epoch
     )
-    logger.report_scalar(
-        title="Average length metric from modlamp", series=hue, value=physchem_decoded.iloc[:,0].mean(), iteration=epoch
-    )
-    logger.report_scalar(
-        title="Average charge metric from modlamp", series=hue, value=physchem_decoded.iloc[:,1].mean(), iteration=epoch
-    )
-    logger.report_scalar(
-        title="Average hydrophobicity metric from modlamp", series=hue, value=physchem_decoded.iloc[:,2].mean(), iteration=epoch
-    )
+    if filtered_list:
+        logger.report_scalar(
+            title="Average length metric from modlamp", series=hue, value=physchem_decoded.iloc[:,0].mean(), iteration=epoch
+        )
+        logger.report_scalar(
+            title="Average charge metric from modlamp", series=hue, value=physchem_decoded.iloc[:,1].mean(), iteration=epoch
+        )
+        logger.report_scalar(
+            title="Average hydrophobicity metric from modlamp", series=hue, value=physchem_decoded.iloc[:,2].mean(), iteration=epoch
+        )
 
     # @staticmethod
 def compute_reg_loss(z, labels, reg_dim, gamma, factor=1.0):

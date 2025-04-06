@@ -137,7 +137,7 @@ params = {
     "iwae_samples": 10,
     "model_name": "basic",
     "use_clearml": True,
-    "task_name": "iwae_progressive_beta_v7_looking_for_a_problem",
+    "task_name": "vanilla_vae",
     "device": "cuda",
     "deeper_eval_every": 20,
     "save_model_every": 100,
@@ -375,12 +375,12 @@ def run_epoch_iwae(
         sampled_peptide_logits = decoder(z.reshape(K * B, -1)).reshape(S, K, B, C)
         src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
         # src_avg_k = src.mean(dim=0) # C x B x S
-        src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
+        # src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
         tgt = peptides.permute(1, 0).reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
-        src_decoded = dataset_lib.decoded(src_decoded, "")
-        indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
-        filtered_list = [item for item in src_decoded if item.strip()]
-        physchem_decoded = calculate_physchem(filtered_list)
+        # src_decoded = dataset_lib.decoded(src_decoded, "")
+        # indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
+        # filtered_list = [item for item in src_decoded if item.strip()]
+        # physchem_decoded = calculate_physchem(filtered_list)
 
         # K x B
         cross_entropy = ce_loss_fun(
@@ -388,14 +388,14 @@ def run_epoch_iwae(
             tgt,
         ).sum(dim=2)
 
-        reg_loss = 0
-        for dim in reg_dim:
-            reg_loss += compute_reg_loss(
-            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=10.0, factor=1.0 #gamma i delta z papera
-        )
+        #reg_loss = 0
+        #for dim in reg_dim:
+        #    reg_loss += compute_reg_loss(
+        #    z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=10.0, factor=1.0 #gamma i delta z papera
+        #)
 
         loss = logsumexp(
-            cross_entropy + kl_beta * (log_qzx - log_pz) + reg_loss, dim=0
+            cross_entropy + kl_beta * (log_qzx - log_pz), dim=0# + reg_loss
         ).mean(dim=0)
 
         # stats

@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import torch
+from Bio import SeqIO
 
 STD_AA = list('ACDEFGHIKLMNPQRSTVWY')
 
@@ -81,8 +82,40 @@ class AMPDataManager:
             min_len: int,
             max_len: int,
     ):
-        self.positive_data = pd.read_csv(positive_filepath)
-        self.negative_data = pd.read_csv(negative_filepath)
+        if str(positive_filepath).endswith(".csv"):
+            self.positive_data = pd.read_csv(positive_filepath)
+        else:
+            with open(positive_filepath) as fasta_file:  # Will close handle cleanly
+                identifiers = []
+                sequences = []
+                for seq_record in SeqIO.parse(fasta_file, 'fasta'):  # (generator)
+                    seq_str = str(seq_record.seq)  # Convert Seq object to string
+                    if seq_str:  # Only add non-empty sequences
+                        sequences.append(seq_str)
+                        identifiers.append(seq_record.id)
+            
+            #converting lists to pandas Series    
+            s1 = pd.Series(identifiers, name='ID')
+            s2 = pd.Series(sequences, name='Sequence')
+            #Gathering Series into a pandas DataFrame and rename index as ID column
+            self.positive_data = pd.DataFrame({'ID': s1, 'Sequence': s2})
+        if str(negative_filepath).endswith(".csv"):
+            self.negative_data = pd.read_csv(negative_filepath)
+        else:
+            with open(negative_filepath) as fasta_file:  # Will close handle cleanly
+                identifiers = []
+                sequences = []
+                for seq_record in SeqIO.parse(fasta_file, 'fasta'):  # (generator)
+                    seq_str = str(seq_record.seq)  # Convert Seq object to string
+                    if seq_str:  # Only add non-empty sequences
+                        sequences.append(seq_str)
+                        identifiers.append(seq_record.id)
+
+            #converting lists to pandas Series    
+            s1 = pd.Series(identifiers, name='ID')
+            s2 = pd.Series(sequences, name='Sequence')
+            #Gathering Series into a pandas DataFrame and rename index as ID column
+            self.negative_data = pd.DataFrame({'ID': s1, 'Sequence': s2})
 
         self.min_len = min_len
         self.max_len = max_len

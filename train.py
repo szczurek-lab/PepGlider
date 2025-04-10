@@ -2,10 +2,7 @@ import os
 from torch import optim, nn, utils, logsumexp, device, cuda, save, isinf, backends, manual_seed, LongTensor, zeros_like, ones_like, isnan
 from torch.distributions import Normal
 from model.model import EncoderRNN, DecoderRNN#, VAE
-# import lightning as L
 import pandas as pd
-# import wandb
-# from pytorch_lightning.loggers import WandbLogger
 DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
 import pandas as pd
 import numpy as np
@@ -31,7 +28,6 @@ cuda.memory._set_allocator_settings("max_split_size_mb:128")
 ROOT_DIR = Path(__file__).parent#.parent
 DATA_DIR = ROOT_DIR / "data"
 MODELS_DIR = ROOT_DIR
-# os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 def set_seed(seed: int = 42) -> None:
     """
@@ -109,19 +105,8 @@ def calculate_physchem(peptides):
 
     return pd.DataFrame(dict([ (k, pd.Series(v)) for k,v in physchem.items() ]))
 
-# physchem = calculate_physchem([amp_x_raw.tolist()], ['amp_training_data'])
-
-dataset = utils.data.TensorDataset(amp_x)
-train_loader = utils.data.DataLoader(amp_x, batch_size=512, shuffle=True)
-# train_loader = utils.data.DataLoader(dataset, batch_size=512, shuffle=True)
-# e = EncoderRNN(25, 512, 100, 2, bidirectional=True).to(DEVICE)
-# d = DecoderRNN(100, 512, 21, 2).to(DEVICE)
-# autoencoder = VAE(e, d)
-# wandb_logger = WandbLogger(project='my-awesome-project')
-# wandb_logger.experiment.config["batch_size"] = 512
-# trainer = L.Trainer(max_epochs=300, logger=wandb_logger)
-# trainer.fit(model=autoencoder, train_dataloaders=train_loader)
-# save(autoencoder.state_dict(), './gmm_model.pt')
+dataset = utils.data.TensorDataset(amp_x, tensor(amp_y))
+train_loader = utils.data.DataLoader(dataset, batch_size=512, shuffle=True)
 params = {
     "num_heads": 4,
     "num_layers": 6,
@@ -267,7 +252,6 @@ def report_sequence_char(
             title="Average hydrophobicity metric from modlamp", series=hue, value=physchem_decoded.iloc[:,2].mean(), iteration=epoch
         )
 
-    # @staticmethod
 def compute_reg_loss(z, labels, reg_dim, gamma, factor=1.0):
     """
     Computes the regularization loss
@@ -276,7 +260,6 @@ def compute_reg_loss(z, labels, reg_dim, gamma, factor=1.0):
     reg_loss = reg_loss_sign(x, labels, factor=factor)
     return gamma * reg_loss
 
-    # @staticmethod
 def reg_loss_sign(latent_code, attribute, factor=1.0):
     """
     Computes the regularization loss given the latent code and attribute
@@ -341,14 +324,7 @@ def run_epoch_iwae(
     K = iwae_samples
     C = VOCAB_SIZE + 1
 
-    for batch in dataloader:
-        # decoded = dataset_lib.decoded(batch)
-        # for i in range(len(decoded)):
-        #     # print(batch[i])
-        #     physchem.append(calculate_physchem(decoded[i]))
-
-        # physchem_original = calculate_physchem(dataset_lib.decoded(batch, ""))
-        
+    for batch, _ in dataloader:        
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         S, B = peptides.shape
         if optimizer:
@@ -374,7 +350,6 @@ def run_epoch_iwae(
         # reconstruction - cross entropy
         sampled_peptide_logits = decoder(z.reshape(K * B, -1)).reshape(S, K, B, C)
         src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
-        # src_avg_k = src.mean(dim=0) # C x B x S
         src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
         tgt = peptides.permute(1, 0).reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
         src_decoded = dataset_lib.decoded(src_decoded, "")
@@ -448,7 +423,7 @@ def run_epoch_iwae(
                 ("KL Beta", kl_beta),
             ],
         )
-        if eval_mode == "deep":
+        if eval_mode == "deep": #TODO: tu do dodania te metryki AR-VAE
             report_sequence_char(
                 logger,
                 hue=f"{mode} - mu",
@@ -502,7 +477,7 @@ def model_go(batch):
     z = q_distr.rsample((K,))
     return z
 
-def _extract_relevant_attributes(attributes):
+def _extract_relevant_attributes(attributes): #TODO: do zmiany ta funkcja, bo ja nei zapisuje nic w self 
     attr_list = [
         attr for attr in attr_dict.keys() if attr != 'digit_identity' and attr != 'color'
     ]

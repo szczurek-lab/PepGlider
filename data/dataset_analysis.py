@@ -4,6 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from pathlib import Path
 from modlamp.descriptors import GlobalDescriptor
+from modlamp.analysis import GlobalAnalysis
 from scipy.stats import ttest_ind
 import dataset as dataset_lib
 import random
@@ -49,19 +50,20 @@ df = pd.DataFrame({
 
 # Filter sequences by length
 filtered_df = df[df['Sequence'].str.len() <= 200].copy()
-filtered_df['Hydrophobic ratio'] = np.nan
+filtered_df['Hydrophobic ratio momentum'] = np.nan
 
 # Calculate hydrophobic ratio
 for idx, seq in enumerate(filtered_df['Sequence']):
     try:
         desc = GlobalDescriptor([seq])
-        desc.hydrophobic_ratio()  # This should return a 2D array of shape (1, 1)
+        analysis = GlobalAnalysis([seq])
+        analysis.calc_uH()  # This should return a 2D array of shape (1, 1)
         
         # Access the scalar value of the hydrophobic ratio
-        hydro_ratio = desc.descriptor[0, 0]  # Take the first value of the array
+        hydro_ratio = analysis.uH[0][0] # Take the first value of the array
         
         # Assign the value to the DataFrame
-        filtered_df.at[filtered_df.index[idx], 'Hydrophobic ratio'] = hydro_ratio
+        filtered_df.at[filtered_df.index[idx], 'Hydrophobic ratio momentum'] = hydro_ratio
 
         desc.charge_density()
         charge = desc.descriptor[0, 0] 
@@ -70,36 +72,52 @@ for idx, seq in enumerate(filtered_df['Sequence']):
         print(f"Error processing sequence {seq}: {e}")
 
 # Drop rows with NaN in Hydrophobic ratio (if any computation failed)
-filtered_df.dropna(subset=['Hydrophobic ratio'], inplace=True)
+filtered_df.dropna(subset=['Hydrophobic ratio momentum'], inplace=True)
 filtered_df.dropna(subset=['Charge'], inplace=True)
 
 # Plot the data
 plt.figure(figsize=(10, 6))
-sns.boxplot(data=filtered_df, x='Label', y='Hydrophobic ratio', palette="Set2")
-plt.title('Hydrophobic Ratio by Label', fontsize=16)
+sns.boxplot(data=filtered_df, x='Label', y='Hydrophobic ratio momentum', palette="Set2")
+plt.title('Hydrophobic Ratio momentum by Label', fontsize=16)
 plt.xlabel('Label', fontsize=14)
-plt.ylabel('Hydrophobic Ratio', fontsize=14)
+plt.ylabel('Hydrophobic Ratio momentum', fontsize=14)
 plt.xticks(ticks=[0, 1], labels=['Negative (0)', 'Positive (1)'], fontsize=12)
 plt.show()
 
 plt.figure(figsize=(10, 6))
-sns.boxplot(data=filtered_df, x='Label', y='Charge', palette="Set2")
-plt.title('Charge by Label', fontsize=16)
+sns.violinplot(data=filtered_df, x='Label', y='Hydrophobic ratio momentum', palette="Set2")
+plt.title('Hydrophobic Ratio momentum by Label', fontsize=16)
 plt.xlabel('Label', fontsize=14)
-plt.ylabel('Charge', fontsize=14)
+plt.ylabel('Hydrophobic Ratio momentum', fontsize=14)
 plt.xticks(ticks=[0, 1], labels=['Negative (0)', 'Positive (1)'], fontsize=12)
 plt.show()
+
+# plt.figure(figsize=(10, 6))
+# sns.boxplot(data=filtered_df, x='Label', y='Charge', palette="Set2")
+# plt.title('Charge by Label', fontsize=16)
+# plt.xlabel('Label', fontsize=14)
+# plt.ylabel('Charge', fontsize=14)
+# plt.xticks(ticks=[0, 1], labels=['Negative (0)', 'Positive (1)'], fontsize=12)
+# plt.show()
+
+# plt.figure(figsize=(10, 6))
+# sns.violinplot(data=filtered_df, x='Label', y='Charge', palette="Set2")
+# plt.title('Charge by Label', fontsize=16)
+# plt.xlabel('Label', fontsize=14)
+# plt.ylabel('Charge', fontsize=14)
+# plt.xticks(ticks=[0, 1], labels=['Negative (0)', 'Positive (1)'], fontsize=12)
+# plt.show()
 
 print("Sequence lengths for Label 0:")
 print(df[df['Label'] == 0]['Sequence'].str.len().describe())
 print("Sequence lengths for Label 1:")
 print(df[df['Label'] == 1]['Sequence'].str.len().describe())
 
-label_0 = filtered_df[filtered_df['Label'] == 0]['Hydrophobic ratio']
-label_1 = filtered_df[filtered_df['Label'] == 1]['Hydrophobic ratio']
+label_0 = filtered_df[filtered_df['Label'] == 0]['Hydrophobic ratio momentum']
+label_1 = filtered_df[filtered_df['Label'] == 1]['Hydrophobic ratio momentum']
 
 t_stat, p_value = ttest_ind(label_0, label_1)
-print(f"Hydrophobic ratio: T-statistic: {t_stat}, P-value: {p_value}")
+print(f"Hydrophobic ratio momentum: T-statistic: {t_stat}, P-value: {p_value}")
 
 label_0 = filtered_df[filtered_df['Label'] == 0]['Charge']
 label_1 = filtered_df[filtered_df['Label'] == 1]['Charge']

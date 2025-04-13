@@ -264,9 +264,15 @@ def report_sequence_char(
             )
     else:
         for attr in metrics.keys():
-            logger.report_scalar(
-                title=f"Interpretability - {attr} of latent space", series=hue, value=metrics["Interpretability"][attr], iteration=epoch
-            )
+            if attr == 'Interpretability':
+                for subattr in metrics[attr].keys():
+                    logger.report_scalar(
+                        title=f"Interpretability - {attr} of latent space", series=hue, value=metrics["Interpretability"][subattr][1], iteration=epoch
+                    )
+            else:
+                logger.report_scalar(
+                    title=f"{attr} of latent space", series=hue, value=metrics[attr][1], iteration=epoch
+                )
 
 def compute_reg_loss(z, labels, reg_dim, gamma, factor=1.0):
     """
@@ -432,7 +438,7 @@ def run_epoch_iwae(
     if mode == 'test':
         latent_codes = np.concatenate(latent_codes, 0)
         attributes = np.concatenate(attributes, 0)
-        attributes, attr_list = _extract_relevant_attributes(attributes, reg_dim)#TODO: add to attributes psychem
+        attributes, attr_list = _extract_relevant_attributes(attributes, reg_dim)
         interp_metrics = m.compute_interpretability_metric(
             latent_codes, attributes, attr_list
         )
@@ -469,7 +475,7 @@ def run_epoch_iwae(
                 ("KL Beta", kl_beta),
             ],
         )
-        if eval_mode == "deep": #TODO: tu do dodania te metryki AR-VAE
+        if eval_mode == "deep":
             report_sequence_char(
                 logger,
                 hue=f"{mode} - mu",

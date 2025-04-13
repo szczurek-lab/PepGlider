@@ -265,7 +265,7 @@ def report_sequence_char(
     else:
         for attr in metrics.keys():
             logger.report_scalar(
-                title=f"{attr} of latent space", series=hue, value=metrics[attr], iteration=epoch
+                title=f"Interpretability - {attr} of latent space", series=hue, value=metrics["Interpretability"][attr], iteration=epoch
             )
 
 def compute_reg_loss(z, labels, reg_dim, gamma, factor=1.0):
@@ -371,7 +371,8 @@ def run_epoch_iwae(
         z = q_distr.rsample((K,)) # K, B, L
         if mode == 'test':
             latent_codes.append(z.reshape(-1,z.shape[2]).cpu().detach().numpy())
-            attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1).numpy(), physchem_original), axis =1))
+            physchem_expanded = pd.concat([physchem_original]* K, ignore_index=True).to_numpy()
+            attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1,1).numpy(), physchem_expanded), axis =1))
         # Kullback Leibler divergence
         log_qzx = q_distr.log_prob(z).sum(dim=2)
         log_pz = prior_distr.log_prob(z).sum(dim=2)
@@ -442,6 +443,7 @@ def run_epoch_iwae(
         ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
         with open(results_fp, 'w') as outfile:
             json.dump(ar_vae_metrics, outfile, indent=2)
+        print("Interpretability metrics:", ar_vae_metrics)
     if logger is not None:
         report_scalars(
             logger,

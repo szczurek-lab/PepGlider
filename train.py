@@ -349,6 +349,7 @@ def run_epoch_iwae(
     latent_codes = []
     attributes = []
     sample_id = 0
+    ar_vae_metrics = {}
 
     K = iwae_samples
     C = VOCAB_SIZE + 1
@@ -378,9 +379,7 @@ def run_epoch_iwae(
             interp_metrics = m.compute_interpretability_metric(
                 latent_codes, attributes, attr_list
             )
-            ar_vae_metrics = {
-                "interpretability": interp_metrics
-            }
+            ar_vae_metrics["Interpretability"] = interp_metrics
             ar_vae_metrics.update(m.compute_correlation_score(latent_codes, attributes))
             ar_vae_metrics.update(m.compute_modularity(latent_codes, attributes))
             ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))

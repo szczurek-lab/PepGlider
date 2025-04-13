@@ -348,7 +348,6 @@ def run_epoch_iwae(
     )
     latent_codes = []
     attributes = []
-    sample_id = 0
     ar_vae_metrics = {}
 
     K = iwae_samples
@@ -369,24 +368,9 @@ def run_epoch_iwae(
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
         z = q_distr.rsample((K,)) # K, B, L
-        if sample_id <= 200 and mode == 'test':
+        if mode == 'test':
             latent_codes.append(z.reshape(-1,z.shape[2]).cpu().detach().numpy())
             attributes.append(labels.unsqueeze(0).expand(K, -1).reshape(-1).numpy())
-        if sample_id == 200 and mode =='test':
-            latent_codes = np.concatenate(latent_codes, 0)
-            attributes = np.concatenate(attributes, 0)
-            attributes, attr_list = _extract_relevant_attributes(attributes)
-            interp_metrics = m.compute_interpretability_metric(
-                latent_codes, attributes, attr_list
-            )
-            ar_vae_metrics["Interpretability"] = interp_metrics
-            ar_vae_metrics.update(m.compute_correlation_score(latent_codes, attributes))
-            ar_vae_metrics.update(m.compute_modularity(latent_codes, attributes))
-            ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
-            ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
-            with open(results_fp, 'w') as outfile:
-                json.dump(ar_vae_metrics, outfile, indent=2)
-        sample_id +=1
         # Kullback Leibler divergence
         log_qzx = q_distr.log_prob(z).sum(dim=2)
         log_pz = prior_distr.log_prob(z).sum(dim=2)
@@ -443,7 +427,19 @@ def run_epoch_iwae(
             model_out_sampled.append(
                 sampled_peptide_logits.mean(dim=1).cpu().detach().numpy() #to ensure this is okay, mean across K for one batch sequence
             )
-
+    latent_codes = np.concatenate(latent_codes, 0)
+    attributes = np.concatenate(attributes, 0)
+    attributes, attr_list = _extract_relevant_attributes(attributes)
+    interp_metrics = m.compute_interpretability_metric(
+        latent_codes, attributes, attr_list
+    )
+    ar_vae_metrics["Interpretability"] = interp_metrics
+    ar_vae_metrics.update(m.compute_correlation_score(latent_codes, attributes))
+    ar_vae_metrics.update(m.compute_modularity(latent_codes, attributes))
+    ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
+    ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
+    with open(results_fp, 'w') as outfile:
+        json.dump(ar_vae_metrics, outfile, indent=2)
     if logger is not None:
         report_scalars(
             logger,

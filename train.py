@@ -267,11 +267,11 @@ def report_sequence_char(
             if attr == 'Interpretability':
                 for subattr in metrics[attr].keys():
                     logger.report_scalar(
-                        title=f"Interpretability - {attr} of latent space", series=hue, value=metrics["Interpretability"][subattr][1], iteration=epoch
+                        title=f"Interpretability - {subattr} of latent space", series=hue, value=metrics["Interpretability"][subattr][1], iteration=epoch
                     )
             else:
                 logger.report_scalar(
-                    title=f"{attr} of latent space", series=hue, value=metrics[attr][1], iteration=epoch
+                    title=f"{attr} of latent space", series=hue, value=metrics[attr], iteration=epoch
                 )
 
 def compute_reg_loss(z, labels, reg_dim, gamma, factor=1.0):
@@ -449,7 +449,7 @@ def run_epoch_iwae(
         ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
         with open(results_fp, 'w') as outfile:
             json.dump(ar_vae_metrics, outfile, indent=2)
-        print("Interpretability metrics:", ar_vae_metrics)
+        # print("Interpretability metrics:", ar_vae_metrics)
     if logger is not None:
         report_scalars(
             logger,

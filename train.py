@@ -131,7 +131,7 @@ params = {
     "iwae_samples": 10,
     "model_name": "basic",
     "use_clearml": True,
-    "task_name": "iwae_progressive_beta_v7_looking_for_a_problem",
+    "task_name": "ar_vae_with_ar_vae_metrics",
     "device": "cuda",
     "deeper_eval_every": 20,
     "save_model_every": 100,
@@ -505,7 +505,7 @@ optimizer = Adam(
 
 if params["use_clearml"]:
     task = clearml.Task.init(
-        project_name="ar-vae", task_name=params["task_name"]
+        project_name="ar-vae-v2", task_name=params["task_name"]
     )
     task.set_parameters(params)
     logger = task.logger

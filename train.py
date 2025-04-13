@@ -348,11 +348,12 @@ def run_epoch_iwae(
     )
     latent_codes = []
     attributes = []
+    sample_id = 0
 
     K = iwae_samples
     C = VOCAB_SIZE + 1
 
-    for sample_id, batch, labels in tqdm(enumerate(dataloader)):        
+    for batch, labels in dataloader:        
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         S, B = peptides.shape
         if optimizer:
@@ -386,6 +387,7 @@ def run_epoch_iwae(
             ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
             with open(results_fp, 'w') as outfile:
                 json.dump(ar_vae_metrics, outfile, indent=2)
+        sample_id +=1
         # Kullback Leibler divergence
         log_qzx = q_distr.log_prob(z).sum(dim=2)
         log_pz = prior_distr.log_prob(z).sum(dim=2)

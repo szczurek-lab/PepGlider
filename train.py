@@ -353,7 +353,8 @@ def run_epoch_iwae(
     K = iwae_samples
     C = VOCAB_SIZE + 1
 
-    for batch, labels in dataloader:        
+    for batch, labels in dataloader:       
+        physchem_original = calculate_physchem(dataset_lib.decoded(batch, "")) 
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         S, B = peptides.shape
         if optimizer:
@@ -370,7 +371,7 @@ def run_epoch_iwae(
         z = q_distr.rsample((K,)) # K, B, L
         if mode == 'test':
             latent_codes.append(z.reshape(-1,z.shape[2]).cpu().detach().numpy())
-            attributes.append(labels.unsqueeze(0).expand(K, -1).reshape(-1).numpy())
+            attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1).numpy(), physchem_original), axis =1))
         # Kullback Leibler divergence
         log_qzx = q_distr.log_prob(z).sum(dim=2)
         log_pz = prior_distr.log_prob(z).sum(dim=2)
@@ -430,7 +431,7 @@ def run_epoch_iwae(
     if mode == 'test':
         latent_codes = np.concatenate(latent_codes, 0)
         attributes = np.concatenate(attributes, 0)
-        attributes, attr_list = _extract_relevant_attributes(attributes, reg_dim)
+        attributes, attr_list = _extract_relevant_attributes(attributes, reg_dim)#TODO: add to attributes psychem
         interp_metrics = m.compute_interpretability_metric(
             latent_codes, attributes, attr_list
         )

@@ -370,7 +370,7 @@ def run_epoch_iwae(
         q_distr = Normal(mu, std)
         z = q_distr.rsample((K,)) # K, B, L
         if sample_id <= 200 and mode == 'test':
-            latent_codes.append(z.reshape(-1,z.shape[2]).cpu().numpy())
+            latent_codes.append(z.reshape(-1,z.shape[2]).cpu().detach().numpy())
             attributes.append(labels.unsqueeze(0).expand(K, -1).reshape(-1).numpy())
         if sample_id == 200 and mode =='test':
             latent_codes = np.concatenate(latent_codes, 0)

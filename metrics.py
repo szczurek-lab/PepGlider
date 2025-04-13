@@ -1,56 +1,179 @@
-import torch
+from sklearn.feature_selection import mutual_info_regression
+from sklearn.linear_model import LinearRegression
+import numpy as np
+from tqdm import tqdm
+from sklearn.metrics import mutual_info_score
+from scipy.stats import spearmanr
 
-# def get_generation_acc():
-#     def metric_(y_true, y_pred):
-#         exceeds_zero_threshold = torch.zeros_like(y_pred, dtype=torch.bool)
-#         exceeds_zero_threshold.scatter_(2, output.unsqueeze(2), True)
-#         exceeds_zero_threshold = exceeds_zero_threshold.float()
-#         exceeds_threshold_flag = torch.cumsum(exceeds_zero_threshold, dim=1) > 0
-#         amino_tp = (torch.argmax(y_pred[:, :, 1:], dim=-1) + 1).float() == y_true.float()
-#         empty_tp = (y_true == 0).float()
-#         amino_tp = torch.sum(torch.where(
-#             exceeds_threshold_flag,
-#             torch.zeros_like(amino_tp, dtype=torch.float),
-#             amino_tp,
-#         ), dim=-1)
-#         empty_tp = torch.sum(torch.where(
-#             exceeds_threshold_flag,
-#             empty_tp,
-#             torch.zeros_like(empty_tp, dtype=torch.float),
-#         ), dim=-1)
-#         empty_entries_sum = torch.sum(
-#             exceeds_threshold_flag.float(), dim=-1)
-#         non_empty_entries_sum = torch.sum(1 - exceeds_threshold_flag.float(), dim=-1)
-#         amino_acc = torch.where(
-#             non_empty_entries_sum > 0,
-#             amino_tp / non_empty_entries_sum,
-#             torch.zeros_like(amino_tp, dtype=torch.float),
-#         )
-#         empty_acc = torch.where(
-#             empty_entries_sum > 0,
-#             empty_tp / empty_entries_sum,
-#             torch.ones_like(empty_tp, dtype=torch.float)
-#         )
-#         return amino_acc, empty_acc
-#     return metric_
+def continuous_mutual_info(mus, ys):
+    """Compute continuous mutual information.
+    Args:
+        mus: np.array num_points x num_points
+        ys: np.array num_points x num_attributes
+    """
+    num_codes = mus.shape[1]
+    num_attributes = ys.shape[1]
+    m = np.zeros([num_codes, num_attributes])
+    for i in tqdm(range(num_attributes)):
+        m[:, i] = mutual_info_regression(mus, ys[:, i])
+    return m
 
-def compare_tensors(tensor1, tensor2):
-    comparison1 = torch.eq(tensor1, tensor2)
-    comparison1 = torch.logical_and(comparison1, tensor1 != 0)  
-    result1 = torch.all(comparison1).item()  
-    
-    comparison2 = torch.eq(tensor1, tensor2)
-    comparison2 = torch.logical_and(comparison2, tensor1 == 0)  
-    result2 = torch.all(comparison2).item()  
-    
-    result3 = result1 / (tensor2 != 0).sum().item()
-    
-    result4 = result2 / (tensor2 != 0).sum().item()
-    
-    return (1-result3), (1-result4)
+def continuous_entropy(ys):
+    """Compute continuous mutual entropy
+    Args:
+        ys: np.array num_points x num_attributes
+    """
+    num_factors = ys.shape[1]
+    h = np.zeros(num_factors)
+    for j in tqdm(range(num_factors)):
+        h[j] = mutual_info_regression(
+            ys[:, j].reshape(-1, 1), ys[:, j]
+        )
+    return h
 
-def kl_loss(z_mean, z_sigma):
-    return -0.5 * torch.sum(
-        1 + z_sigma - torch.square(z_mean) - torch.exp(z_sigma),
-        axis=-1
+def compute_interpretability_metric(latent_codes, attributes, attr_list):
+    """
+    Computes the interpretability metric for each attribute
+    Args:
+        latent_codes: np.array num_points x num_codes
+        attributes: np.array num_points x num_attributes
+        attr_list: list of string corresponding to attribute names
+    """
+    interpretability_metrics = {}
+    total = 0
+    for i, attr_name in tqdm(enumerate(attr_list)):
+        attr_labels = attributes[:, i]
+        mutual_info = mutual_info_regression(latent_codes, attr_labels)
+        dim = np.argmax(mutual_info)
+
+        # compute linear regression score
+        reg = LinearRegression().fit(latent_codes[:, dim:dim + 1], attr_labels)
+        score = reg.score(latent_codes[:, dim:dim + 1], attr_labels)
+        interpretability_metrics[attr_name] = (int(dim), float(score))
+        total += float(score)
+    interpretability_metrics["mean"] = (-1, total / len(attr_list))
+    return interpretability_metrics
+
+
+def compute_mig(latent_codes, attributes):
+    """
+    Computes the mutual information gap (MIG) metric
+    Args:
+        latent_codes: np.array num_points x num_codes
+        attributes: np.array num_points x num_attributes
+    """
+    score_dict = {}
+    m = continuous_mutual_info(latent_codes, attributes)
+    entropy = continuous_entropy(attributes)
+    sorted_m = np.sort(m, axis=0)[::-1]
+    score_dict["mig"] = np.mean(
+        np.divide(sorted_m[0, :] - sorted_m[1, :], entropy[:])
     )
+    return score_dict
+
+
+def compute_modularity(latent_codes, attributes):
+    """
+    Computes the modularity metric
+    Args:
+        latent_codes: np.array num_points x num_codes
+        attributes: np.array num_points x num_attributes
+    """
+    scores = {}
+    mi = continuous_mutual_info(latent_codes, attributes)
+    scores["modularity_score"] = _modularity(mi)
+    return scores
+
+
+def _modularity(mutual_information):
+    """
+    Computes the modularity from mutual information.
+    Args:
+        mutual_information: np.array num_codes x num_attributes
+    """
+    squared_mi = np.square(mutual_information)
+    max_squared_mi = np.max(squared_mi, axis=1)
+    numerator = np.sum(squared_mi, axis=1) - max_squared_mi
+    denominator = max_squared_mi * (squared_mi.shape[1] - 1.)
+    delta = numerator / denominator
+    modularity_score = 1. - delta
+    index = (max_squared_mi == 0.)
+    modularity_score[index] = 0.
+    return np.mean(modularity_score)
+
+
+def compute_correlation_score(latent_codes, attributes):
+    """
+    Computes the correlation score
+    Args:
+        latent_codes: np.array num_points x num_codes
+        attributes: np.array num_points x num_attributes
+    """
+    corr_matrix = _compute_correlation_matrix(latent_codes, attributes)
+    scores = {
+        "Corr_score": np.mean(np.max(corr_matrix, axis=0))
+    }
+    return scores
+
+
+def _compute_correlation_matrix(mus, ys):
+    """
+    Compute correlation matrix for correlation score metric
+    """
+    num_latent_codes = mus.shape[1]
+    num_attributes = ys.shape[1]
+    score_matrix = np.zeros([num_latent_codes, num_attributes])
+    for i in tqdm(range(num_latent_codes)):
+        for j in range(num_attributes):
+            mu_i = mus[:, i]
+            y_j = ys[:, j]
+            rho, p = spearmanr(mu_i, y_j)
+            if p <= 0.05:
+                score_matrix[i, j] = np.abs(rho)
+            else:
+                score_matrix[i, j] = 0.
+    return score_matrix
+
+def _compute_avg_diff_top_two(matrix):
+    sorted_matrix = np.sort(matrix, axis=0)
+    return np.mean(sorted_matrix[-1, :] - sorted_matrix[-2, :])
+
+def compute_sap_score(latent_codes, attributes):
+    """
+    Computes the separated attribute predictability (SAP) score
+    Args:
+        latent_codes: np.array num_points x num_codes
+        attributes: np.array num_points x num_attributes
+    """
+    score_matrix = _compute_score_matrix(latent_codes, attributes)
+    # Score matrix should have shape [num_codes, num_attributes].
+    assert score_matrix.shape[0] == latent_codes.shape[1]
+    assert score_matrix.shape[1] == attributes.shape[1]
+
+    scores = {
+        "SAP_score": _compute_avg_diff_top_two(score_matrix)
+    }
+    return scores
+
+
+def _compute_score_matrix(mus, ys):
+    """
+    Compute score matrix for sap score computation.
+    """
+    num_latent_codes = mus.shape[1]
+    num_attributes = ys.shape[1]
+    score_matrix = np.zeros([num_latent_codes, num_attributes])
+    for i in tqdm(range(num_latent_codes)):
+        for j in range(num_attributes):
+            mu_i = mus[:, i]
+            y_j = ys[:, j]
+            # Attributes are considered continuous.
+            cov_mu_i_y_j = np.cov(mu_i, y_j, ddof=1)
+            cov_mu_y = cov_mu_i_y_j[0, 1] ** 2
+            var_mu = cov_mu_i_y_j[0, 0]
+            var_y = cov_mu_i_y_j[1, 1]
+            if var_mu > 1e-12:
+                score_matrix[i, j] = cov_mu_y * 1. / (var_mu * var_y)
+            else:
+                score_matrix[i, j] = 0.
+    return score_matrix

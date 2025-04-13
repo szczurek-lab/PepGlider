@@ -7,4 +7,14 @@ Try using .loc[row_indexer,col_indexer] = value instead
 See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
   pos_dataset.loc[:, 'Label'] = 1
 ClearML results page: https://app.clear.ml/projects/d1250241b7494b54a797e7c0f8b5dbcd/experiments/a6038c0fc8d04dbc84e7f9093003da48/output/log
-  0%|          | 0/10000 [00:00<?, ?it/s]  0%|          | 1/10000 [03:08<522:51:21, 188.25s/it]  0%|          | 2/10000 [05:37<458:56:04, 165.25s/it]  0%|          | 3/10000 [08:05<437:06:06, 157.40s/it]  0%|          | 4/10000 [10:30<423:30:41, 152.53s/it]  0%|          | 5/10000 [12:54<414:42:13, 149.37s/it]  0%|          | 6/10000 [15:23<414:06:58, 149.17s/it]  0%|          | 7/10000 [17:53<415:24:13, 149.65s/it]  0%|          | 8/10000 [20:17<410:13:39, 147.80s/it]  0%|          | 9/10000 [22:42<407:48:59, 146.95s/it]  0%|          | 10/10000 [25:08<406:38:07, 146.54s/it]  0%|          | 11/10000 [27:37<409:11:23, 147.47s/it]  0%|          | 12/10000 [30:05<409:31:56, 147.61s/it]  0%|          | 13/10000 [32:29<406:36:51, 146.57s/it]  0%|          | 14/10000 [34:53<404:02:18, 145.66s/it]  0%|          | 15/10000 [37:23<407:52:56, 147.06s/it]  0%|          | 16/10000 [39:51<408:29:46, 147.29s/it]  0%|          | 17/10000 [42:14<405:05:49, 146.08s/it]  0%|          | 18/10000 [44:39<403:59:14, 145.70s/it]  0%|          | 19/10000 [47:09<407:32:24, 146.99s/it]  0%|          | 20/10000 [49:38<409:22:35, 147.67s/it]  0%|          | 21/10000 [52:46<442:42:36, 159.71s/it]  0%|          | 22/10000 [55:10<429:46:38, 155.06s/it]
+  0%|          | 0/10000 [00:00<?, ?it/s]  0%|          | 0/10000 [05:01<?, ?it/s]
+Traceback (most recent call last):
+  File "train.py", line 560, in <module>
+    run()
+  File "train.py", line 532, in run
+    loss = run_epoch_iwae(
+  File "train.py", line 433, in run_epoch_iwae
+    attributes, attr_list = _extract_relevant_attributes(attributes, reg_dim)
+  File "train.py", line 308, in _extract_relevant_attributes
+    attr_labels = labels[:, reg_dim]
+IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed

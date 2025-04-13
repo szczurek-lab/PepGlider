@@ -427,19 +427,20 @@ def run_epoch_iwae(
             model_out_sampled.append(
                 sampled_peptide_logits.mean(dim=1).cpu().detach().numpy() #to ensure this is okay, mean across K for one batch sequence
             )
-    latent_codes = np.concatenate(latent_codes, 0)
-    attributes = np.concatenate(attributes, 0)
-    attributes, attr_list = _extract_relevant_attributes(attributes)
-    interp_metrics = m.compute_interpretability_metric(
-        latent_codes, attributes, attr_list
-    )
-    ar_vae_metrics["Interpretability"] = interp_metrics
-    ar_vae_metrics.update(m.compute_correlation_score(latent_codes, attributes))
-    ar_vae_metrics.update(m.compute_modularity(latent_codes, attributes))
-    ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
-    ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
-    with open(results_fp, 'w') as outfile:
-        json.dump(ar_vae_metrics, outfile, indent=2)
+    if mode == 'test':
+        latent_codes = np.concatenate(latent_codes, 0)
+        attributes = np.concatenate(attributes, 0)
+        attributes, attr_list = _extract_relevant_attributes(attributes, reg_dim)
+        interp_metrics = m.compute_interpretability_metric(
+            latent_codes, attributes, attr_list
+        )
+        ar_vae_metrics["Interpretability"] = interp_metrics
+        ar_vae_metrics.update(m.compute_correlation_score(latent_codes, attributes))
+        ar_vae_metrics.update(m.compute_modularity(latent_codes, attributes))
+        ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
+        ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
+        with open(results_fp, 'w') as outfile:
+            json.dump(ar_vae_metrics, outfile, indent=2)
     if logger is not None:
         report_scalars(
             logger,

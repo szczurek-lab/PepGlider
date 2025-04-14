@@ -473,6 +473,7 @@ def run_epoch_iwae(
                 ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
                 ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
                 ("KL Beta", kl_beta),
+                ("Regularization Loss", reg_loss/10.0),#gamma delete
             ],
         )
         if eval_mode == "deep":

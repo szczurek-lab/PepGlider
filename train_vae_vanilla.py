@@ -1,11 +1,9 @@
 import os
 from torch import optim, nn, utils, logsumexp, device, cuda, save, isinf, backends, manual_seed, LongTensor, zeros_like, ones_like, isnan
 from torch.distributions import Normal
+from torch.utils.data import TensorDataset, DataLoader, random_split
 from model.model import EncoderRNN, DecoderRNN#, VAE
-# import lightning as L
 import pandas as pd
-# import wandb
-# from pytorch_lightning.loggers import WandbLogger
 DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
 import pandas as pd
 import numpy as np
@@ -26,12 +24,12 @@ import json
 import modlamp.descriptors
 import modlamp.analysis
 import modlamp.sequences
+import metrics as m
 
 cuda.memory._set_allocator_settings("max_split_size_mb:128")
 ROOT_DIR = Path(__file__).parent#.parent
 DATA_DIR = ROOT_DIR / "data"
 MODELS_DIR = ROOT_DIR
-# os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 def set_seed(seed: int = 42) -> None:
     """
@@ -109,19 +107,15 @@ def calculate_physchem(peptides):
 
     return pd.DataFrame(dict([ (k, pd.Series(v)) for k,v in physchem.items() ]))
 
-# physchem = calculate_physchem([amp_x_raw.tolist()], ['amp_training_data'])
+dataset = TensorDataset(amp_x, tensor(amp_y))
+train_size = int(0.8 * len(dataset))
+eval_size = len(dataset) - train_size
 
-dataset = utils.data.TensorDataset(amp_x)
-train_loader = utils.data.DataLoader(amp_x, batch_size=512, shuffle=True)
-# train_loader = utils.data.DataLoader(dataset, batch_size=512, shuffle=True)
-# e = EncoderRNN(25, 512, 100, 2, bidirectional=True).to(DEVICE)
-# d = DecoderRNN(100, 512, 21, 2).to(DEVICE)
-# autoencoder = VAE(e, d)
-# wandb_logger = WandbLogger(project='my-awesome-project')
-# wandb_logger.experiment.config["batch_size"] = 512
-# trainer = L.Trainer(max_epochs=300, logger=wandb_logger)
-# trainer.fit(model=autoencoder, train_dataloaders=train_loader)
-# save(autoencoder.state_dict(), './gmm_model.pt')
+train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
+
+train_loader = DataLoader(train_dataset, batch_size=512, shuffle=True)
+eval_loader = DataLoader(eval_dataset, batch_size=512, shuffle=False)
+
 params = {
     "num_heads": 4,
     "num_layers": 6,
@@ -137,7 +131,7 @@ params = {
     "iwae_samples": 10,
     "model_name": "basic",
     "use_clearml": True,
-    "task_name": "vanilla_vae",
+    "task_name": "vanilla_vae_with_ar_vae_metrics",
     "device": "cuda",
     "deeper_eval_every": 20,
     "save_model_every": 100,
@@ -194,78 +188,91 @@ def report_sequence_char(
     epoch: int,
     seq_true: np.ndarray,
     model_out: np.ndarray,
+    metrics: dict
 ):
-    seq_pred = model_out.argmax(axis=2)
-    src_pred = dataset_lib.decoded(tensor(seq_pred).permute(1, 0), "")
-    filtered_list = [item for item in src_pred if item.strip()]
-    if not filtered_list:
-        print('All predicted sequences are empty')
+    if metrics is None:
+        seq_pred = model_out.argmax(axis=2)
+        src_pred = dataset_lib.decoded(tensor(seq_pred).permute(1, 0), "")
+        filtered_list = [item for item in src_pred if item.strip()]
+        if not filtered_list:
+            print('All predicted sequences are empty')
+        else:
+            physchem_decoded = calculate_physchem(filtered_list)
+        len_true = seq_true.argmin(axis=0)
+        len_pred = seq_pred.argmin(axis=0)
+
+        pred_len_acc = (len_true == len_pred).mean()
+        pred_len_mae = np.abs(len_true - len_pred).mean()
+
+        correct, overall = 0, 0
+        amino_correct, amino_total = 0, 0
+        empty_correct, empty_total = 0, 0
+
+        for len_ in range(len_pred.max() + 1):
+            idx = len_pred == len_
+            true_sub = seq_true[:, idx]
+            pred_sub = seq_pred[:, idx]
+
+            # Overall token accuracy (within the predicted length)
+            correct += (true_sub[:len_].reshape(-1) == pred_sub[:len_].reshape(-1)).sum()
+            overall += len_ * idx.sum()
+
+            # Amino acid accuracy (non-padding tokens)
+            amino_mask = true_sub > 0
+            amino_correct += (true_sub[amino_mask] == pred_sub[amino_mask]).sum()
+            amino_total += amino_mask.sum()
+
+            # Empty (padding) token accuracy
+            empty_mask = true_sub == 0
+            empty_correct += (true_sub[empty_mask] == pred_sub[empty_mask]).sum()
+            empty_total += empty_mask.sum()
+
+        on_predicted_acc = correct / overall if overall > 0 else 0
+        amino_acc = amino_correct / amino_total if amino_total > 0 else 0
+        empty_acc = empty_correct / empty_total if empty_total > 0 else 0
+
+        logger.report_scalar(
+            title="Length Prediction Accuracy",
+            series=hue,
+            value=pred_len_acc,
+            iteration=epoch,
+        )
+        logger.report_scalar(
+            title="Length Loss [mae]", series=hue, value=pred_len_mae, iteration=epoch
+        )
+        logger.report_scalar(
+            title="Token Prediction Accuracy (on predicted length)",
+            series=hue,
+            value=on_predicted_acc,
+            iteration=epoch,
+        )
+        logger.report_scalar(
+            title="Amino Token Accuracy", series=hue, value=amino_acc, iteration=epoch
+        )
+        logger.report_scalar(
+            title="Empty Token Accuracy", series=hue, value=empty_acc, iteration=epoch
+        )
+        if filtered_list:
+            logger.report_scalar(
+                title="Average length metric from modlamp", series=hue, value=physchem_decoded.iloc[:,0].mean(), iteration=epoch
+            )
+            logger.report_scalar(
+                title="Average charge metric from modlamp", series=hue, value=physchem_decoded.iloc[:,1].mean(), iteration=epoch
+            )
+            logger.report_scalar(
+                title="Average hydrophobicity metric from modlamp", series=hue, value=physchem_decoded.iloc[:,2].mean(), iteration=epoch
+            )
     else:
-        physchem_decoded = calculate_physchem(filtered_list)
-    len_true = seq_true.argmin(axis=0)
-    len_pred = seq_pred.argmin(axis=0)
-
-    pred_len_acc = (len_true == len_pred).mean()
-    pred_len_mae = np.abs(len_true - len_pred).mean()
-
-    correct, overall = 0, 0
-    amino_correct, amino_total = 0, 0
-    empty_correct, empty_total = 0, 0
-
-    for len_ in range(len_pred.max() + 1):
-        idx = len_pred == len_
-        true_sub = seq_true[:, idx]
-        pred_sub = seq_pred[:, idx]
-
-        # Overall token accuracy (within the predicted length)
-        correct += (true_sub[:len_].reshape(-1) == pred_sub[:len_].reshape(-1)).sum()
-        overall += len_ * idx.sum()
-
-        # Amino acid accuracy (non-padding tokens)
-        amino_mask = true_sub > 0
-        amino_correct += (true_sub[amino_mask] == pred_sub[amino_mask]).sum()
-        amino_total += amino_mask.sum()
-
-        # Empty (padding) token accuracy
-        empty_mask = true_sub == 0
-        empty_correct += (true_sub[empty_mask] == pred_sub[empty_mask]).sum()
-        empty_total += empty_mask.sum()
-
-    on_predicted_acc = correct / overall if overall > 0 else 0
-    amino_acc = amino_correct / amino_total if amino_total > 0 else 0
-    empty_acc = empty_correct / empty_total if empty_total > 0 else 0
-
-    logger.report_scalar(
-        title="Length Prediction Accuracy",
-        series=hue,
-        value=pred_len_acc,
-        iteration=epoch,
-    )
-    logger.report_scalar(
-        title="Length Loss [mae]", series=hue, value=pred_len_mae, iteration=epoch
-    )
-    logger.report_scalar(
-        title="Token Prediction Accuracy (on predicted length)",
-        series=hue,
-        value=on_predicted_acc,
-        iteration=epoch,
-    )
-    logger.report_scalar(
-        title="Amino Token Accuracy", series=hue, value=amino_acc, iteration=epoch
-    )
-    logger.report_scalar(
-        title="Empty Token Accuracy", series=hue, value=empty_acc, iteration=epoch
-    )
-    if filtered_list:
-        logger.report_scalar(
-            title="Average length metric from modlamp", series=hue, value=physchem_decoded.iloc[:,0].mean(), iteration=epoch
-        )
-        logger.report_scalar(
-            title="Average charge metric from modlamp", series=hue, value=physchem_decoded.iloc[:,1].mean(), iteration=epoch
-        )
-        logger.report_scalar(
-            title="Average hydrophobicity metric from modlamp", series=hue, value=physchem_decoded.iloc[:,2].mean(), iteration=epoch
-        )
+        for attr in metrics.keys():
+            if attr == 'Interpretability':
+                for subattr in metrics[attr].keys():
+                    logger.report_scalar(
+                        title=f"Interpretability - {subattr} of latent space", series=hue, value=metrics["Interpretability"][subattr][1], iteration=epoch
+                    )
+            else:
+                logger.report_scalar(
+                    title=f"{attr} of latent space", series=hue, value=metrics[attr], iteration=epoch
+                )
 
     # @staticmethod
 def compute_reg_loss(z, labels, reg_dim, gamma, factor=1.0):
@@ -304,6 +311,11 @@ def reg_loss_sign(latent_code, attribute, factor=1.0):
 
     return sign_loss.to(DEVICE)
 
+def _extract_relevant_attributes(labels, reg_dim): 
+    attr_list = ['Length', 'Charge', 'Hydrophobicity']
+    attr_labels = labels[:, reg_dim]
+    return attr_labels, attr_list #kiedys do zmiany na bardziej uniwersalne
+
 def run_epoch_iwae(
     mode: Literal["test", "train"],
     encoder: EncoderRNN,
@@ -338,17 +350,19 @@ def run_epoch_iwae(
     seq_true, model_out, model_out_sampled = [], [], []
     len_data = len(dataloader.dataset)
 
+    results_fp = os.path.join(
+    os.path.dirname(ROOT_DIR),
+        'results_dict.json'
+    )
+    latent_codes = []
+    attributes = []
+    ar_vae_metrics = {}
+
     K = iwae_samples
     C = VOCAB_SIZE + 1
 
-    for batch in dataloader:
-        # decoded = dataset_lib.decoded(batch)
-        # for i in range(len(decoded)):
-        #     # print(batch[i])
-        #     physchem.append(calculate_physchem(decoded[i]))
-
-        # physchem_original = calculate_physchem(dataset_lib.decoded(batch, ""))
-        
+    for batch, labels in dataloader: 
+        physchem_original = calculate_physchem(dataset_lib.decoded(batch, "")) 
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         S, B = peptides.shape
         if optimizer:
@@ -363,7 +377,10 @@ def run_epoch_iwae(
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
         z = q_distr.rsample((K,)) # K, B, L
-        # z_prior = q_distr.rsample((K,))
+        if mode == 'test':
+            latent_codes.append(z.reshape(-1,z.shape[2]).cpu().detach().numpy())
+            physchem_expanded = pd.concat([physchem_original]* K, ignore_index=True).to_numpy()
+            attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1,1).numpy(), physchem_expanded), axis =1))
 
         # Kullback Leibler divergence
         log_qzx = q_distr.log_prob(z).sum(dim=2)
@@ -423,6 +440,22 @@ def run_epoch_iwae(
                 sampled_peptide_logits.mean(dim=1).cpu().detach().numpy() #to ensure this is okay, mean across K for one batch sequence
             )
 
+    if mode == 'test':
+        latent_codes = np.concatenate(latent_codes, 0)
+        attributes = np.concatenate(attributes, 0)
+        attributes, attr_list = _extract_relevant_attributes(attributes, reg_dim)
+        interp_metrics = m.compute_interpretability_metric(
+            latent_codes, attributes, attr_list
+        )
+        ar_vae_metrics["Interpretability"] = interp_metrics
+        ar_vae_metrics.update(m.compute_correlation_score(latent_codes, attributes))
+        ar_vae_metrics.update(m.compute_modularity(latent_codes, attributes))
+        ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
+        ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
+        with open(results_fp, 'w') as outfile:
+            json.dump(ar_vae_metrics, outfile, indent=2)
+        # print("Interpretability metrics:", ar_vae_metrics)
+
     if logger is not None:
         report_scalars(
             logger,
@@ -455,6 +488,7 @@ def run_epoch_iwae(
                 epoch=epoch,
                 seq_true=np.concatenate(seq_true, axis=1),
                 model_out=np.concatenate(model_out, axis=1),
+                metrics = None
             )
             report_sequence_char(
                 logger,
@@ -462,6 +496,15 @@ def run_epoch_iwae(
                 epoch=epoch,
                 seq_true=np.concatenate(seq_true, axis=1),
                 model_out=np.concatenate(model_out_sampled, axis=1),
+                metrics = None
+            )
+            report_sequence_char(
+                logger,
+                hue=f"{mode} - ar-vae metrics",
+                epoch=epoch,
+                seq_true=np.concatenate(seq_true, axis=1),
+                model_out=None,
+                metrics = ar_vae_metrics
             )
     return stat_sum["total"] / len_data
 
@@ -479,81 +522,6 @@ if params["use_clearml"]:
     logger = task.logger
 else:
     logger = None
-
-def process_batch_data(self, batch):
-    inputs, labels = batch
-    inputs = Variable(inputs).cuda()
-    labels = Variable(labels).cuda()
-    return inputs, labels
-
-def model_go(batch):
-    K = params["iwae_samples"]
-    peptides = batch.permute(1, 0).type(LongTensor).to(device)
-    S, B = peptides.shape
-    if optimizer:
-        optimizer.zero_grad()
-
-    # autoencoding
-    mu, std = encoder(peptides)
-    assert not (isnan(mu).all() or isnan(std).all() ), f" contains all NaN values: {mu}, {std}"
-    assert not (isinf(mu).all() or isinf(std).all()), f" contains all Inf values: {mu}, {std}"
-
-    q_distr = Normal(mu, std)
-    z = q_distr.rsample((K,))
-    return z
-
-def _extract_relevant_attributes(attributes):
-    attr_list = [
-        attr for attr in attr_dict.keys() if attr != 'digit_identity' and attr != 'color'
-    ]
-    attr_idx_list = [
-        self.attr_dict[attr] for attr in attr_list
-    ]
-    attr_labels = attributes[:, attr_idx_list]
-    return attr_labels, attr_list
-
-def compute_representations(data_loader):
-    latent_codes = []
-    attributes = []
-    for sample_id, batch in tqdm(enumerate(data_loader)):
-        inputs, labels = process_batch_data(batch)
-        z_tilde = model_go(inputs)
-        latent_codes.append(z_tilde.cpu().numpy())
-        attributes.append(labels.numpy())
-        if sample_id == 200:
-            break
-    latent_codes = np.concatenate(latent_codes, 0)
-    attributes = np.concatenate(attributes, 0)
-    attributes, attr_list = _extract_relevant_attributes(attributes)
-    return latent_codes, attributes, attr_list
-
-def eval_model():
-    results_fp = os.path.join(
-    os.path.dirname(ROOT_DIR),
-        'results_dict.json'
-    )
-    if os.path.exists(results_fp):
-        with open(results_fp, 'r') as infile:
-            metrics = json.load(infile)
-    else:
-        data_loader = eval_loader
-        latent_codes, attributes, attr_list = compute_representations(data_loader)
-        interp_metrics = compute_interpretability_metric(
-            latent_codes, attributes, attr_list
-        )
-        self.metrics = {
-            "interpretability": interp_metrics
-        }
-        self.metrics.update(compute_correlation_score(latent_codes, attributes))
-        self.metrics.update(compute_modularity(latent_codes, attributes))
-        self.metrics.update(compute_mig(latent_codes, attributes))
-        self.metrics.update(compute_sap_score(latent_codes, attributes))
-        self.metrics.update(self.test_model(batch_size=batch_size))
-        if self.dataset_type == 'mnist':
-            self.metrics.update(self.get_resnet_accuracy())
-        with open(results_fp, 'w') as outfile:
-            json.dump(self.metrics, outfile, indent=2)
-    return self.metrics
 
 def run():
     best_loss = 1e18
@@ -580,7 +548,7 @@ def run():
                 mode="test",
                 encoder=encoder,
                 decoder=decoder,
-                dataloader=train_loader,
+                dataloader=eval_loader,
                 device=device(params["device"]),
                 logger=logger,
                 epoch=epoch,

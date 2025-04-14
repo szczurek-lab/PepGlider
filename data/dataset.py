@@ -136,7 +136,6 @@ class AMPDataManager:
 
     @staticmethod
     def _draw_subsequences(df, new_lengths):
-        # random.seed(44)
         new_lengths.sort(reverse=True)
         df = df.sort_values(by="Sequence length", ascending=False)
 

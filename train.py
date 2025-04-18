@@ -331,8 +331,8 @@ def run_epoch_iwae(
     reg_dim
 ):
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
-    encoder= nn.DataParallel(encoder)
-    decoder= nn.DataParallel(decoder)
+    encoder= nn.parallel.DistributedDataParallel(encoder)
+    decoder= nn.parallel.DistributedDataParallel(decoder)
     encoder.to(device), decoder.to(device)
     if mode == "train":
         encoder.train(), decoder.train()
@@ -379,6 +379,7 @@ def run_epoch_iwae(
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
         z = q_distr.rsample((K,)) # K, B, L
+        print(mu.shape)
         if mode == 'test':
             latent_codes.append(z.reshape(-1,z.shape[2]).cpu().detach().numpy())
             physchem_expanded = pd.concat([physchem_original]* K, ignore_index=True).to_numpy()
@@ -390,8 +391,9 @@ def run_epoch_iwae(
         kl_div = log_qzx - log_pz
 
         # reconstruction - cross entropy
-        z = z.reshape(K * B, -1) 
-        sampled_peptide_logits = decoder(z)
+        # z = z.reshape(K * B, -1) 
+        print(std.shape)
+        sampled_peptide_logits = decoder(z.reshape(K*B,-1))
         sampled_peptide_logits = sampled_peptide_logits.view(S, K, B, C)
         src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
         src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S

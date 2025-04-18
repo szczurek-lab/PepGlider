@@ -7,7 +7,7 @@ import pandas as pd
 DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
 import pandas as pd
 import numpy as np
-from  torch import tensor, long, tanh, sign, isnan
+from  torch import tensor, long, tanh, sign, isnan, distributed
 from torch.autograd import Variable
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
@@ -26,6 +26,8 @@ import modlamp.analysis
 import modlamp.sequences
 import metrics as m
 
+os.environ["USE_DISTRIBUTED"] = "1"
+distributed.init_process_group()
 cuda.memory._set_allocator_settings("max_split_size_mb:128")
 ROOT_DIR = Path(__file__).parent#.parent
 DATA_DIR = ROOT_DIR / "data"
@@ -404,7 +406,7 @@ def run_epoch_iwae(
         reg_loss = 0
         for dim in reg_dim:
             reg_loss += compute_reg_loss(
-            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=10.0, factor=1.0 #gamma i delta z papera
+            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=20.0, factor=1.0 #gamma i delta z papera
         )
 
         loss = logsumexp(

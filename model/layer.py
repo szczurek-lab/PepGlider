@@ -30,6 +30,7 @@ class EmbeddingPositionalEncoding(nn.Module):
         """
         positions = torch.arange(0, x.size(0), device=x.device).reshape(1, -1)
         pos_emb = self.embedding(positions).permute(1, 0, 2)
+        print(f"decoder pos_emb = {pos_emb.shape}")
         if self.transform == "add":
             return x + pos_emb
         elif self.transform == "concat":

@@ -135,6 +135,7 @@ class DecoderRNN(nn.Module):
         (batch_size, latent_dim) -> (seq_len, batch_size, vocab_size + 1)
         """
         x = self._create_sequence(src)
+        print(f" decoder x = {x.shape}")
         x = self.pos_encoder(x)  # S x B x L
         x = self.attention_layers(x)  # S x B x L
 

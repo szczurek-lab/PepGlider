@@ -391,7 +391,8 @@ def run_epoch_iwae(
 
         # reconstruction - cross entropy
         z = z.reshape(K * B, -1) 
-        sampled_peptide_logits = decoder(z).reshape(S, K, B, C)
+        sampled_peptide_logits = decoder(z)
+        sampled_peptide_logits = sampled_peptide_logits.view(S, K, B, C)
         src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
         src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
         tgt = peptides.permute(1, 0).reshape(1, B, S).repeat(K, 1, 1)  # K x B x S

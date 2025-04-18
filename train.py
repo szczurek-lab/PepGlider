@@ -2,9 +2,9 @@ import os
 from torch import optim, nn, utils, logsumexp, device, cuda, save, isinf, backends, manual_seed, LongTensor, zeros_like, ones_like, isnan
 from torch.distributions import Normal
 from torch.utils.data import TensorDataset, DataLoader, random_split
+from torch.utils.data.distributed import DistributedSampler
 from model.model import EncoderRNN, DecoderRNN#, VAE
 import pandas as pd
-DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
 import pandas as pd
 import numpy as np
 from  torch import tensor, long, tanh, sign, isnan, distributed
@@ -27,7 +27,11 @@ import modlamp.sequences
 import metrics as m
 
 os.environ["USE_DISTRIBUTED"] = "1"
-distributed.init_process_group()
+def setup():
+    distributed.init_process_group("nccl")
+    cuda.set_device(int(os.environ["LOCAL_RANK"]))
+setup()
+DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu', int(os.environ["LOCAL_RANK"]))
 cuda.memory._set_allocator_settings("max_split_size_mb:128")
 ROOT_DIR = Path(__file__).parent#.parent
 DATA_DIR = ROOT_DIR / "data"
@@ -115,8 +119,9 @@ eval_size = len(dataset) - train_size
 
 train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
 
-train_loader = DataLoader(train_dataset, batch_size=512, shuffle=True)
-eval_loader = DataLoader(eval_dataset, batch_size=512, shuffle=False)
+sampler = DistributedSampler(dataset)
+train_loader = DataLoader(train_dataset, batch_size=512, sampler=sampler, shuffle=True)
+eval_loader = DataLoader(eval_dataset, batch_size=512, sampler=sampler, shuffle=False)
 
 params = {
     "num_heads": 4,
@@ -331,8 +336,8 @@ def run_epoch_iwae(
     reg_dim
 ):
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
-    encoder= nn.parallel.DistributedDataParallel(encoder)
-    decoder= nn.parallel.DistributedDataParallel(decoder)
+    encoder= nn.parallel.DistributedDataParallel(encoder, device_ids=[DEVICE])
+    decoder= nn.parallel.DistributedDataParallel(decoder, device_ids=[DEVICE])
     encoder.to(device), decoder.to(device)
     if mode == "train":
         encoder.train(), decoder.train()
@@ -379,7 +384,6 @@ def run_epoch_iwae(
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
         z = q_distr.rsample((K,)) # K, B, L
-        print(mu.shape)
         if mode == 'test':
             latent_codes.append(z.reshape(-1,z.shape[2]).cpu().detach().numpy())
             physchem_expanded = pd.concat([physchem_original]* K, ignore_index=True).to_numpy()
@@ -392,7 +396,6 @@ def run_epoch_iwae(
 
         # reconstruction - cross entropy
         # z = z.reshape(K * B, -1) 
-        print(std.shape)
         sampled_peptide_logits = decoder(z.reshape(K*B,-1))
         sampled_peptide_logits = sampled_peptide_logits.view(S, K, B, C)
         src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
@@ -529,6 +532,7 @@ else:
 def run():
     best_loss = 1e18
     for epoch in tqdm(range(params["epochs"])):
+        sampler.set_epoch(epoch)
         eval_mode = "deep" if epoch % params["deeper_eval_every"] == 0 else "fast"
         beta_0, beta_1, t_1 = params["kl_beta_schedule"]
         kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, 0.01)

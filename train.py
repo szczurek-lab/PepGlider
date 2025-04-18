@@ -331,6 +331,8 @@ def run_epoch_iwae(
     reg_dim
 ):
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
+    encoder= nn.DataParallel(encoder)
+    decoder= nn.DataParallel(decoder)
     encoder.to(device), decoder.to(device)
     if mode == "train":
         encoder.train(), decoder.train()
@@ -406,7 +408,7 @@ def run_epoch_iwae(
         reg_loss = 0
         for dim in reg_dim:
             reg_loss += compute_reg_loss(
-            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=20.0, factor=1.0 #gamma i delta z papera
+            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=100.0, factor=1.0 #gamma i delta z papera
         )
 
         loss = logsumexp(

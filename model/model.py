@@ -71,13 +71,10 @@ class EncoderRNN(nn.Module):
     def forward(self, src: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """(seq_len, batch_size) -> tuple[(batch_size, latent_dim), (batch_size, latent_dim)]"""
         x = self.compute_representations(src)[0]  # cls token is first
-        print(f"compute_rep {x.shape}")
         x = self.linear(x) #czy on zwraca nan assert
-        print(f"linear {x.shape}")
         assert not (torch.isnan(x).all() ), f"linear contains all NaN values: {x}"
         assert not (torch.isinf(x).all() ), f"linear contains all Inf values: {x}"
         mu, std_out = torch.chunk(x, 2, dim=1)
-        print(f"mu - {mu.shape}")
         std = F.softplus(std_out) + self._EPS
         return mu, std
 
@@ -138,7 +135,6 @@ class DecoderRNN(nn.Module):
         (batch_size, latent_dim) -> (seq_len, batch_size, vocab_size + 1)
         """
         x = self._create_sequence(src)
-        print(f" decoder x = {x.shape}")
         x = self.pos_encoder(x)  # S x B x L
         x = self.attention_layers(x)  # S x B x L
 

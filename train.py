@@ -32,12 +32,15 @@ def setup_ddp():
     local_rank = int(os.environ["LOCAL_RANK"])
     cuda.set_device(local_rank)
     return device(f"cuda:{local_rank}")
-
 DEVICE = setup_ddp()
 cuda.memory._set_allocator_settings("max_split_size_mb:128")
 ROOT_DIR = Path(__file__).parent#.parent
 DATA_DIR = ROOT_DIR / "data"
 MODELS_DIR = ROOT_DIR
+import torch.distributed as dist
+
+def is_main_process():
+    return not distributed.is_available() or not distributed.is_initialized() or distributed.get_rank() == 0
 
 def set_seed(seed: int = 42) -> None:
     """
@@ -183,6 +186,8 @@ def report_scalars(
     epoch: int,
     scalars: List[Union[Tuple[str, float], Tuple[str, str, float]]],
 ):
+    if not is_main_process():
+        return
     for tpl in scalars:
         if len(tpl) == 2:
             name, val = tpl
@@ -200,6 +205,8 @@ def report_sequence_char(
     model_out: np.ndarray,
     metrics: dict
 ):
+    if not is_main_process():
+        return
     if metrics is None:
         seq_pred = model_out.argmax(axis=2)
         src_pred = dataset_lib.decoded(tensor(seq_pred).permute(1, 0), "")

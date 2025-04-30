@@ -152,7 +152,7 @@ params = {
     "deeper_eval_every": 20,
     "save_model_every": 100,
     "reg_dim": [0,1,2], # [length, charge, hydrophobicity]
-    "gamma_schedule": (1000, 100, 3000)
+    "gamma_schedule": (100, 1000, 3000)
 }
 encoder = EncoderRNN(
     params["num_heads"],
@@ -209,8 +209,8 @@ def report_sequence_char(
     model_out: np.ndarray,
     metrics: dict
 ):
-    if not is_main_process():
-        return
+#    if not is_main_process():
+#        return
     if metrics is None:
         seq_pred = model_out.argmax(axis=2)
         src_pred = dataset_lib.decoded(tensor(seq_pred).permute(1, 0), "")
@@ -511,6 +511,7 @@ def run_epoch_iwae(
         # ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
         # ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
         ar_vae_metrics = compute_all_metrics_parallel(latent_codes, attributes, attr_list, num_processes=4)
+        print(ar_vae_metrics)
         with open(results_fp, 'w') as outfile:
             json.dump(ar_vae_metrics, outfile, indent=2)
         # print("Interpretability metrics:", ar_vae_metrics)

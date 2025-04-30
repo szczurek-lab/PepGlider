@@ -1,1 +1,417 @@
-taskset: failed to set pid 831093's affinity: Invalid argument
+nohup: ignoring input
+WARNING:torch.distributed.run:
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  pos_dataset.loc[:, 'Label'] = 1
+/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  pos_dataset.loc[:, 'Label'] = 1
+ClearML Task: overwriting (reusing) task id=f968aa51d79042079d76b27ab0c72fa2
+Torch Distributed Local Rank 1 Task ID f968aa51d79042079d76b27ab0c72fa2 detected
+2025-04-30 21:17:46,733 - clearml.Task - WARNING - Torch Distributed execution detected: Failed Detecting launch arguments, skipping
+ClearML results page: https://app.clear.ml/projects/66e2567a38664ea186eb2e43b48501a3/experiments/f968aa51d79042079d76b27ab0c72fa2/output/log
+  0%|          | 0/10000 [00:00<?, ?it/s]0
+  0%|          | 0/10000 [00:00<?, ?it/s]0
+0
+0
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+{}
+All predicted sequences are empty
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+{}
+All predicted sequences are empty
+  0%|          | 1/10000 [01:26<240:14:49, 86.50s/it]1
+All predicted sequences are empty
+All predicted sequences are empty
+  0%|          | 1/10000 [01:28<244:26:32, 88.01s/it]1
+  0%|          | 2/10000 [02:34<209:03:47, 75.28s/it]2
+  0%|          | 2/10000 [02:33<208:00:17, 74.90s/it]2
+ClearML Monitor: Could not detect iteration reporting, falling back to iterations as seconds-from-start
+  0%|          | 3/10000 [03:39<197:10:52, 71.01s/it]3
+  0%|          | 3/10000 [03:40<197:46:17, 71.22s/it]3
+  0%|          | 4/10000 [04:47<192:21:55, 69.28s/it]4
+  0%|          | 4/10000 [04:45<192:01:29, 69.16s/it]4
+  0%|          | 5/10000 [05:53<189:25:28, 68.23s/it]5
+  0%|          | 5/10000 [05:52<189:12:23, 68.15s/it]5
+  0%|          | 6/10000 [06:58<187:22:04, 67.49s/it]6
+  0%|          | 6/10000 [06:59<187:31:00, 67.55s/it]6
+  0%|          | 7/10000 [08:05<186:23:29, 67.15s/it]7
+  0%|          | 7/10000 [08:04<186:23:37, 67.15s/it]7
+  0%|          | 8/10000 [09:12<185:44:38, 66.92s/it]  0%|          | 8/10000 [09:11<185:38:51, 66.89s/it]88
+
+  0%|          | 9/10000 [10:18<185:12:55, 66.74s/it]9
+  0%|          | 9/10000 [10:17<185:09:05, 66.71s/it]9
+  0%|          | 10/10000 [11:24<185:02:56, 66.68s/it]  0%|          | 10/10000 [11:25<185:05:45, 66.70s/it]10
+10
+  0%|          | 11/10000 [12:31<184:34:47, 66.52s/it]11
+  0%|          | 11/10000 [12:30<184:33:05, 66.51s/it]11
+  0%|          | 12/10000 [13:37<184:23:02, 66.46s/it]12
+  0%|          | 12/10000 [13:36<184:21:44, 66.45s/it]12
+  0%|          | 13/10000 [14:44<184:16:04, 66.42s/it]13
+  0%|          | 13/10000 [14:43<184:15:08, 66.42s/it]13
+  0%|          | 14/10000 [15:50<184:12:45, 66.41s/it]14
+  0%|          | 14/10000 [15:49<184:12:04, 66.41s/it]14
+  0%|          | 15/10000 [16:56<184:00:53, 66.34s/it]15
+  0%|          | 15/10000 [16:55<184:00:30, 66.34s/it]15
+  0%|          | 16/10000 [18:02<183:51:28, 66.29s/it]16
+  0%|          | 16/10000 [18:01<183:51:12, 66.29s/it]16
+  0%|          | 17/10000 [19:09<183:41:39, 66.24s/it]17
+  0%|          | 17/10000 [19:08<183:46:28, 66.27s/it]17
+  0%|          | 18/10000 [20:15<183:35:59, 66.22s/it]18
+  0%|          | 18/10000 [20:14<183:34:16, 66.20s/it]18
+  0%|          | 19/10000 [21:21<183:49:23, 66.30s/it]19
+  0%|          | 19/10000 [21:20<183:48:13, 66.30s/it]19
+  0%|          | 20/10000 [22:27<183:56:35, 66.35s/it]20
+  0%|          | 20/10000 [22:28<183:57:35, 66.36s/it]20
+20
+20
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:340: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:342: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:344: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:346: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+train.py:348: FutureWarning:
+
+elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+
+{}
+{}
+  0%|          | 21/10000 [23:55<201:06:35, 72.55s/it]21
+  0%|          | 21/10000 [23:54<201:07:53, 72.56s/it]21
+  0%|          | 22/10000 [25:01<196:18:14, 70.83s/it]22
+  0%|          | 22/10000 [25:00<196:17:51, 70.82s/it]22
+  0%|          | 23/10000 [26:08<192:42:22, 69.53s/it]23
+  0%|          | 23/10000 [26:07<192:46:21, 69.56s/it]23
+  0%|          | 24/10000 [27:14<190:17:24, 68.67s/it]24
+  0%|          | 24/10000 [27:15<190:19:49, 68.68s/it]24
+  0%|          | 25/10000 [28:21<188:17:53, 67.96s/it]25
+  0%|          | 25/10000 [28:20<188:17:13, 67.95s/it]25
+  0%|          | 26/10000 [29:27<186:58:16, 67.49s/it]26
+  0%|          | 26/10000 [29:26<186:57:25, 67.48s/it]26
+  0%|          | 27/10000 [30:34<186:17:29, 67.25s/it]27
+  0%|          | 27/10000 [30:33<186:16:42, 67.24s/it]27
+Retrying (Retry(total=237, connect=240, read=237, redirect=240, status=240)) after connection broken by 'ReadTimeoutError("HTTPSConnectionPool(host='api.clear.ml', port=443): Read timed out. (read timeout=10.0)")': /v2.23/tasks.get_all
+Retrying (Retry(total=237, connect=240, read=237, redirect=240, status=240)) after connection broken by 'ReadTimeoutError("HTTPSConnectionPool(host='api.clear.ml', port=443): Read timed out. (read timeout=10.0)")': /v2.23/events.add_batch
+Retrying (Retry(total=237, connect=240, read=237, redirect=240, status=240)) after connection broken by 'ReadTimeoutError("HTTPSConnectionPool(host='api.clear.ml', port=443): Read timed out. (read timeout=10.0)")': /v2.23/events.add_batch
+Retrying (Retry(total=237, connect=240, read=237, redirect=240, status=240)) after connection broken by 'ReadTimeoutError("HTTPSConnectionPool(host='api.clear.ml', port=443): Read timed out. (read timeout=10.0)")': /v2.23/tasks.get_all
+Retrying (Retry(total=237, connect=240, read=237, redirect=240, status=240)) after connection broken by 'ReadTimeoutError("HTTPSConnectionPool(host='api.clear.ml', port=443): Read timed out. (read timeout=10.0)")': /v2.23/events.add_batch
+  0%|          | 28/10000 [31:39<185:21:58, 66.92s/it]28
+  0%|          | 28/10000 [31:40<185:22:43, 66.92s/it]28

@@ -29,6 +29,7 @@ import metrics as m
 
 os.environ["USE_DISTRIBUTED"] = "1"
 def setup_ddp():
+
     distributed.init_process_group(backend="nccl")
     local_rank = int(os.environ["LOCAL_RANK"])
     cuda.set_device(local_rank)
@@ -128,8 +129,8 @@ train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
 
 train_sampler = DistributedSampler(train_dataset)
 eval_sampler = DistributedSampler(eval_dataset)
-train_loader = DataLoader(train_dataset, batch_size=512, sampler=train_sampler)
-eval_loader = DataLoader(eval_dataset, batch_size=512, sampler=eval_sampler)
+train_loader = DataLoader(train_dataset, batch_size=512, sampler=train_sampler, num_workers=8)
+eval_loader = DataLoader(eval_dataset, batch_size=512, sampler=eval_sampler, num_workers=8)
 
 params = {
     "num_heads": 4,
@@ -383,6 +384,7 @@ def run_epoch_iwae(
     reg_dim,
     gamma
 ):
+    print(epoch)
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
     encoder.to(DEVICE)
     decoder.to(DEVICE)
@@ -535,7 +537,7 @@ def run_epoch_iwae(
                 ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
                 ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
                 ("KL Beta", kl_beta),
-                ("Regularization Loss", reg_loss/10.0),#gamma delete
+                ("Regularization Loss", reg_loss/100.0),#gamma delete
             ],
         )
         if eval_mode == "deep":

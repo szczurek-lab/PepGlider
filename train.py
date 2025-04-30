@@ -24,6 +24,7 @@ import json
 import modlamp.descriptors
 import modlamp.analysis
 import modlamp.sequences
+import multiprocessing as mp
 import metrics as m
 
 os.environ["USE_DISTRIBUTED"] = "1"
@@ -89,8 +90,9 @@ def calculate_aromaticity(data:list):
 
 def calculate_hydrophobicity(data:list):
     h = modlamp.analysis.GlobalAnalysis(data)
-    h.calc_H(scale='eisenberg')
-    return list(h.H)
+    # h.calc_H(scale='eisenberg')
+    h.calc_uH()
+    return list(h.uH)
 
 def calculate_hydrophobicmoment(data:list):
     h = modlamp.descriptors.PeptideDescriptor(data, 'eisenberg')
@@ -105,7 +107,7 @@ def calculate_physchem(peptides):
     physchem['charge'] = []
     #physchem['pi'] = []
     #physchem['aromacity'] = []
-    physchem['hydrophobicity'] = []
+    physchem['hydrophobicity_moment'] = []
     #physchem['hm'] = []
 
     # physchem['dataset'] = len(peptides)
@@ -113,7 +115,7 @@ def calculate_physchem(peptides):
     physchem['charge'] = calculate_charge(peptides)[0].tolist()
     # physchem['pi'] = calculate_isoelectricpoint(peptides)
     # physchem['aromacity'] = calculate_aromaticity(peptides)
-    physchem['hydrophobicity'] = calculate_hydrophobicity(peptides)[0].tolist()
+    physchem['hydrophobicity_moment'] = calculate_hydrophobicity(peptides)[0].tolist()
     # physchem['hm'] = calculate_hydrophobicmoment(peptides)
 
     return pd.DataFrame(dict([ (k, pd.Series(v)) for k,v in physchem.items() ]))
@@ -148,7 +150,8 @@ params = {
     "device": "cuda",
     "deeper_eval_every": 20,
     "save_model_every": 100,
-    "reg_dim": [0,1,2] # [length, charge, hydrophobicity]
+    "reg_dim": [0,1,2], # [length, charge, hydrophobicity]
+    "gamma_schedule": (1000, 100, 3000)
 }
 encoder = EncoderRNN(
     params["num_heads"],
@@ -277,7 +280,7 @@ def report_sequence_char(
                 title="Average charge metric from modlamp", series=hue, value=physchem_decoded.iloc[:,1].mean(), iteration=epoch
             )
             logger.report_scalar(
-                title="Average hydrophobicity metric from modlamp", series=hue, value=physchem_decoded.iloc[:,2].mean(), iteration=epoch
+                title="Average hydrophobicity moment metric from modlamp", series=hue, value=physchem_decoded.iloc[:,2].mean(), iteration=epoch
             )
     else:
         for attr in metrics.keys():
@@ -327,9 +330,43 @@ def reg_loss_sign(latent_code, attribute, factor=1.0):
     return sign_loss.to(DEVICE)
 
 def _extract_relevant_attributes(labels, reg_dim): 
-    attr_list = ['Length', 'Charge', 'Hydrophobicity']
+    attr_list = ['Length', 'Charge', 'Hydrophobicity moment']
     attr_labels = labels[:, reg_dim]
     return attr_labels, attr_list #kiedys do zmiany na bardziej uniwersalne
+
+def calculate_metric(latent_codes, attributes, *args, metric_name):
+    """Oblicza daną metrykę z uwzględnieniem dodatkowych argumentów."""
+    if metric_name == "interpretability":
+        return {"Interpretability": m.compute_interpretability_metric(latent_codes, attributes, *args)}
+    elif metric_name == "correlation":
+        return m.compute_correlation_score(latent_codes, attributes)
+    elif metric_name == "modularity":
+        return m.compute_modularity(latent_codes, attributes)
+    elif metric_name == "mig":
+        return m.compute_mig(latent_codes, attributes)
+    elif metric_name == "sap_score":
+        return m.compute_sap_score(latent_codes, attributes)
+    else:
+        return {}
+
+def compute_all_metrics_parallel(latent_codes, attributes, attr_list, num_processes=4):
+    """Oblicza wszystkie metryki AR-VAE równolegle."""
+    metrics_to_calculate = [
+        ("interpretability", latent_codes, attributes, attr_list),
+        ("correlation", latent_codes, attributes),
+        ("modularity", latent_codes, attributes),
+        ("mig", latent_codes, attributes),
+        ("sap_score", latent_codes, attributes),
+    ]
+
+    with mp.Pool(processes=num_processes) as pool:
+        results = pool.starmap(calculate_metric, [(lc, attr, *args, name) for name, lc, attr, *args in metrics_to_calculate])
+
+    ar_vae_metrics = {}
+    for result in results:
+        ar_vae_metrics.update(result)
+
+    return ar_vae_metrics
 
 def run_epoch_iwae(
     mode: Literal["test", "train"],
@@ -343,7 +380,8 @@ def run_epoch_iwae(
     optimizer: Optional[optim.Optimizer],
     eval_mode: Literal["fast", "deep"],
     iwae_samples: int,
-    reg_dim
+    reg_dim,
+    gamma
 ):
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
     encoder.to(DEVICE)
@@ -427,7 +465,7 @@ def run_epoch_iwae(
         reg_loss = 0
         for dim in reg_dim:
             reg_loss += compute_reg_loss(
-            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=100.0, factor=1.0 #gamma i delta z papera
+            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=gamma, factor=1.0 #gamma i delta z papera
         )
 
         loss = logsumexp(
@@ -462,14 +500,15 @@ def run_epoch_iwae(
         latent_codes = np.concatenate(latent_codes, 0)
         attributes = np.concatenate(attributes, 0)
         attributes, attr_list = _extract_relevant_attributes(attributes, reg_dim)
-        interp_metrics = m.compute_interpretability_metric(
-            latent_codes, attributes, attr_list
-        )
-        ar_vae_metrics["Interpretability"] = interp_metrics
-        ar_vae_metrics.update(m.compute_correlation_score(latent_codes, attributes))
-        ar_vae_metrics.update(m.compute_modularity(latent_codes, attributes))
-        ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
-        ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
+        # interp_metrics = m.compute_interpretability_metric(
+        #     latent_codes, attributes, attr_list
+        # )
+        # ar_vae_metrics["Interpretability"] = interp_metrics
+        # ar_vae_metrics.update(m.compute_correlation_score(latent_codes, attributes))
+        # ar_vae_metrics.update(m.compute_modularity(latent_codes, attributes))
+        # ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
+        # ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
+        ar_vae_metrics = compute_all_metrics_parallel(latent_codes, attributes, attr_list, num_processes=4)
         with open(results_fp, 'w') as outfile:
             json.dump(ar_vae_metrics, outfile, indent=2)
         # print("Interpretability metrics:", ar_vae_metrics)
@@ -534,7 +573,7 @@ optimizer = Adam(
 
 if params["use_clearml"]:
     task = clearml.Task.init(
-        project_name="ar-vae-v2", task_name=params["task_name"]
+        project_name="ar-vae-v2_pooling_test", task_name=params["task_name"]
     )
     task.set_parameters(params)
     logger = task.logger
@@ -548,6 +587,8 @@ def run():
         eval_mode = "deep" if epoch % params["deeper_eval_every"] == 0 else "fast"
         beta_0, beta_1, t_1 = params["kl_beta_schedule"]
         kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, 0.01)
+        gamma_0, gamma_1, t_1 = params["gamma_schedule"]
+        gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, 0.01)
         run_epoch_iwae(
             mode="train",
             encoder=encoder,
@@ -560,7 +601,8 @@ def run():
             kl_beta=kl_beta,
             eval_mode=eval_mode,
             iwae_samples=params["iwae_samples"],
-            reg_dim=params["reg_dim"]
+            reg_dim=params["reg_dim"],
+            gamma = gamma
         )
         if eval_mode == "deep":
             eval_loader.sampler.set_epoch(epoch)
@@ -576,7 +618,8 @@ def run():
                 kl_beta=kl_beta,
                 eval_mode=eval_mode,
                 iwae_samples=params["iwae_samples"],
-                reg_dim=params["reg_dim"]
+                reg_dim=params["reg_dim"],
+                gamma=gamma
             )
 
             if epoch > 0 and epoch % params["save_model_every"] == 0:

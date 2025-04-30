@@ -336,19 +336,20 @@ def _extract_relevant_attributes(labels, reg_dim):
     return attr_labels, attr_list #kiedys do zmiany na bardziej uniwersalne
 
 def calculate_metric(metric_name, latent_codes, attributes, *args):
-    """Oblicza daną metrykę z uwzględnieniem dodatkowych argumentów."""
+    print(f"Obliczam metrykę: {metric_name}")
+    result = {}
     if metric_name == "interpretability":
-        return {"Interpretability": m.compute_interpretability_metric(latent_codes, attributes, *args)}
+        result = {"Interpretability": m.compute_interpretability_metric(latent_codes, attributes, *args)}
     elif metric_name == "correlation":
-        return m.compute_correlation_score(latent_codes, attributes)
+        result = m.compute_correlation_score(latent_codes, attributes)
     elif metric_name == "modularity":
-        return m.compute_modularity(latent_codes, attributes)
+        result = m.compute_modularity(latent_codes, attributes)
     elif metric_name == "mig":
-        return m.compute_mig(latent_codes, attributes)
+        result = m.compute_mig(latent_codes, attributes)
     elif metric_name == "sap_score":
-        return m.compute_sap_score(latent_codes, attributes)
-    else:
-        return {}
+        result = m.compute_sap_score(latent_codes, attributes)
+    print(f"Wynik dla {metric_name}: {result}")
+    return result
 
 def compute_all_metrics_parallel(latent_codes, attributes, attr_list, num_processes=4):
     """Oblicza wszystkie metryki AR-VAE równolegle."""

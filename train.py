@@ -366,12 +366,13 @@ def compute_all_metrics_parallel(latent_codes, attributes, attr_list, num_proces
     ]
 
     with mp.Pool(processes=num_processes) as pool:
-        results = pool.starmap(calculate_metric, [(lc, attr, *args, name) for name, lc, attr, *args in metrics_to_calculate])
+        results = pool.starmap(calculate_metric, [(name, lc, attr, *args) for name, lc, attr, *args in metrics_to_calculate])
+        print(f"Wyniki z puli procesów: {results}")
 
     ar_vae_metrics = {}
     for result in results:
+        print(f"Przetwarzam wynik: {result}")
         ar_vae_metrics.update(result)
-
     return ar_vae_metrics
 
 def run_epoch_iwae(

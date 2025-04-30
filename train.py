@@ -335,7 +335,7 @@ def _extract_relevant_attributes(labels, reg_dim):
     attr_labels = labels[:, reg_dim]
     return attr_labels, attr_list #kiedys do zmiany na bardziej uniwersalne
 
-def calculate_metric(latent_codes, attributes, *args, metric_name):
+def calculate_metric(metric_name, latent_codes, attributes, *args):
     """Oblicza daną metrykę z uwzględnieniem dodatkowych argumentów."""
     if metric_name == "interpretability":
         return {"Interpretability": m.compute_interpretability_metric(latent_codes, attributes, *args)}

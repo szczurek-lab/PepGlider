@@ -48,7 +48,7 @@ class EncoderRNN(nn.Module):
 
     def _add_cls_token(self, x: torch.Tensor) -> torch.Tensor:
         cls_tensor = (
-            torch.ones(1, x.shape[1], dtype=torch.int32, device=x.device) * CLS_TOKEN
+            torch.ones(1, x.shape[1], dtype=torch.long, device=x.device) * CLS_TOKEN
         )
         return torch.concatenate([cls_tensor, x], dim=0)
 

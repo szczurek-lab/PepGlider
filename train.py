@@ -284,6 +284,9 @@ def report_sequence_char(
                 title="Average hydrophobicity moment metric from modlamp", series=hue, value=physchem_decoded.iloc[:,2].mean(), iteration=epoch
             )
     else:
+        print(f'hue {str(hue)}')
+        print(f'metrics {metrics}')
+        print(f'epoch {epoch}')
         for attr in metrics.keys():
             if attr == 'Interpretability':
                 for subattr in metrics[attr].keys():
@@ -390,7 +393,6 @@ def run_epoch_iwae(
     reg_dim,
     gamma
 ):
-    print(epoch)
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
     encoder.to(DEVICE)
     decoder.to(DEVICE)
@@ -517,7 +519,6 @@ def run_epoch_iwae(
         # ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
         # ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
         ar_vae_metrics = compute_all_metrics_parallel(latent_codes, attributes, attr_list, num_processes=4)
-        print(ar_vae_metrics)
         with open(results_fp, 'w') as outfile:
             json.dump(ar_vae_metrics, outfile, indent=2)
         # print("Interpretability metrics:", ar_vae_metrics)

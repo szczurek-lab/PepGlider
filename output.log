@@ -17,401 +17,175 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
   pos_dataset.loc[:, 'Label'] = 1
 ClearML Task: overwriting (reusing) task id=f968aa51d79042079d76b27ab0c72fa2
 Torch Distributed Local Rank 1 Task ID f968aa51d79042079d76b27ab0c72fa2 detected
-2025-04-30 21:17:46,733 - clearml.Task - WARNING - Torch Distributed execution detected: Failed Detecting launch arguments, skipping
+2025-05-01 01:38:38,088 - clearml.Task - WARNING - Torch Distributed execution detected: Failed Detecting launch arguments, skipping
 ClearML results page: https://app.clear.ml/projects/66e2567a38664ea186eb2e43b48501a3/experiments/f968aa51d79042079d76b27ab0c72fa2/output/log
-  0%|          | 0/10000 [00:00<?, ?it/s]0
-  0%|          | 0/10000 [00:00<?, ?it/s]0
-0
-0
-train.py:340: FutureWarning:
+  0%|          | 0/10000 [00:00<?, ?it/s]  0%|          | 0/10000 [00:00<?, ?it/s]hue train - ar-vae metrics
+metrics {}
+epoch 0
+hue train - ar-vae metrics
+metrics {}
+epoch 0
 
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+0it [00:00, ?it/s][A
+  0%|          | 0/56 [00:00<?, ?it/s][A
+  0%|          | 0/3 [00:00<?, ?it/s][A
+  0%|          | 0/3 [00:00<?, ?it/s][A
+0it [00:00, ?it/s][A
+  0%|          | 0/56 [00:00<?, ?it/s][A
+  0%|          | 0/3 [00:00<?, ?it/s]
+ 18%|█▊        | 10/56 [00:00<00:00, 96.57it/s][A[A
+  0%|          | 0/3 [00:00<?, ?it/s][A
+ 18%|█▊        | 10/56 [00:00<00:00, 99.94it/s][A
+ 38%|███▊      | 21/56 [00:00<00:00, 101.15it/s][A
+ 38%|███▊      | 21/56 [00:00<00:00, 102.10it/s][A
+ 57%|█████▋    | 32/56 [00:00<00:00, 102.63it/s][A
+ 57%|█████▋    | 32/56 [00:00<00:00, 102.20it/s][A
+ 77%|███████▋  | 43/56 [00:00<00:00, 103.54it/s][A
+ 77%|███████▋  | 43/56 [00:00<00:00, 102.24it/s][A
+ 96%|█████████▋| 54/56 [00:00<00:00, 103.97it/s][A100%|██████████| 56/56 [00:00<00:00, 103.07it/s]
 
-train.py:342: FutureWarning:
+  0%|          | 0/56 [00:00<?, ?it/s][A100%|██████████| 56/56 [00:00<00:00, 2274.33it/s]
 
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+ 96%|█████████▋| 54/56 [00:00<00:00, 102.97it/s][A100%|██████████| 56/56 [00:00<00:00, 102.71it/s]
 
-train.py:344: FutureWarning:
+  0%|          | 0/56 [00:00<?, ?it/s][A100%|██████████| 56/56 [00:00<00:00, 2438.85it/s]
 
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+1it [00:05,  5.03s/it][A
+ 33%|███▎      | 1/3 [00:05<00:10,  5.03s/it][A
+ 33%|███▎      | 1/3 [00:05<00:10,  5.40s/it][A
+1it [00:05,  5.41s/it][A
+ 33%|███▎      | 1/3 [00:05<00:10,  5.44s/it][A
+ 33%|███▎      | 1/3 [00:05<00:10,  5.43s/it][A
+2it [00:10,  5.12s/it][A
+ 67%|██████▋   | 2/3 [00:10<00:05,  5.13s/it][A
+ 67%|██████▋   | 2/3 [00:10<00:05,  5.50s/it][A
+ 67%|██████▋   | 2/3 [00:10<00:05,  5.45s/it][A
+ 67%|██████▋   | 2/3 [00:10<00:05,  5.47s/it][A
+2it [00:10,  5.50s/it][A
+3it [00:15,  5.08s/it][A3it [00:15,  5.08s/it]
 
-train.py:346: FutureWarning:
+100%|██████████| 3/3 [00:15<00:00,  5.09s/it][A100%|██████████| 3/3 [00:15<00:00,  5.09s/it]
 
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+  0%|          | 0/3 [00:00<?, ?it/s][A
+ 67%|██████▋   | 2/3 [00:00<00:00, 12.11it/s][A100%|██████████| 3/3 [00:00<00:00, 12.28it/s]
 
-train.py:348: FutureWarning:
+100%|██████████| 3/3 [00:16<00:00,  5.43s/it][A100%|██████████| 3/3 [00:16<00:00,  5.43s/it]
 
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+  0%|          | 0/3 [00:00<?, ?it/s][A
+100%|██████████| 3/3 [00:16<00:00,  5.47s/it][A100%|██████████| 3/3 [00:16<00:00,  5.47s/it]
+/home/gwiazale/AR-VAE/metrics.py:98: RuntimeWarning:
 
-train.py:340: FutureWarning:
+invalid value encountered in divide
 
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+Wyniki z puli procesów: [{'Interpretability': {'Length': (54, 1.2022711585069068e-05), 'Charge': (1, 6.7725223259484935e-06), 'Hydrophobicity moment': (16, 1.4311199832972576e-06), 'mean': (-1, 6.742117964771606e-06)}}, {'Corr_score': 0.049314440465017345}, {'modularity_score': 0.8060413263004084}, {'mig': 0.0008261489609677381}, {'SAP_score': 0.0038624090020701308}]
 
-train.py:342: FutureWarning:
+100%|██████████| 3/3 [00:16<00:00,  5.45s/it][A100%|██████████| 3/3 [00:16<00:00,  5.46s/it]
+/home/gwiazale/AR-VAE/metrics.py:98: RuntimeWarning:
 
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+invalid value encountered in divide
 
-train.py:344: FutureWarning:
 
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+3it [00:16,  5.47s/it][A3it [00:16,  5.47s/it]
+Przetwarzam wynik: {'Interpretability': {'Length': (54, 1.2022711585069068e-05), 'Charge': (1, 6.7725223259484935e-06), 'Hydrophobicity moment': (16, 1.4311199832972576e-06), 'mean': (-1, 6.742117964771606e-06)}}
+Przetwarzam wynik: {'Corr_score': 0.049314440465017345}
+Przetwarzam wynik: {'modularity_score': 0.8060413263004084}
+Przetwarzam wynik: {'mig': 0.0008261489609677381}
+Przetwarzam wynik: {'SAP_score': 0.0038624090020701308}
 
-train.py:346: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:348: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:340: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:342: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:344: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:346: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:348: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:340: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:342: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:344: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:346: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:348: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-{}
+ 67%|██████▋   | 2/3 [00:00<00:00, 10.96it/s][A100%|██████████| 3/3 [00:00<00:00, 11.66it/s]
+Wyniki z puli procesów: [{'Interpretability': {'Length': (46, 0.00016758298000552063), 'Charge': (0, 0.016873634605695242), 'Hydrophobicity moment': (12, 3.524714741520718e-06), 'mean': (-1, 0.005681580766814094)}}, {'Corr_score': 0.05139218461421111}, {'modularity_score': 0.8333741883876227}, {'mig': 0.0011302382111061434}, {'SAP_score': 0.004821152796134615}]
 All predicted sequences are empty
-train.py:340: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:342: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:344: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:346: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:348: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:340: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:342: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:344: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:346: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:348: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:340: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:342: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:344: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:346: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:348: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:340: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:342: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:344: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:346: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:348: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-{}
+Przetwarzam wynik: {'Interpretability': {'Length': (46, 0.00016758298000552063), 'Charge': (0, 0.016873634605695242), 'Hydrophobicity moment': (12, 3.524714741520718e-06), 'mean': (-1, 0.005681580766814094)}}
+Przetwarzam wynik: {'Corr_score': 0.05139218461421111}
+Przetwarzam wynik: {'modularity_score': 0.8333741883876227}
+Przetwarzam wynik: {'mig': 0.0011302382111061434}
+Przetwarzam wynik: {'SAP_score': 0.004821152796134615}
 All predicted sequences are empty
-  0%|          | 1/10000 [01:26<240:14:49, 86.50s/it]1
+hue test - ar-vae metrics
+metrics {'Interpretability': {'Length': (54, 1.2022711585069068e-05), 'Charge': (1, 6.7725223259484935e-06), 'Hydrophobicity moment': (16, 1.4311199832972576e-06), 'mean': (-1, 6.742117964771606e-06)}, 'Corr_score': 0.049314440465017345, 'modularity_score': 0.8060413263004084, 'mig': 0.0008261489609677381, 'SAP_score': 0.0038624090020701308}
+epoch 0
+  0%|          | 1/10000 [01:44<290:33:49, 104.61s/it]All predicted sequences are empty
 All predicted sequences are empty
-All predicted sequences are empty
-  0%|          | 1/10000 [01:28<244:26:32, 88.01s/it]1
-  0%|          | 2/10000 [02:34<209:03:47, 75.28s/it]2
-  0%|          | 2/10000 [02:33<208:00:17, 74.90s/it]2
-ClearML Monitor: Could not detect iteration reporting, falling back to iterations as seconds-from-start
-  0%|          | 3/10000 [03:39<197:10:52, 71.01s/it]3
-  0%|          | 3/10000 [03:40<197:46:17, 71.22s/it]3
-  0%|          | 4/10000 [04:47<192:21:55, 69.28s/it]4
-  0%|          | 4/10000 [04:45<192:01:29, 69.16s/it]4
-  0%|          | 5/10000 [05:53<189:25:28, 68.23s/it]5
-  0%|          | 5/10000 [05:52<189:12:23, 68.15s/it]5
-  0%|          | 6/10000 [06:58<187:22:04, 67.49s/it]6
-  0%|          | 6/10000 [06:59<187:31:00, 67.55s/it]6
-  0%|          | 7/10000 [08:05<186:23:29, 67.15s/it]7
-  0%|          | 7/10000 [08:04<186:23:37, 67.15s/it]7
-  0%|          | 8/10000 [09:12<185:44:38, 66.92s/it]  0%|          | 8/10000 [09:11<185:38:51, 66.89s/it]88
-
-  0%|          | 9/10000 [10:18<185:12:55, 66.74s/it]9
-  0%|          | 9/10000 [10:17<185:09:05, 66.71s/it]9
-  0%|          | 10/10000 [11:24<185:02:56, 66.68s/it]  0%|          | 10/10000 [11:25<185:05:45, 66.70s/it]10
-10
-  0%|          | 11/10000 [12:31<184:34:47, 66.52s/it]11
-  0%|          | 11/10000 [12:30<184:33:05, 66.51s/it]11
-  0%|          | 12/10000 [13:37<184:23:02, 66.46s/it]12
-  0%|          | 12/10000 [13:36<184:21:44, 66.45s/it]12
-  0%|          | 13/10000 [14:44<184:16:04, 66.42s/it]13
-  0%|          | 13/10000 [14:43<184:15:08, 66.42s/it]13
-  0%|          | 14/10000 [15:50<184:12:45, 66.41s/it]14
-  0%|          | 14/10000 [15:49<184:12:04, 66.41s/it]14
-  0%|          | 15/10000 [16:56<184:00:53, 66.34s/it]15
-  0%|          | 15/10000 [16:55<184:00:30, 66.34s/it]15
-  0%|          | 16/10000 [18:02<183:51:28, 66.29s/it]16
-  0%|          | 16/10000 [18:01<183:51:12, 66.29s/it]16
-  0%|          | 17/10000 [19:09<183:41:39, 66.24s/it]17
-  0%|          | 17/10000 [19:08<183:46:28, 66.27s/it]17
-  0%|          | 18/10000 [20:15<183:35:59, 66.22s/it]18
-  0%|          | 18/10000 [20:14<183:34:16, 66.20s/it]18
-  0%|          | 19/10000 [21:21<183:49:23, 66.30s/it]19
-  0%|          | 19/10000 [21:20<183:48:13, 66.30s/it]19
-  0%|          | 20/10000 [22:27<183:56:35, 66.35s/it]20
-  0%|          | 20/10000 [22:28<183:57:35, 66.36s/it]20
-20
-20
-train.py:340: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:342: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:344: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:346: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:348: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:340: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:342: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:344: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:346: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:348: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:340: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:342: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:344: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:346: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:348: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:340: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:342: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:344: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:346: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:348: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:340: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:342: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:344: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:346: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:348: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:340: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:342: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:344: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:346: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:348: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:340: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:342: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:344: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:346: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:348: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:340: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:342: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:344: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:346: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-train.py:348: FutureWarning:
-
-elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
-
-{}
-{}
-  0%|          | 21/10000 [23:55<201:06:35, 72.55s/it]21
-  0%|          | 21/10000 [23:54<201:07:53, 72.56s/it]21
-  0%|          | 22/10000 [25:01<196:18:14, 70.83s/it]22
-  0%|          | 22/10000 [25:00<196:17:51, 70.82s/it]22
-  0%|          | 23/10000 [26:08<192:42:22, 69.53s/it]23
-  0%|          | 23/10000 [26:07<192:46:21, 69.56s/it]23
-  0%|          | 24/10000 [27:14<190:17:24, 68.67s/it]24
-  0%|          | 24/10000 [27:15<190:19:49, 68.68s/it]24
-  0%|          | 25/10000 [28:21<188:17:53, 67.96s/it]25
-  0%|          | 25/10000 [28:20<188:17:13, 67.95s/it]25
-  0%|          | 26/10000 [29:27<186:58:16, 67.49s/it]26
-  0%|          | 26/10000 [29:26<186:57:25, 67.48s/it]26
-  0%|          | 27/10000 [30:34<186:17:29, 67.25s/it]27
-  0%|          | 27/10000 [30:33<186:16:42, 67.24s/it]27
-Retrying (Retry(total=237, connect=240, read=237, redirect=240, status=240)) after connection broken by 'ReadTimeoutError("HTTPSConnectionPool(host='api.clear.ml', port=443): Read timed out. (read timeout=10.0)")': /v2.23/tasks.get_all
-Retrying (Retry(total=237, connect=240, read=237, redirect=240, status=240)) after connection broken by 'ReadTimeoutError("HTTPSConnectionPool(host='api.clear.ml', port=443): Read timed out. (read timeout=10.0)")': /v2.23/events.add_batch
-Retrying (Retry(total=237, connect=240, read=237, redirect=240, status=240)) after connection broken by 'ReadTimeoutError("HTTPSConnectionPool(host='api.clear.ml', port=443): Read timed out. (read timeout=10.0)")': /v2.23/events.add_batch
-Retrying (Retry(total=237, connect=240, read=237, redirect=240, status=240)) after connection broken by 'ReadTimeoutError("HTTPSConnectionPool(host='api.clear.ml', port=443): Read timed out. (read timeout=10.0)")': /v2.23/tasks.get_all
-Retrying (Retry(total=237, connect=240, read=237, redirect=240, status=240)) after connection broken by 'ReadTimeoutError("HTTPSConnectionPool(host='api.clear.ml', port=443): Read timed out. (read timeout=10.0)")': /v2.23/events.add_batch
-  0%|          | 28/10000 [31:39<185:21:58, 66.92s/it]28
-  0%|          | 28/10000 [31:40<185:22:43, 66.92s/it]28
+hue test - ar-vae metrics
+metrics {'Interpretability': {'Length': (46, 0.00016758298000552063), 'Charge': (0, 0.016873634605695242), 'Hydrophobicity moment': (12, 3.524714741520718e-06), 'mean': (-1, 0.005681580766814094)}, 'Corr_score': 0.05139218461421111, 'modularity_score': 0.8333741883876227, 'mig': 0.0011302382111061434, 'SAP_score': 0.004821152796134615}
+epoch 0
+  0%|          | 1/10000 [01:43<287:38:01, 103.56s/it]  0%|          | 2/10000 [02:51<228:48:08, 82.39s/it]   0%|          | 2/10000 [02:50<227:10:07, 81.80s/it] ClearML Monitor: Could not detect iteration reporting, falling back to iterations as seconds-from-start
+  0%|          | 3/10000 [03:57<208:15:11, 74.99s/it]  0%|          | 3/10000 [03:56<207:21:20, 74.67s/it]  0%|          | 4/10000 [05:04<199:00:10, 71.67s/it]  0%|          | 4/10000 [05:02<198:27:38, 71.47s/it]  0%|          | 5/10000 [06:10<193:56:44, 69.86s/it]  0%|          | 5/10000 [06:09<193:36:37, 69.73s/it]  0%|          | 6/10000 [07:17<190:27:25, 68.61s/it]  0%|          | 6/10000 [07:15<190:19:07, 68.56s/it]  0%|          | 7/10000 [08:22<188:11:08, 67.79s/it]  0%|          | 7/10000 [08:23<188:22:45, 67.86s/it]  0%|          | 8/10000 [09:28<186:57:43, 67.36s/it]  0%|          | 8/10000 [09:29<187:05:25, 67.41s/it]  0%|          | 9/10000 [10:36<186:05:44, 67.05s/it]  0%|          | 9/10000 [10:34<186:00:46, 67.02s/it]  0%|          | 10/10000 [11:42<185:28:44, 66.84s/it]  0%|          | 10/10000 [11:41<185:25:19, 66.82s/it]  0%|          | 11/10000 [12:48<185:10:42, 66.74s/it]  0%|          | 11/10000 [12:47<185:08:46, 66.73s/it]  0%|          | 12/10000 [13:54<185:09:11, 66.74s/it]  0%|          | 12/10000 [13:55<185:11:08, 66.75s/it]  0%|          | 13/10000 [15:01<184:44:13, 66.59s/it]  0%|          | 13/10000 [15:00<184:43:10, 66.59s/it]  0%|          | 14/10000 [16:08<184:31:41, 66.52s/it]  0%|          | 14/10000 [16:06<184:30:48, 66.52s/it]  0%|          | 15/10000 [17:14<184:38:29, 66.57s/it]  0%|          | 15/10000 [17:13<184:37:52, 66.57s/it]  0%|          | 16/10000 [18:21<184:31:53, 66.54s/it]  0%|          | 16/10000 [18:20<184:36:02, 66.56s/it]  0%|          | 17/10000 [19:28<184:44:40, 66.62s/it]  0%|          | 17/10000 [19:26<184:43:08, 66.61s/it]  0%|          | 18/10000 [20:34<184:23:18, 66.50s/it]  0%|          | 18/10000 [20:33<184:22:16, 66.49s/it]  0%|          | 19/10000 [21:40<184:05:15, 66.40s/it]  0%|          | 19/10000 [21:39<184:04:18, 66.39s/it]  0%|          | 20/10000 [22:45<184:13:14, 66.45s/it]  0%|          | 20/10000 [22:47<184:14:00, 66.46s/it]hue train - ar-vae metrics
+metrics {}
+epoch 20
+hue train - ar-vae metrics
+metrics {}
+epoch 20
+
+0it [00:00, ?it/s][A
+  0%|          | 0/56 [00:00<?, ?it/s][A
+0it [00:00, ?it/s][A
+  0%|          | 0/3 [00:00<?, ?it/s][A
+  0%|          | 0/56 [00:00<?, ?it/s][A
+  0%|          | 0/3 [00:00<?, ?it/s][A
+  0%|          | 0/3 [00:00<?, ?it/s][A
+  0%|          | 0/3 [00:00<?, ?it/s][A
+ 16%|█▌        | 9/56 [00:00<00:00, 85.12it/s][A
+ 18%|█▊        | 10/56 [00:00<00:00, 96.46it/s][A
+ 36%|███▌      | 20/56 [00:00<00:00, 96.41it/s][A
+ 38%|███▊      | 21/56 [00:00<00:00, 100.32it/s][A
+ 55%|█████▌    | 31/56 [00:00<00:00, 100.11it/s][A
+ 57%|█████▋    | 32/56 [00:00<00:00, 101.46it/s][A
+ 75%|███████▌  | 42/56 [00:00<00:00, 100.80it/s][A
+ 77%|███████▋  | 43/56 [00:00<00:00, 102.02it/s][A
+ 95%|█████████▍| 53/56 [00:00<00:00, 102.01it/s][A100%|██████████| 56/56 [00:00<00:00, 100.02it/s]
+
+ 96%|█████████▋| 54/56 [00:00<00:00, 102.25it/s][A
+  0%|          | 0/56 [00:00<?, ?it/s][A100%|██████████| 56/56 [00:00<00:00, 101.60it/s]
+
+  0%|          | 0/56 [00:00<?, ?it/s][A100%|██████████| 56/56 [00:00<00:00, 2218.96it/s]
+100%|██████████| 56/56 [00:00<00:00, 2212.33it/s]
+
+ 33%|███▎      | 1/3 [00:05<00:10,  5.45s/it][A
+1it [00:05,  5.79s/it][A
+1it [00:05,  5.83s/it][A
+ 33%|███▎      | 1/3 [00:05<00:11,  5.85s/it][A
+ 33%|███▎      | 1/3 [00:05<00:11,  5.84s/it][A
+ 33%|███▎      | 1/3 [00:05<00:11,  5.93s/it][A
+ 67%|██████▋   | 2/3 [00:10<00:05,  5.50s/it][A
+2it [00:11,  5.86s/it][A
+2it [00:11,  5.87s/it][A
+ 67%|██████▋   | 2/3 [00:11<00:05,  5.86s/it][A
+ 67%|██████▋   | 2/3 [00:11<00:05,  5.86s/it][A
+ 67%|██████▋   | 2/3 [00:11<00:05,  5.91s/it][A
+100%|██████████| 3/3 [00:15<00:00,  5.26s/it][A100%|██████████| 3/3 [00:15<00:00,  5.32s/it]
+
+  0%|          | 0/3 [00:00<?, ?it/s][A
+ 67%|██████▋   | 2/3 [00:00<00:00, 11.92it/s][A100%|██████████| 3/3 [00:00<00:00, 12.39it/s]
+
+3it [00:17,  5.63s/it][A3it [00:17,  5.68s/it]
+
+3it [00:17,  5.64s/it][A3it [00:17,  5.70s/it]
+
+100%|██████████| 3/3 [00:17<00:00,  5.61s/it][A100%|██████████| 3/3 [00:17<00:00,  5.68s/it]
+
+100%|██████████| 3/3 [00:17<00:00,  5.63s/it][A100%|██████████| 3/3 [00:17<00:00,  5.69s/it]
+
+  0%|          | 0/3 [00:00<?, ?it/s][A
+100%|██████████| 3/3 [00:17<00:00,  5.64s/it][A100%|██████████| 3/3 [00:17<00:00,  5.72s/it]
+Wyniki z puli procesów: [{'Interpretability': {'Length': (3, 0.32562061462953507), 'Charge': (18, 0.9896286937320597), 'Hydrophobicity moment': (3, 0.5814194281302829), 'mean': (-1, 0.6322229121639592)}}, {'Corr_score': 0.8056112715233219}, {'modularity_score': 0.759551517169167}, {'mig': 0.02344265392544288}, {'SAP_score': 0.004326213681558703}]
+Przetwarzam wynik: {'Interpretability': {'Length': (3, 0.32562061462953507), 'Charge': (18, 0.9896286937320597), 'Hydrophobicity moment': (3, 0.5814194281302829), 'mean': (-1, 0.6322229121639592)}}
+Przetwarzam wynik: {'Corr_score': 0.8056112715233219}
+Przetwarzam wynik: {'modularity_score': 0.759551517169167}
+Przetwarzam wynik: {'mig': 0.02344265392544288}
+Przetwarzam wynik: {'SAP_score': 0.004326213681558703}
+
+ 67%|██████▋   | 2/3 [00:00<00:00, 11.79it/s][A100%|██████████| 3/3 [00:00<00:00, 12.03it/s]
+Wyniki z puli procesów: [{'Interpretability': {'Length': (3, 0.3426831450949923), 'Charge': (18, 0.9897871623860212), 'Hydrophobicity moment': (3, 0.583181127296357), 'mean': (-1, 0.6385504782591235)}}, {'Corr_score': 0.8176578070985272}, {'modularity_score': 0.7608070965050331}, {'mig': 0.027620207332158864}, {'SAP_score': 0.006838619034902386}]
+Przetwarzam wynik: {'Interpretability': {'Length': (3, 0.3426831450949923), 'Charge': (18, 0.9897871623860212), 'Hydrophobicity moment': (3, 0.583181127296357), 'mean': (-1, 0.6385504782591235)}}
+Przetwarzam wynik: {'Corr_score': 0.8176578070985272}
+Przetwarzam wynik: {'modularity_score': 0.7608070965050331}
+Przetwarzam wynik: {'mig': 0.027620207332158864}
+Przetwarzam wynik: {'SAP_score': 0.006838619034902386}
+hue test - ar-vae metrics
+metrics {'Interpretability': {'Length': (3, 0.32562061462953507), 'Charge': (18, 0.9896286937320597), 'Hydrophobicity moment': (3, 0.5814194281302829), 'mean': (-1, 0.6322229121639592)}, 'Corr_score': 0.8056112715233219, 'modularity_score': 0.759551517169167, 'mig': 0.02344265392544288, 'SAP_score': 0.004326213681558703}
+epoch 20
+  0%|          | 21/10000 [24:29<215:21:02, 77.69s/it]hue test - ar-vae metrics
+metrics {'Interpretability': {'Length': (3, 0.3426831450949923), 'Charge': (18, 0.9897871623860212), 'Hydrophobicity moment': (3, 0.583181127296357), 'mean': (-1, 0.6385504782591235)}, 'Corr_score': 0.8176578070985272, 'modularity_score': 0.7608070965050331, 'mig': 0.027620207332158864, 'SAP_score': 0.006838619034902386}
+epoch 20
+  0%|          | 21/10000 [24:31<215:28:37, 77.73s/it]  0%|          | 22/10000 [25:36<206:09:16, 74.38s/it]  0%|          | 22/10000 [25:37<206:07:52, 74.37s/it]  0%|          | 23/10000 [26:44<199:23:28, 71.95s/it]  0%|          | 23/10000 [26:42<199:24:51, 71.95s/it]  0%|          | 24/10000 [27:50<194:26:01, 70.16s/it]  0%|          | 24/10000 [27:48<194:26:56, 70.17s/it]  0%|          | 25/10000 [28:56<191:10:05, 68.99s/it]  0%|          | 25/10000 [28:55<191:10:55, 69.00s/it]  0%|          | 26/10000 [30:02<188:41:36, 68.11s/it]  0%|          | 26/10000 [30:01<188:42:16, 68.11s/it]

@@ -38,7 +38,7 @@ def setup_ddp():
     local_rank = int(os.environ["LOCAL_RANK"])
     cuda.set_device(local_rank)
     return device(f"cuda:{local_rank}")
-DEVICE = setup_ddp()
+# DEVICE = setup_ddp()
 cuda.memory._set_allocator_settings("max_split_size_mb:128")
 ROOT_DIR = Path(__file__).parent#.parent
 DATA_DIR = ROOT_DIR / "data"
@@ -708,11 +708,13 @@ def run():
         eval_size = len(dataset) - train_size
 
         train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
+        DEVICE = setup_ddp()
+        world_size = distributed.get_world_size()
 
-        train_sampler = DistributedSampler(train_dataset)
-        eval_sampler = DistributedSampler(eval_dataset)
-        train_loader = DataLoader(train_dataset, batch_size=512, sampler=train_sampler, num_workers=0)
-        eval_loader = DataLoader(eval_dataset, batch_size=512, sampler=eval_sampler, num_workers=0)
+        train_sampler = DistributedSampler(train_dataset, rank=DEVICE.index, num_replicas=world_size, shuffle=True)
+        eval_sampler = DistributedSampler(eval_dataset, rank=DEVICE.index, num_replicas=world_size, shuffle=False)
+        train_loader = DataLoader(train_dataset, batch_size=512 // world_size, sampler=train_sampler, num_workers=4)
+        eval_loader = DataLoader(eval_dataset, batch_size=512 // world_size, sampler=eval_sampler, num_workers=4)
         for epoch in tqdm(range(params["epochs"])):
             train_loader.sampler.set_epoch(epoch)
             eval_mode = "deep" if epoch % params["deeper_eval_every"] == 0 else "fast"
@@ -768,7 +770,9 @@ def run():
                     )
         eval_model()
 
-run()
+if __name__ == '__main__':
+    # Inicjalizacja DDP jest już na poziomie globalnym
+    run()
 # autoencoder.load_state_dict(load('./gmm_model.pt'))
 # autoencoder = autoencoder.to('cpu')  
 

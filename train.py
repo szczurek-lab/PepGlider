@@ -386,8 +386,7 @@ def reg_loss_sign(latent_code, attribute, device, factor=1.0):
 
 def compute_reg_loss_parallel(args):
     """Oblicza reg_loss równolegle dla podanych wymiarów."""
-    z, indexes, physchem_decoded, reg_dim, gamma, factor, device_index = args
-    device = device(f"cuda:{device_index}") if cuda.is_available() else device("cpu")
+    z, indexes, physchem_decoded, reg_dim, gamma, factor, device = args
     batch_reg_losses = []
     z_reshaped_indexed = z.reshape(-1, z.shape[2])[indexes, :]
     physchem_keys = list(physchem_decoded.keys())  # Pobierz listę kluczy z physchem_decoded
@@ -562,8 +561,8 @@ def run_epoch_iwae(
         src_decoded = dataset_lib.decoded(src_decoded, "")
         indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
         filtered_list = [item for item in src_decoded if item.strip()]
-        physchem_decoded = calculate_physchem(pool, filtered_list)
-        # physchem_decoded = gather_physchem_results(physchem_decoded_async)
+        physchem_decoded_async = calculate_physchem(pool, filtered_list)
+        physchem_decoded = gather_physchem_results(physchem_decoded_async)
         # K x B
         cross_entropy = ce_loss_fun(
             src,
@@ -594,13 +593,13 @@ def run_epoch_iwae(
             sub_indexes = indexes[start:end]
             if len(sub_indexes) > 0:
                 args = (
-                    z.detach().cpu().numpy(),
+                    z.detach().cpu(),
                     sub_indexes,
                     physchem_decoded,
                     reg_dim,
                     gamma,
                     1.0,
-                    DEVICE.index
+                    DEVICE
                 )
                 reg_losses_async.append(pool.apply_async(compute_reg_loss_parallel, (args,)))
 

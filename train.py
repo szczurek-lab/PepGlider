@@ -26,7 +26,11 @@ import modlamp.analysis
 import modlamp.sequences
 import multiprocessing as mp
 import metrics as m
-
+try:
+    mp.set_start_method('spawn')
+except RuntimeError:
+    # Metoda uruchamiania została już ustawiona (np. w innym module)
+    pass
 os.environ["USE_DISTRIBUTED"] = "1"
 def setup_ddp():
 
@@ -155,8 +159,8 @@ train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
 
 train_sampler = DistributedSampler(train_dataset)
 eval_sampler = DistributedSampler(eval_dataset)
-train_loader = DataLoader(train_dataset, batch_size=512, sampler=train_sampler, num_workers=8)
-eval_loader = DataLoader(eval_dataset, batch_size=512, sampler=eval_sampler, num_workers=8)
+train_loader = DataLoader(train_dataset, batch_size=512, sampler=train_sampler, num_workers=0)
+eval_loader = DataLoader(eval_dataset, batch_size=512, sampler=eval_sampler, num_workers=0)
 
 params = {
     "num_heads": 4,
@@ -386,11 +390,16 @@ def compute_reg_loss_parallel(z, indexes, physchem_decoded, reg_dim, gamma=1.0, 
     """Oblicza reg_loss równolegle dla podanych wymiarów."""
     reg_loss = 0
     args_list = []
-    z_reshaped_indexed = z.reshape(-1, z.shape[2])[indexes, :]
+    z_reshaped_indexed = z.reshape(-1, z.shape[2])[indexes, :].detach()
+    physchem_keys = list(physchem_decoded.keys())  # Pobierz listę kluczy z physchem_decoded
 
-    for dim in reg_dim:
-        attribute_column = physchem_decoded[f'attribute_{dim}']  # Zakładam, że dostęp do kolumn jest przez klucze
-        args_list.append((z_reshaped_indexed, attribute_column, dim, gamma, factor))
+    for i, dim in enumerate(reg_dim):
+        if i < len(physchem_keys):
+            attribute_column = physchem_decoded[physchem_keys[i]]
+            args_list.append((z_reshaped_indexed, attribute_column, dim, gamma, factor))
+        else:
+            print(f"Ostrzeżenie: Brak odpowiadającej kolumny physchem dla dim {dim}")
+            continue  # Pominięcie, jeśli nie ma wystarczającej liczby właściwości physchem
 
     with mp.Pool(processes=num_processes) as pool:
         partial_losses = pool.map(_parallel_compute_reg_loss, args_list)
@@ -650,7 +659,7 @@ optimizer = Adam(
 
 if params["use_clearml"]:
     task = clearml.Task.init(
-        project_name="ar-vae-v2_pooling_test", task_name=params["task_name"]
+        project_name="ar-vae-v3_pooling_test", task_name=params["task_name"]
     )
     task.set_parameters(params)
     logger = task.logger

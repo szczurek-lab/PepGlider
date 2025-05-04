@@ -125,7 +125,7 @@ def calculate_hydrophobicmoment(data:list):
 
 #     return pd.DataFrame(dict([ (k, pd.Series(v)) for k,v in physchem.items() ]))
 
-def calculate_physchem(peptides, num_processes=8):
+def calculate_physchem(pool, peptides):
     """
     Oblicza właściwości fizykochemiczne dla listy peptydów równolegle,
     dzieląc obliczenia dla każdej właściwości.
@@ -140,16 +140,23 @@ def calculate_physchem(peptides, num_processes=8):
               a wartościami są listy tych właściwości dla wszystkich peptydów.
     """
     results = {}
-    with mp.Pool(processes=num_processes) as pool:
-        hydrophobicity_result = pool.apply_async(calculate_hydrophobicity, (peptides,))
-        length_result = pool.apply_async(calculate_length, (peptides,))
-        charge_result = pool.apply_async(calculate_charge, (peptides,))
+    hydrophobicity_result = pool.apply_async(calculate_hydrophobicity, (peptides,))
+    length_result = pool.apply_async(calculate_length, (peptides,))
+    charge_result = pool.apply_async(calculate_charge, (peptides,))
 
-        results['hydrophobicity_moment'] = hydrophobicity_result.get()
-        results['length'] = length_result.get()
-        results['charge'] = charge_result.get()
+    results['hydrophobicity_moment'] = hydrophobicity_result.get()
+    results['length'] = length_result.get()
+    results['charge'] = charge_result.get()
 
     return results
+
+def gather_physchem_results(async_results):
+    """Zbiera wyniki obliczone asynchronicznie dla właściwości fizykochemicznych."""
+    return {
+        'hydrophobicity_moment': async_results['hydrophobicity_moment'].get(),
+        'length': async_results['length'].get(),
+        'charge': async_results['charge'].get()
+    }
 
 dataset = TensorDataset(amp_x, tensor(amp_y))
 train_size = int(0.8 * len(dataset))
@@ -237,7 +244,8 @@ def report_sequence_char(
     epoch: int,
     seq_true: np.ndarray,
     model_out: np.ndarray,
-    metrics: dict
+    metrics: dict,
+    pool
 ):
 #    if not is_main_process():
 #        return
@@ -248,7 +256,7 @@ def report_sequence_char(
         if not filtered_list:
             print('All predicted sequences are empty')
         else:
-            physchem_decoded = calculate_physchem(filtered_list)
+            physchem_decoded = calculate_physchem(pool, filtered_list)
         len_true = seq_true.argmin(axis=0)
         len_pred = seq_pred.argmin(axis=0)
 
@@ -381,30 +389,26 @@ def reg_loss_sign(latent_code, attribute, factor=1.0):
 
     return sign_loss.to(DEVICE)
 
-def _parallel_compute_reg_loss(args):
-    """Pomocnicza funkcja do równoległego obliczania reg_loss dla danego wymiaru."""
-    z_indexed, attribute_column, dim, gamma, factor = args
-    return compute_reg_loss(z_indexed, attribute_column, dim, gamma=gamma, factor=factor)
-
-def compute_reg_loss_parallel(z, indexes, physchem_decoded, reg_dim, gamma=1.0, factor=1.0, num_processes=4):
+def compute_reg_loss_parallel(args):
     """Oblicza reg_loss równolegle dla podanych wymiarów."""
+    z, indexes, physchem_decoded, reg_dim, gamma, factor = args
     reg_loss = 0
-    args_list = []
-    z_reshaped_indexed = z.reshape(-1, z.shape[2])[indexes, :].detach()
+    z_reshaped_indexed = z.reshape(-1, z.shape[2])[indexes, :]
     physchem_keys = list(physchem_decoded.keys())  # Pobierz listę kluczy z physchem_decoded
 
     for i, dim in enumerate(reg_dim):
         if i < len(physchem_keys):
             attribute_column = physchem_decoded[physchem_keys[i]]
-            args_list.append((z_reshaped_indexed, attribute_column, dim, gamma, factor))
+            reg_loss += compute_reg_loss(
+                z_reshaped_indexed.numpy(),  # Przekazujemy numpy array do compute_reg_loss (zakładam, że tak działa)
+                np.array(attribute_column),
+                dim,
+                gamma=gamma,
+                factor=factor
+            )
         else:
             print(f"Ostrzeżenie: Brak odpowiadającej kolumny physchem dla dim {dim}")
             continue  # Pominięcie, jeśli nie ma wystarczającej liczby właściwości physchem
-
-    with mp.Pool(processes=num_processes) as pool:
-        partial_losses = pool.map(_parallel_compute_reg_loss, args_list)
-
-    reg_loss = sum(partial_losses)
     return reg_loss
 
 def _extract_relevant_attributes(labels, reg_dim): 
@@ -432,8 +436,12 @@ def calculate_metric(metric_name, latent_codes, attributes, *args):
     else:
         return {}
 
-def compute_all_metrics_parallel(latent_codes, attributes, attr_list, num_processes=8):
-    """Oblicza wszystkie metryki AR-VAE równolegle."""
+def calculate_metric_async(pool, name, latent_codes, attributes, *args):
+    """Asynchronicznie oblicza pojedynczą metrykę."""
+    return pool.apply_async(calculate_metric, (name, latent_codes, attributes, *args))
+
+def compute_all_metrics_async(pool, latent_codes, attributes, attr_list):
+    """Wysyła zadania obliczenia wszystkich metryk AR-VAE do puli procesów asynchronicznie."""
     metrics_to_calculate = [
         ("interpretability", latent_codes, attributes, attr_list),
         ("correlation", latent_codes, attributes),
@@ -442,13 +450,18 @@ def compute_all_metrics_parallel(latent_codes, attributes, attr_list, num_proces
         ("sap_score", latent_codes, attributes),
     ]
 
-    with mp.Pool(processes=num_processes) as pool:
-        results = pool.starmap(calculate_metric, [(name, lc, attr, *args) for name, lc, attr, *args in metrics_to_calculate])
-        print(f"Wyniki z puli procesów: {results}")
+    async_results = {}
+    for name, lc, attr, *args in metrics_to_calculate:
+        async_results[name] = calculate_metric_async(pool, name, lc, attr, *args)
 
+    return async_results
+
+def gather_metrics(async_results):
+    """Zbiera wyniki obliczonych asynchronicznie metryk."""
     ar_vae_metrics = {}
-    for result in results:
-        print(f"Przetwarzam wynik: {result}")
+    for name, async_result in async_results.items():
+        result = async_result.get()
+        print(f"Przetworzono wynik dla {name}: {result}")
         ar_vae_metrics.update(result)
     return ar_vae_metrics
 
@@ -502,153 +515,167 @@ def run_epoch_iwae(
     K = iwae_samples
     C = VOCAB_SIZE + 1
 
-    for batch, labels in dataloader:       
-        physchem_original = calculate_physchem(dataset_lib.decoded(batch, "")) 
-        peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
-        S, B = peptides.shape
-        if optimizer:
-            optimizer.zero_grad()
+    num_processes = 8
+    with mp.Pool(processes=num_processes) as pool:
+        for batch, labels in dataloader:       
+            physchem_original_async = calculate_physchem(pool, (dataset_lib.decoded(batch, ""),)) 
+            peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
+            S, B = peptides.shape
+            if optimizer:
+                optimizer.zero_grad()
 
-        # autoencoding
+            # autoencoding
 
-        mu, std = encoder(peptides)
-        assert not (isnan(mu).all() or isnan(std).all() ), f" contains all NaN values: {mu}, {std}"
-        assert not (isinf(mu).all() or isinf(std).all()), f" contains all Inf values: {mu}, {std}"
+            mu, std = encoder(peptides)
+            assert not (isnan(mu).all() or isnan(std).all() ), f" contains all NaN values: {mu}, {std}"
+            assert not (isinf(mu).all() or isinf(std).all()), f" contains all Inf values: {mu}, {std}"
 
-        prior_distr = Normal(zeros_like(mu), ones_like(std))
-        q_distr = Normal(mu, std)
-        z = q_distr.rsample((K,)) # K, B, L
+            prior_distr = Normal(zeros_like(mu), ones_like(std))
+            q_distr = Normal(mu, std)
+            z = q_distr.rsample((K,)) # K, B, L
+            if mode == 'test':
+                latent_codes.append(z.reshape(-1,z.shape[2]).cpu().detach().numpy())
+                physchem_expanded = pd.concat([physchem_original_async.get()]* K, ignore_index=True).to_numpy()
+                attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1,1).numpy(), physchem_expanded), axis =1))
+            # Kullback Leibler divergence
+            log_qzx = q_distr.log_prob(z).sum(dim=2)
+            log_pz = prior_distr.log_prob(z).sum(dim=2)
+
+            kl_div = log_qzx - log_pz
+
+            # reconstruction - cross entropy
+            # z = z.reshape(K * B, -1) 
+            sampled_peptide_logits = decoder(z.reshape(K*B,-1))
+            sampled_peptide_logits = sampled_peptide_logits.view(S, K, B, C)
+            src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
+            src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
+            tgt = peptides.permute(1, 0).reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
+            src_decoded = dataset_lib.decoded(src_decoded, "")
+            indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
+            filtered_list = [item for item in src_decoded if item.strip()]
+            physchem_decoded_async = calculate_physchem(pool, filtered_list)
+            physchem_decoder = gather_physchem_results(physchem_decoded_async)
+            # K x B
+            cross_entropy = ce_loss_fun(
+                src,
+                tgt,
+            ).sum(dim=2)
+
+            # reg_loss = 0
+            # for dim in reg_dim:
+            #     reg_loss += compute_reg_loss(
+            #     z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=gamma, factor=1.0 #gamma i delta z papera
+            # )
+            reg_loss = pool.apply_async(compute_reg_loss_parallel, (
+                        z.detach().cpu().numpy(),  # Przekazujemy odłączone numpy array
+                        indexes,
+                        physchem_decoded,
+                        reg_dim,
+                        gamma,
+                        1.0
+                    )
+                )
+
+            loss = logsumexp(
+                cross_entropy + kl_beta * (log_qzx - log_pz) + reg_loss.get(), dim=0
+            ).mean(dim=0)
+
+            # stats
+            stat_sum["kl_mean"] += kl_div.mean(dim=0).sum(dim=0).item()
+            stat_sum["kl_best"] += kl_div.min(dim=0).values.sum(dim=0).item()
+            stat_sum["kl_worst"] += kl_div.max(dim=0).values.sum(dim=0).item()
+            stat_sum["ce_mean"] += cross_entropy.mean(dim=0).sum(dim=0).item()
+            stat_sum["ce_best"] += cross_entropy.min(dim=0).values.sum(dim=0).item()
+            stat_sum["ce_worst"] += cross_entropy.max(dim=0).values.sum(dim=0).item()
+            stat_sum["total"] += loss.item() * len(batch)
+            stat_sum["std"] += std.mean(dim=1).sum().item()
+
+            if optimizer:
+                loss.backward()
+                nn.utils.clip_grad_norm_(
+                    itertools.chain(encoder.parameters(), decoder.parameters()), max_norm=1.0
+                )
+                optimizer.step()
+
+            # reporting
+            if eval_mode == "deep":
+                seq_true.append(peptides.cpu().detach().numpy())
+                model_out.append(decoder(mu).cpu().detach().numpy())
+                model_out_sampled.append(
+                    sampled_peptide_logits.mean(dim=1).cpu().detach().numpy() #to ensure this is okay, mean across K for one batch sequence
+                )
         if mode == 'test':
-            latent_codes.append(z.reshape(-1,z.shape[2]).cpu().detach().numpy())
-            physchem_expanded = pd.concat([physchem_original]* K, ignore_index=True).to_numpy()
-            attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1,1).numpy(), physchem_expanded), axis =1))
-        # Kullback Leibler divergence
-        log_qzx = q_distr.log_prob(z).sum(dim=2)
-        log_pz = prior_distr.log_prob(z).sum(dim=2)
-
-        kl_div = log_qzx - log_pz
-
-        # reconstruction - cross entropy
-        # z = z.reshape(K * B, -1) 
-        sampled_peptide_logits = decoder(z.reshape(K*B,-1))
-        sampled_peptide_logits = sampled_peptide_logits.view(S, K, B, C)
-        src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
-        src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
-        tgt = peptides.permute(1, 0).reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
-        src_decoded = dataset_lib.decoded(src_decoded, "")
-        indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
-        filtered_list = [item for item in src_decoded if item.strip()]
-        physchem_decoded = calculate_physchem(filtered_list)
-
-        # K x B
-        cross_entropy = ce_loss_fun(
-            src,
-            tgt,
-        ).sum(dim=2)
-
-        # reg_loss = 0
-        # for dim in reg_dim:
-        #     reg_loss += compute_reg_loss(
-        #     z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=gamma, factor=1.0 #gamma i delta z papera
-        # )
-        reg_loss = compute_reg_loss_parallel(z, indexes, physchem_decoded, reg_dim, gamma=gamma, factor=1.0)
-
-        loss = logsumexp(
-            cross_entropy + kl_beta * (log_qzx - log_pz) + reg_loss, dim=0
-        ).mean(dim=0)
-
-        # stats
-        stat_sum["kl_mean"] += kl_div.mean(dim=0).sum(dim=0).item()
-        stat_sum["kl_best"] += kl_div.min(dim=0).values.sum(dim=0).item()
-        stat_sum["kl_worst"] += kl_div.max(dim=0).values.sum(dim=0).item()
-        stat_sum["ce_mean"] += cross_entropy.mean(dim=0).sum(dim=0).item()
-        stat_sum["ce_best"] += cross_entropy.min(dim=0).values.sum(dim=0).item()
-        stat_sum["ce_worst"] += cross_entropy.max(dim=0).values.sum(dim=0).item()
-        stat_sum["total"] += loss.item() * len(batch)
-        stat_sum["std"] += std.mean(dim=1).sum().item()
-
-        if optimizer:
-            loss.backward()
-            nn.utils.clip_grad_norm_(
-                itertools.chain(encoder.parameters(), decoder.parameters()), max_norm=1.0
-            )
-            optimizer.step()
-
-        # reporting
-        if eval_mode == "deep":
-            seq_true.append(peptides.cpu().detach().numpy())
-            model_out.append(decoder(mu).cpu().detach().numpy())
-            model_out_sampled.append(
-                sampled_peptide_logits.mean(dim=1).cpu().detach().numpy() #to ensure this is okay, mean across K for one batch sequence
-            )
-    if mode == 'test':
-        latent_codes = np.concatenate(latent_codes, 0)
-        attributes = np.concatenate(attributes, 0)
-        attributes, attr_list = _extract_relevant_attributes(attributes, reg_dim)
-        # interp_metrics = m.compute_interpretability_metric(
-        #     latent_codes, attributes, attr_list
-        # )
-        # ar_vae_metrics["Interpretability"] = interp_metrics
-        # ar_vae_metrics.update(m.compute_correlation_score(latent_codes, attributes))
-        # ar_vae_metrics.update(m.compute_modularity(latent_codes, attributes))
-        # ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
-        # ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
-        ar_vae_metrics = compute_all_metrics_parallel(latent_codes, attributes, attr_list, num_processes=4)
-        with open(results_fp, 'w') as outfile:
-            json.dump(ar_vae_metrics, outfile, indent=2)
-        # print("Interpretability metrics:", ar_vae_metrics)
-    if logger is not None:
-        report_scalars(
-            logger,
-            mode,
-            epoch,
-            scalars=[
-                ("Total Loss", stat_sum["total"] / len_data),
-                ("Posterior Standard Deviation [mean]", stat_sum["std"] / len_data),
-                (
-                    "Cross Entropy Loss",
-                    "mean over samples",
-                    stat_sum["ce_mean"] / len_data,
-                ),
-                ("Cross Entropy Loss", "best sample", stat_sum["ce_best"] / len_data),
-                ("Cross Entropy Loss", "worst sample", stat_sum["ce_worst"] / len_data),
-                (
-                    "KL Divergence",
-                    "mean over samples",
-                    stat_sum["kl_mean"] / len_data,
-                ),
-                ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
-                ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
-                ("KL Beta", kl_beta),
-                ("Regularization Loss", reg_loss/gamma),
-                ("Regularization Loss with gamma", reg_loss),
-            ],
-        )
-        if eval_mode == "deep":
-            report_sequence_char(
+            latent_codes = np.concatenate(latent_codes, 0)
+            attributes = np.concatenate(attributes, 0)
+            attributes, attr_list = _extract_relevant_attributes(attributes, reg_dim)
+            # interp_metrics = m.compute_interpretability_metric(
+            #     latent_codes, attributes, attr_list
+            # )
+            # ar_vae_metrics["Interpretability"] = interp_metrics
+            # ar_vae_metrics.update(m.compute_correlation_score(latent_codes, attributes))
+            # ar_vae_metrics.update(m.compute_modularity(latent_codes, attributes))
+            # ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
+            # ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
+            async_metrics = compute_all_metrics_async(pool, latent_codes, attributes, attr_list)
+            ar_vae_metrics = gather_metrics(async_metrics)
+            with open(results_fp, 'w') as outfile:
+                json.dump(ar_vae_metrics, outfile, indent=2)
+            # print("Interpretability metrics:", ar_vae_metrics)
+        if logger is not None:
+            report_scalars(
                 logger,
-                hue=f"{mode} - mu",
-                epoch=epoch,
-                seq_true=np.concatenate(seq_true, axis=1),
-                model_out=np.concatenate(model_out, axis=1),
-                metrics = None
+                mode,
+                epoch,
+                scalars=[
+                    ("Total Loss", stat_sum["total"] / len_data),
+                    ("Posterior Standard Deviation [mean]", stat_sum["std"] / len_data),
+                    (
+                        "Cross Entropy Loss",
+                        "mean over samples",
+                        stat_sum["ce_mean"] / len_data,
+                    ),
+                    ("Cross Entropy Loss", "best sample", stat_sum["ce_best"] / len_data),
+                    ("Cross Entropy Loss", "worst sample", stat_sum["ce_worst"] / len_data),
+                    (
+                        "KL Divergence",
+                        "mean over samples",
+                        stat_sum["kl_mean"] / len_data,
+                    ),
+                    ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
+                    ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
+                    ("KL Beta", kl_beta),
+                    ("Regularization Loss", reg_loss.get()/gamma),
+                    ("Regularization Loss with gamma", reg_loss.get()),
+                ],
             )
-            report_sequence_char(
-                logger,
-                hue=f"{mode} - z",
-                epoch=epoch,
-                seq_true=np.concatenate(seq_true, axis=1),
-                model_out=np.concatenate(model_out_sampled, axis=1),
-                metrics = None
-            )
-            report_sequence_char(
-                logger,
-                hue=f"{mode} - ar-vae metrics",
-                epoch=epoch,
-                seq_true=np.concatenate(seq_true, axis=1),
-                model_out=None,
-                metrics = ar_vae_metrics
-            )
+            if eval_mode == "deep":
+                report_sequence_char(
+                    logger,
+                    hue=f"{mode} - mu",
+                    epoch=epoch,
+                    seq_true=np.concatenate(seq_true, axis=1),
+                    model_out=np.concatenate(model_out, axis=1),
+                    metrics = None,
+                    pool = pool
+                )
+                report_sequence_char(
+                    logger,
+                    hue=f"{mode} - z",
+                    epoch=epoch,
+                    seq_true=np.concatenate(seq_true, axis=1),
+                    model_out=np.concatenate(model_out_sampled, axis=1),
+                    metrics = None,
+                    pool = pool
+                )
+                report_sequence_char(
+                    logger,
+                    hue=f"{mode} - ar-vae metrics",
+                    epoch=epoch,
+                    seq_true=np.concatenate(seq_true, axis=1),
+                    model_out=None,
+                    metrics = ar_vae_metrics,
+                    pool = pool
+                )
     return stat_sum["total"] / len_data
 
 optimizer = Adam(

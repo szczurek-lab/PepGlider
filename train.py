@@ -708,6 +708,7 @@ def run():
         eval_size = len(dataset) - train_size
 
         train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
+        global DEVICE 
         DEVICE = setup_ddp()
         world_size = distributed.get_world_size()
 

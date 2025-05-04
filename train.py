@@ -612,7 +612,7 @@ def run_epoch_iwae(
 
 
         loss = logsumexp(
-            cross_entropy + kl_beta * (log_qzx - log_pz) + reg_loss.get(), dim=0
+            cross_entropy + kl_beta * (log_qzx - log_pz) + tensor(reg_loss).to(device), dim=0
         ).mean(dim=0)
 
         # stats

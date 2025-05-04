@@ -144,19 +144,19 @@ def calculate_physchem(pool, peptides):
     length_result = pool.apply_async(calculate_length, (peptides,))
     charge_result = pool.apply_async(calculate_charge, (peptides,))
 
-    # results['hydrophobicity_moment'] = hydrophobicity_result.get()
-    # results['length'] = length_result.get()
-    # results['charge'] = charge_result.get()
+    results['hydrophobicity_moment'] = hydrophobicity_result.get()
+    results['length'] = length_result.get()
+    results['charge'] = charge_result.get()
 
     return results
 
-def gather_physchem_results(async_results):
-    """Zbiera wyniki obliczone asynchronicznie dla właściwości fizykochemicznych."""
-    return {
-        'hydrophobicity_moment': async_results['hydrophobicity_moment'].get(),
-        'length': async_results['length'].get(),
-        'charge': async_results['charge'].get()
-    }
+# def gather_physchem_results(async_results):
+#     """Zbiera wyniki obliczone asynchronicznie dla właściwości fizykochemicznych."""
+#     return {
+#         'hydrophobicity_moment': async_results['hydrophobicity_moment'].get(),
+#         'length': async_results['length'].get(),
+#         'charge': async_results['charge'].get()
+#     }
 
 # dataset = TensorDataset(amp_x, tensor(amp_y))
 # train_size = int(0.8 * len(dataset))
@@ -559,8 +559,8 @@ def run_epoch_iwae(
         src_decoded = dataset_lib.decoded(src_decoded, "")
         indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
         filtered_list = [item for item in src_decoded if item.strip()]
-        physchem_decoded_async = calculate_physchem(pool, filtered_list)
-        physchem_decoded = gather_physchem_results(physchem_decoded_async)
+        physchem_decoded = calculate_physchem(pool, filtered_list)
+        # physchem_decoded = gather_physchem_results(physchem_decoded_async)
         # K x B
         cross_entropy = ce_loss_fun(
             src,

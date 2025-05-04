@@ -26,23 +26,22 @@ import modlamp.analysis
 import modlamp.sequences
 import multiprocessing as mp
 import metrics as m
-try:
-    mp.set_start_method('spawn')
-except RuntimeError:
-    # Metoda uruchamiania została już ustawiona (np. w innym module)
-    pass
-os.environ["USE_DISTRIBUTED"] = "1"
 def setup_ddp():
-
     distributed.init_process_group(backend="nccl")
     local_rank = int(os.environ["LOCAL_RANK"])
     cuda.set_device(local_rank)
     return device(f"cuda:{local_rank}")
-# DEVICE = setup_ddp()
-cuda.memory._set_allocator_settings("max_split_size_mb:128")
-ROOT_DIR = Path(__file__).parent#.parent
-DATA_DIR = ROOT_DIR / "data"
-MODELS_DIR = ROOT_DIR
+# try:
+#     mp.set_start_method('spawn')
+# except RuntimeError:
+#     # Metoda uruchamiania została już ustawiona (np. w innym module)
+#     pass
+# os.environ["USE_DISTRIBUTED"] = "1"
+# # DEVICE = setup_ddp()
+# cuda.memory._set_allocator_settings("max_split_size_mb:128")
+# ROOT_DIR = Path(__file__).parent#.parent
+# DATA_DIR = ROOT_DIR / "data"
+# MODELS_DIR = ROOT_DIR
 import torch.distributed as dist
 
 def is_main_process():
@@ -64,15 +63,16 @@ def set_seed(seed: int = 42) -> None:
     os.environ["PYTHONHASHSEED"] = str(seed)
     # logger.info(f"Random seed set to {seed}")
     return None
-set_seed()
 
-data_manager = dataset_lib.AMPDataManager(
-    DATA_DIR / 'unlabelled_positive.csv',
-    DATA_DIR / 'unlabelled_negative.csv',
-    min_len=MIN_LENGTH,
-    max_len=MAX_LENGTH)
+# set_seed()
 
-amp_x, amp_y, amp_x_raw = data_manager.get_merged_data()
+# data_manager = dataset_lib.AMPDataManager(
+#     DATA_DIR / 'unlabelled_positive.csv',
+#     DATA_DIR / 'unlabelled_negative.csv',
+#     min_len=MIN_LENGTH,
+#     max_len=MAX_LENGTH)
+
+# amp_x, amp_y, amp_x_raw = data_manager.get_merged_data()
 
 def calculate_length(data:list):
     lengths = [len(x) for x in data]
@@ -169,44 +169,44 @@ def gather_physchem_results(async_results):
 # train_loader = DataLoader(train_dataset, batch_size=512, sampler=train_sampler, num_workers=0)
 # eval_loader = DataLoader(eval_dataset, batch_size=512, sampler=eval_sampler, num_workers=0)
 
-params = {
-    "num_heads": 4,
-    "num_layers": 6,
-    "layer_norm": True,
-    "latent_dim": 56,
-    "encoding": "add",
-    "dropout": 0.1,
-    "batch_size": 512,
-    "lr": 0.001,
-    "kl_beta_schedule": (0.000001, 0.01, 8000),
-    "train_size": None,
-    "epochs": 10000,
-    "iwae_samples": 10,
-    "model_name": "basic",
-    "use_clearml": True,
-    "task_name": "ar_vae_with_ar_vae_metrics",
-    "device": "cuda",
-    "deeper_eval_every": 20,
-    "save_model_every": 100,
-    "reg_dim": [0,1,2], # [length, charge, hydrophobicity]
-    "gamma_schedule": (1000000, 100000000, 8000)
-}
-encoder = EncoderRNN(
-    params["num_heads"],
-    params["num_layers"],
-    params["latent_dim"],
-    params["encoding"],
-    params["dropout"],
-    params["layer_norm"],
-)
-decoder = DecoderRNN(
-    params["num_heads"],
-    params["num_layers"],
-    params["latent_dim"],
-    params["encoding"],
-    params["dropout"],
-    params["layer_norm"],
-)
+# params = {
+#     "num_heads": 4,
+#     "num_layers": 6,
+#     "layer_norm": True,
+#     "latent_dim": 56,
+#     "encoding": "add",
+#     "dropout": 0.1,
+#     "batch_size": 512,
+#     "lr": 0.001,
+#     "kl_beta_schedule": (0.000001, 0.01, 8000),
+#     "train_size": None,
+#     "epochs": 10000,
+#     "iwae_samples": 10,
+#     "model_name": "basic",
+#     "use_clearml": True,
+#     "task_name": "ar_vae_with_ar_vae_metrics",
+#     "device": "cuda",
+#     "deeper_eval_every": 20,
+#     "save_model_every": 100,
+#     "reg_dim": [0,1,2], # [length, charge, hydrophobicity]
+#     "gamma_schedule": (1000000, 100000000, 8000)
+# }
+# encoder = EncoderRNN(
+#     params["num_heads"],
+#     params["num_layers"],
+#     params["latent_dim"],
+#     params["encoding"],
+#     params["dropout"],
+#     params["layer_norm"],
+# )
+# decoder = DecoderRNN(
+#     params["num_heads"],
+#     params["num_layers"],
+#     params["latent_dim"],
+#     params["encoding"],
+#     params["dropout"],
+#     params["layer_norm"],
+# )
 
 def get_model_arch_hash(model: nn.Module) -> int:
     return hash(";".join(sorted([str(v.shape) for v in model.state_dict().values()])))
@@ -684,20 +684,13 @@ def run_epoch_iwae(
             )
     return stat_sum["total"] / len_data
 
-optimizer = Adam(
-    itertools.chain(encoder.parameters(), decoder.parameters()),
-    lr=params["lr"],
-    betas=(0.9, 0.999),
-)
+# optimizer = Adam(
+#     itertools.chain(encoder.parameters(), decoder.parameters()),
+#     lr=params["lr"],
+#     betas=(0.9, 0.999),
+# )
 
-if params["use_clearml"]:
-    task = clearml.Task.init(
-        project_name="ar-vae-v3_pooling_test", task_name=params["task_name"]
-    )
-    task.set_parameters(params)
-    logger = task.logger
-else:
-    logger = None
+#clearml
 
 def run():
     best_loss = 1e18
@@ -708,6 +701,7 @@ def run():
         eval_size = len(dataset) - train_size
 
         train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
+        global DEVICE 
         DEVICE = setup_ddp()
         world_size = distributed.get_world_size()
 
@@ -771,6 +765,77 @@ def run():
         eval_model()
 
 if __name__ == '__main__':
+    try:
+        mp.set_start_method('spawn')
+    except RuntimeError:
+        # Metoda uruchamiania została już ustawiona (np. w innym module)
+        pass
+    os.environ["USE_DISTRIBUTED"] = "1"
+    # DEVICE = setup_ddp()
+    cuda.memory._set_allocator_settings("max_split_size_mb:128")
+    ROOT_DIR = Path(__file__).parent#.parent
+    DATA_DIR = ROOT_DIR / "data"
+    MODELS_DIR = ROOT_DIR
+    set_seed()
+    params = {
+        "num_heads": 4,
+        "num_layers": 6,
+        "layer_norm": True,
+        "latent_dim": 56,
+        "encoding": "add",
+        "dropout": 0.1,
+        "batch_size": 512,
+        "lr": 0.001,
+        "kl_beta_schedule": (0.000001, 0.01, 8000),
+        "train_size": None,
+        "epochs": 10000,
+        "iwae_samples": 10,
+        "model_name": "basic",
+        "use_clearml": True,
+        "task_name": "ar_vae_with_ar_vae_metrics",
+        "device": "cuda",
+        "deeper_eval_every": 20,
+        "save_model_every": 100,
+        "reg_dim": [0,1,2], # [length, charge, hydrophobicity]
+        "gamma_schedule": (1000000, 100000000, 8000)
+    }
+    encoder = EncoderRNN(
+        params["num_heads"],
+        params["num_layers"],
+        params["latent_dim"],
+        params["encoding"],
+        params["dropout"],
+        params["layer_norm"],
+    )
+    decoder = DecoderRNN(
+        params["num_heads"],
+        params["num_layers"],
+        params["latent_dim"],
+        params["encoding"],
+        params["dropout"],
+        params["layer_norm"],
+    )
+
+    data_manager = dataset_lib.AMPDataManager(
+        DATA_DIR / 'unlabelled_positive.csv',
+        DATA_DIR / 'unlabelled_negative.csv',
+        min_len=MIN_LENGTH,
+        max_len=MAX_LENGTH)
+
+    amp_x, amp_y, amp_x_raw = data_manager.get_merged_data()
+    optimizer = Adam(
+        itertools.chain(encoder.parameters(), decoder.parameters()),
+        lr=params["lr"],
+        betas=(0.9, 0.999),
+    )
+    if params["use_clearml"]:
+        task = clearml.Task.init(
+            project_name="ar-vae-v3_pooling_test", task_name=params["task_name"]
+        )
+        task.set_parameters(params)
+        logger = task.logger
+    else:
+        logger = None
     # Inicjalizacja DDP jest już na poziomie globalnym
     run()
 # autoencoder.load_state_dict(load('./gmm_model.pt'))

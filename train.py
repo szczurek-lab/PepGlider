@@ -158,16 +158,16 @@ def gather_physchem_results(async_results):
         'charge': async_results['charge'].get()
     }
 
-dataset = TensorDataset(amp_x, tensor(amp_y))
-train_size = int(0.8 * len(dataset))
-eval_size = len(dataset) - train_size
+# dataset = TensorDataset(amp_x, tensor(amp_y))
+# train_size = int(0.8 * len(dataset))
+# eval_size = len(dataset) - train_size
 
-train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
+# train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
 
-train_sampler = DistributedSampler(train_dataset)
-eval_sampler = DistributedSampler(eval_dataset)
-train_loader = DataLoader(train_dataset, batch_size=512, sampler=train_sampler, num_workers=0)
-eval_loader = DataLoader(eval_dataset, batch_size=512, sampler=eval_sampler, num_workers=0)
+# train_sampler = DistributedSampler(train_dataset)
+# eval_sampler = DistributedSampler(eval_dataset)
+# train_loader = DataLoader(train_dataset, batch_size=512, sampler=train_sampler, num_workers=0)
+# eval_loader = DataLoader(eval_dataset, batch_size=512, sampler=eval_sampler, num_workers=0)
 
 params = {
     "num_heads": 4,
@@ -703,6 +703,16 @@ def run():
     best_loss = 1e18
     num_processes = 8
     with mp.Pool(processes=num_processes) as pool:
+        dataset = TensorDataset(amp_x, tensor(amp_y))
+        train_size = int(0.8 * len(dataset))
+        eval_size = len(dataset) - train_size
+
+        train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
+
+        train_sampler = DistributedSampler(train_dataset)
+        eval_sampler = DistributedSampler(eval_dataset)
+        train_loader = DataLoader(train_dataset, batch_size=512, sampler=train_sampler, num_workers=0)
+        eval_loader = DataLoader(eval_dataset, batch_size=512, sampler=eval_sampler, num_workers=0)
         for epoch in tqdm(range(params["epochs"])):
             train_loader.sampler.set_epoch(epoch)
             eval_mode = "deep" if epoch % params["deeper_eval_every"] == 0 else "fast"

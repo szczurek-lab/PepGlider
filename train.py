@@ -354,15 +354,15 @@ def report_sequence_char(
                     title=f"{attr} of latent space", series=hue, value=metrics[attr], iteration=epoch
                 )
 
-def compute_reg_loss(z, labels, reg_dim, gamma, factor=1.0):
+def compute_reg_loss(z, labels, reg_dim, gamma, device, factor=1.0):
     """
     Computes the regularization loss
     """
     x = z[:, reg_dim]
-    reg_loss = reg_loss_sign(x, labels, factor=factor)
+    reg_loss = reg_loss_sign(x, labels, device = device, factor=factor)
     return gamma * reg_loss
 
-def reg_loss_sign(latent_code, attribute, factor=1.0):
+def reg_loss_sign(latent_code, attribute, device, factor=1.0):
     """
     Computes the regularization loss given the latent code and attribute
     Args:
@@ -373,11 +373,11 @@ def reg_loss_sign(latent_code, attribute, factor=1.0):
         scalar, loss
     """
     # compute latent distance matrix
-    latent_code = latent_code.to(DEVICE).reshape(-1, 1)
+    latent_code = latent_code.to(device).reshape(-1, 1)
     lc_dist_mat = latent_code - latent_code.T
 
     # compute attribute distance matrix
-    attribute_tensor = tensor(attribute.values).to(DEVICE)
+    attribute_tensor = tensor(attribute.values).to(device)
     attribute_tensor = attribute_tensor.reshape(-1, 1)
     attribute_dist_mat = attribute_tensor - attribute_tensor.T
 
@@ -387,11 +387,11 @@ def reg_loss_sign(latent_code, attribute, factor=1.0):
     attribute_sign = sign(attribute_dist_mat)
     sign_loss = loss_fn(lc_tanh, attribute_sign.float())
 
-    return sign_loss.to(DEVICE)
+    return sign_loss.to(device)
 
 def compute_reg_loss_parallel(args):
     """Oblicza reg_loss równolegle dla podanych wymiarów."""
-    z, indexes, physchem_decoded, reg_dim, gamma, factor = args
+    z, indexes, physchem_decoded, reg_dim, gamma, factor, device = args
     reg_loss = 0
     z_reshaped_indexed = z.reshape(-1, z.shape[2])[indexes, :]
     physchem_keys = list(physchem_decoded.keys())  # Pobierz listę kluczy z physchem_decoded
@@ -404,6 +404,7 @@ def compute_reg_loss_parallel(args):
                 np.array(attribute_column),
                 dim,
                 gamma=gamma,
+                device = device,
                 factor=factor
             )
         else:
@@ -578,7 +579,8 @@ def run_epoch_iwae(
                     physchem_decoded,
                     reg_dim,
                     gamma,
-                    1.0
+                    1.0,
+                    DEVICE.index
                 ),)
             )
 

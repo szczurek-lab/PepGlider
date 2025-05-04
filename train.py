@@ -400,7 +400,7 @@ def compute_reg_loss_parallel(args):
         if i < len(physchem_keys):
             attribute_column = physchem_decoded[physchem_keys[i]]
             reg_loss += compute_reg_loss(
-                z_reshaped_indexed.numpy(),  # Przekazujemy numpy array do compute_reg_loss (zakładam, że tak działa)
+                z_reshaped_indexed,
                 np.array(attribute_column),
                 dim,
                 gamma=gamma,
@@ -572,14 +572,14 @@ def run_epoch_iwae(
         #     reg_loss += compute_reg_loss(
         #     z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=gamma, factor=1.0 #gamma i delta z papera
         # )
-        reg_loss = pool.apply_async(compute_reg_loss_parallel, (
-                    z.detach().cpu().numpy(),  # Przekazujemy odłączone numpy array
+        reg_loss = pool.apply_async(compute_reg_loss_parallel, ((
+                    z.detach().cpu(),  # Przekazujemy odłączone numpy array
                     indexes,
                     physchem_decoded,
                     reg_dim,
                     gamma,
                     1.0
-                )
+                ),)
             )
 
         loss = logsumexp(

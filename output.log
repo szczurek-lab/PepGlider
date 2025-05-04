@@ -17,302 +17,69 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
   pos_dataset.loc[:, 'Label'] = 1
 ClearML Task: overwriting (reusing) task id=87bafae7b5b243c1a9553a40e03c3129
 Torch Distributed Local Rank 1 Task ID 87bafae7b5b243c1a9553a40e03c3129 detected
-2025-05-04 22:41:15,548 - clearml.Task - WARNING - Torch Distributed execution detected: Failed Detecting launch arguments, skipping
+2025-05-04 23:32:08,985 - clearml.Task - WARNING - Torch Distributed execution detected: Failed Detecting launch arguments, skipping
 ClearML results page: https://app.clear.ml/projects/3fd79a1843204536988a99bd61947a17/experiments/87bafae7b5b243c1a9553a40e03c3129/output/log
-  0%|          | 0/10000 [00:00<?, ?it/s]  0%|          | 0/10000 [00:00<?, ?it/s]/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
+  0%|          | 0/10000 [00:00<?, ?it/s]  0%|          | 0/10000 [00:00<?, ?it/s]  0%|          | 0/10000 [00:07<?, ?it/s]
   0%|          | 0/10000 [00:07<?, ?it/s]
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
+multiprocessing.pool.RemoteTraceback: 
+"""
 Traceback (most recent call last):
-  File "train.py", line 776, in <module>
+  File "/usr/lib/python3.8/multiprocessing/pool.py", line 125, in worker
+    result = (True, func(*args, **kwds))
+  File "/home/gwiazale/AR-VAE/train.py", line 402, in compute_reg_loss_parallel
+    reg_loss += compute_reg_loss(
+  File "/home/gwiazale/AR-VAE/train.py", line 362, in compute_reg_loss
+    reg_loss = reg_loss_sign(x, labels, factor=factor)
+  File "/home/gwiazale/AR-VAE/train.py", line 376, in reg_loss_sign
+    latent_code = latent_code.to(DEVICE).reshape(-1, 1)
+NameError: name 'DEVICE' is not defined
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "train.py", line 840, in <module>
     run()
-  File "train.py", line 726, in run
+  File "train.py", line 719, in run
     run_epoch_iwae(
-  File "train.py", line 563, in run_epoch_iwae
-    physchem_decoded = gather_physchem_results(physchem_decoded_async)
-  File "train.py", line 156, in gather_physchem_results
-    'hydrophobicity_moment': async_results['hydrophobicity_moment'].get(),
-AttributeError: 'list' object has no attribute 'get'
+  File "train.py", line 586, in run_epoch_iwae
+    cross_entropy + kl_beta * (log_qzx - log_pz) + reg_loss.get(), dim=0
+  File "/usr/lib/python3.8/multiprocessing/pool.py", line 771, in get
+    raise self._value
+NameError: name 'DEVICE' is not defined
+multiprocessing.pool.RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "/usr/lib/python3.8/multiprocessing/pool.py", line 125, in worker
+    result = (True, func(*args, **kwds))
+  File "/home/gwiazale/AR-VAE/train.py", line 402, in compute_reg_loss_parallel
+    reg_loss += compute_reg_loss(
+  File "/home/gwiazale/AR-VAE/train.py", line 362, in compute_reg_loss
+    reg_loss = reg_loss_sign(x, labels, factor=factor)
+  File "/home/gwiazale/AR-VAE/train.py", line 376, in reg_loss_sign
+    latent_code = latent_code.to(DEVICE).reshape(-1, 1)
+NameError: name 'DEVICE' is not defined
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "train.py", line 840, in <module>
+    run()
+  File "train.py", line 719, in run
+    run_epoch_iwae(
+  File "train.py", line 586, in run_epoch_iwae
+    cross_entropy + kl_beta * (log_qzx - log_pz) + reg_loss.get(), dim=0
+  File "/usr/lib/python3.8/multiprocessing/pool.py", line 771, in get
+    raise self._value
+NameError: name 'DEVICE' is not defined
+2025-05-04 23:32:22,072 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
 /usr/lib/python3.8/multiprocessing/resource_tracker.py:216: UserWarning: resource_tracker: There appear to be 5 leaked semaphore objects to clean up at shutdown
   warnings.warn('resource_tracker: There appear to be %d '
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-Traceback (most recent call last):
-  File "<string>", line 1, in <module>
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 116, in spawn_main
-    exitcode = _main(fd, parent_sentinel)
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 125, in _main
-    prepare(preparation_data)
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 236, in prepare
-    _fixup_main_from_path(data['init_main_from_path'])
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 287, in _fixup_main_from_path
-    main_content = runpy.run_path(main_path,
-  File "/usr/lib/python3.8/runpy.py", line 265, in run_path
-    return _run_module_code(code, init_globals, run_name,
-  File "/usr/lib/python3.8/runpy.py", line 97, in _run_module_code
-    _run_code(code, mod_globals, init_globals,
-  File "/usr/lib/python3.8/runpy.py", line 87, in _run_code
-    exec(code, run_globals)
-  File "/home/gwiazale/AR-VAE/train.py", line 697, in <module>
-    task.set_parameters(params)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 1173, in set_parameters
-    return self._set_parameters(*args, __update=False, **kwargs)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 1305, in _set_parameters
-    self._edit(hyperparams=hyperparams)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 2556, in _edit
-    raise ValueError(
-ValueError: Task object can only be updated if created or in_progress [status=failed fields=['hyperparams']]
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-Traceback (most recent call last):
-  File "<string>", line 1, in <module>
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 116, in spawn_main
-    exitcode = _main(fd, parent_sentinel)
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 125, in _main
-    prepare(preparation_data)
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 236, in prepare
-    _fixup_main_from_path(data['init_main_from_path'])
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 287, in _fixup_main_from_path
-    main_content = runpy.run_path(main_path,
-  File "/usr/lib/python3.8/runpy.py", line 265, in run_path
-    return _run_module_code(code, init_globals, run_name,
-  File "/usr/lib/python3.8/runpy.py", line 97, in _run_module_code
-    _run_code(code, mod_globals, init_globals,
-  File "/usr/lib/python3.8/runpy.py", line 87, in _run_code
-    exec(code, run_globals)
-  File "/home/gwiazale/AR-VAE/train.py", line 697, in <module>
-    task.set_parameters(params)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 1173, in set_parameters
-    return self._set_parameters(*args, __update=False, **kwargs)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 1305, in _set_parameters
-    self._edit(hyperparams=hyperparams)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 2556, in _edit
-    raise ValueError(
-ValueError: Task object can only be updated if created or in_progress [status=failed fields=['hyperparams']]
-2025-05-04 22:41:40,364 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
-2025-05-04 22:41:40,749 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
-2025-05-04 22:41:41,136 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
-2025-05-04 22:41:41,522 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
-2025-05-04 22:41:41,908 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
-WARNING:torch.distributed.elastic.multiprocessing.api:Sending process 3711287 closing signal SIGTERM
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-2025-05-04 22:41:42,291 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
-2025-05-04 22:41:42,663 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
-2025-05-04 22:41:43,782 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-Traceback (most recent call last):
-  File "<string>", line 1, in <module>
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 116, in spawn_main
-    exitcode = _main(fd, parent_sentinel)
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 125, in _main
-    prepare(preparation_data)
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 236, in prepare
-    _fixup_main_from_path(data['init_main_from_path'])
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 287, in _fixup_main_from_path
-    main_content = runpy.run_path(main_path,
-  File "/usr/lib/python3.8/runpy.py", line 265, in run_path
-    return _run_module_code(code, init_globals, run_name,
-  File "/usr/lib/python3.8/runpy.py", line 97, in _run_module_code
-    _run_code(code, mod_globals, init_globals,
-  File "/usr/lib/python3.8/runpy.py", line 87, in _run_code
-    exec(code, run_globals)
-  File "/home/gwiazale/AR-VAE/train.py", line 697, in <module>
-    task.set_parameters(params)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 1173, in set_parameters
-    return self._set_parameters(*args, __update=False, **kwargs)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 1305, in _set_parameters
-    self._edit(hyperparams=hyperparams)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 2556, in _edit
-    raise ValueError(
-ValueError: Task object can only be updated if created or in_progress [status=stopped fields=['hyperparams']]
-2025-05-04 22:41:45,288 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-Traceback (most recent call last):
-  File "<string>", line 1, in <module>
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 116, in spawn_main
-    exitcode = _main(fd, parent_sentinel)
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 125, in _main
-    prepare(preparation_data)
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 236, in prepare
-    _fixup_main_from_path(data['init_main_from_path'])
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 287, in _fixup_main_from_path
-    main_content = runpy.run_path(main_path,
-  File "/usr/lib/python3.8/runpy.py", line 265, in run_path
-    return _run_module_code(code, init_globals, run_name,
-  File "/usr/lib/python3.8/runpy.py", line 97, in _run_module_code
-    _run_code(code, mod_globals, init_globals,
-  File "/usr/lib/python3.8/runpy.py", line 87, in _run_code
-    exec(code, run_globals)
-  File "/home/gwiazale/AR-VAE/train.py", line 697, in <module>
-    task.set_parameters(params)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 1173, in set_parameters
-    return self._set_parameters(*args, __update=False, **kwargs)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 1305, in _set_parameters
-    self._edit(hyperparams=hyperparams)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 2556, in _edit
-    raise ValueError(
-ValueError: Task object can only be updated if created or in_progress [status=stopped fields=['hyperparams']]
-2025-05-04 22:41:46,194 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
-2025-05-04 22:41:46,698 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
-2025-05-04 22:41:47,217 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
-2025-05-04 22:41:47,713 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
-  0%|          | 0/10000 [00:30<?, ?it/s]
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-Traceback (most recent call last):
-  File "<string>", line 1, in <module>
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 116, in spawn_main
-    exitcode = _main(fd, parent_sentinel)
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 125, in _main
-    prepare(preparation_data)
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 236, in prepare
-    _fixup_main_from_path(data['init_main_from_path'])
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 287, in _fixup_main_from_path
-    main_content = runpy.run_path(main_path,
-  File "/usr/lib/python3.8/runpy.py", line 265, in run_path
-    return _run_module_code(code, init_globals, run_name,
-  File "/usr/lib/python3.8/runpy.py", line 97, in _run_module_code
-    _run_code(code, mod_globals, init_globals,
-  File "/usr/lib/python3.8/runpy.py", line 87, in _run_code
-    exec(code, run_globals)
-  File "/home/gwiazale/AR-VAE/train.py", line 697, in <module>
-    task.set_parameters(params)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 1173, in set_parameters
-    return self._set_parameters(*args, __update=False, **kwargs)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 1305, in _set_parameters
-    self._edit(hyperparams=hyperparams)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 2556, in _edit
-    raise ValueError(
-ValueError: Task object can only be updated if created or in_progress [status=stopped fields=['hyperparams']]
-2025-05-04 22:41:51,516 - clearml.log - WARNING - Event reporting sub-process lost, switching to thread based reporting
-/home/gwiazale/AR-VAE/data/dataset.py:199: SettingWithCopyWarning: 
-A value is trying to be set on a copy of a slice from a DataFrame.
-Try using .loc[row_indexer,col_indexer] = value instead
-
-See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
-  pos_dataset.loc[:, 'Label'] = 1
-Traceback (most recent call last):
-  File "<string>", line 1, in <module>
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 116, in spawn_main
-    exitcode = _main(fd, parent_sentinel)
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 125, in _main
-    prepare(preparation_data)
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 236, in prepare
-    _fixup_main_from_path(data['init_main_from_path'])
-  File "/usr/lib/python3.8/multiprocessing/spawn.py", line 287, in _fixup_main_from_path
-    main_content = runpy.run_path(main_path,
-  File "/usr/lib/python3.8/runpy.py", line 265, in run_path
-    return _run_module_code(code, init_globals, run_name,
-  File "/usr/lib/python3.8/runpy.py", line 97, in _run_module_code
-    _run_code(code, mod_globals, init_globals,
-  File "/usr/lib/python3.8/runpy.py", line 87, in _run_code
-    exec(code, run_globals)
-  File "/home/gwiazale/AR-VAE/train.py", line 697, in <module>
-    task.set_parameters(params)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 1173, in set_parameters
-    return self._set_parameters(*args, __update=False, **kwargs)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 1305, in _set_parameters
-    self._edit(hyperparams=hyperparams)
-  File "/home/gwiazale/myenv/lib/python3.8/site-packages/clearml/backend_interface/task/task.py", line 2556, in _edit
-    raise ValueError(
-ValueError: Task object can only be updated if created or in_progress [status=stopped fields=['hyperparams']]
-ERROR:torch.distributed.elastic.multiprocessing.api:failed (exitcode: 1) local_rank: 1 (pid: 3711288) of binary: /home/gwiazale/myenv/bin/python3
+WARNING:torch.distributed.elastic.multiprocessing.api:Sending process 3723907 closing signal SIGTERM
+/usr/lib/python3.8/multiprocessing/resource_tracker.py:216: UserWarning: resource_tracker: There appear to be 5 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
+ERROR:torch.distributed.elastic.multiprocessing.api:failed (exitcode: 1) local_rank: 0 (pid: 3723905) of binary: /home/gwiazale/myenv/bin/python3
 Traceback (most recent call last):
   File "/home/gwiazale/myenv/bin/torchrun", line 8, in <module>
     sys.exit(main())
@@ -335,10 +102,10 @@ Failures:
 ------------------------------------------------------------
 Root Cause (first observed failure):
 [0]:
-  time      : 2025-05-04_22:41:42
+  time      : 2025-05-04_23:32:25
   host      : rudy.mimuw.edu.pl
-  rank      : 1 (local_rank: 1)
-  exitcode  : 1 (pid: 3711288)
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 3723905)
   error_file: <N/A>
   traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
 ============================================================

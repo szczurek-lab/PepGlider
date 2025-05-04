@@ -386,15 +386,16 @@ def reg_loss_sign(latent_code, attribute, device, factor=1.0):
 
 def compute_reg_loss_parallel(args):
     """Oblicza reg_loss równolegle dla podanych wymiarów."""
-    z, indexes, physchem_decoded, reg_dim, gamma, factor, device = args
-    reg_loss = 0
+    z, indexes, physchem_decoded, reg_dim, gamma, factor, device_index = args
+    device = device(f"cuda:{device_index}") if cuda.is_available() else device("cpu")
+    batch_reg_losses = []
     z_reshaped_indexed = z.reshape(-1, z.shape[2])[indexes, :]
     physchem_keys = list(physchem_decoded.keys())  # Pobierz listę kluczy z physchem_decoded
 
     for i, dim in enumerate(reg_dim):
         if i < len(physchem_keys):
             attribute_column = physchem_decoded[physchem_keys[i]]
-            reg_loss += compute_reg_loss(
+            loss  = compute_reg_loss(
                 z_reshaped_indexed,
                 np.array(attribute_column),
                 dim,
@@ -402,10 +403,11 @@ def compute_reg_loss_parallel(args):
                 device = device,
                 factor=factor
             )
+            batch_reg_losses.append(loss.cpu().numpy())
         else:
             print(f"Ostrzeżenie: Brak odpowiadającej kolumny physchem dla dim {dim}")
             continue  # Pominięcie, jeśli nie ma wystarczającej liczby właściwości physchem
-    return reg_loss
+    return np.array(batch_reg_losses)
 
 def _extract_relevant_attributes(labels, reg_dim): 
     attr_list = ['Length', 'Charge', 'Hydrophobicity moment']
@@ -573,16 +575,41 @@ def run_epoch_iwae(
         #     reg_loss += compute_reg_loss(
         #     z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=gamma, factor=1.0 #gamma i delta z papera
         # )
-        reg_loss = pool.apply_async(compute_reg_loss_parallel, ((
-                    z.detach().cpu(),  # Przekazujemy odłączone numpy array
-                    indexes,
+        # reg_loss = pool.apply_async(compute_reg_loss_parallel, ((
+        #             z.detach().cpu(),  # Przekazujemy odłączone numpy array
+        #             indexes,
+        #             physchem_decoded,
+        #             reg_dim,
+        #             gamma,
+        #             1.0,
+        #             DEVICE.index
+        #         ),)
+        #     )
+        reg_losses_async = []
+        num_reg_dims = len(reg_dim)
+        chunk_size = len(indexes) // 8 # Podziel batch na części num_processes
+        for i in range(8):#num_processes
+            start = i * chunk_size
+            end = (i + 1) * chunk_size if i < 8 - 1 else len(indexes)#num_processes
+            sub_indexes = indexes[start:end]
+            if len(sub_indexes) > 0:
+                args = (
+                    z.detach().cpu().numpy(),
+                    sub_indexes,
                     physchem_decoded,
                     reg_dim,
                     gamma,
                     1.0,
                     DEVICE.index
-                ),)
-            )
+                )
+                reg_losses_async.append(pool.apply_async(compute_reg_loss_parallel, (args,)))
+
+        reg_loss = 0
+        for async_loss in reg_losses_async:
+            losses = async_loss.get()
+            if losses is not None and len(losses) > 0:
+                reg_loss += np.mean(losses) # Zagreguj średnią strat z każdego podprocesu
+
 
         loss = logsumexp(
             cross_entropy + kl_beta * (log_qzx - log_pz) + reg_loss.get(), dim=0

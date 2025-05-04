@@ -144,9 +144,9 @@ def calculate_physchem(pool, peptides):
     length_result = pool.apply_async(calculate_length, (peptides,))
     charge_result = pool.apply_async(calculate_charge, (peptides,))
 
-    results['hydrophobicity_moment'] = hydrophobicity_result.get()
-    results['length'] = length_result.get()
-    results['charge'] = charge_result.get()
+    # results['hydrophobicity_moment'] = hydrophobicity_result.get()
+    # results['length'] = length_result.get()
+    # results['charge'] = charge_result.get()
 
     return results
 

@@ -140,23 +140,18 @@ def calculate_physchem(pool, peptides):
               a wartościami są listy tych właściwości dla wszystkich peptydów.
     """
     results = {}
-    hydrophobicity_result = pool.apply_async(calculate_hydrophobicity, (peptides,))
-    length_result = pool.apply_async(calculate_length, (peptides,))
-    charge_result = pool.apply_async(calculate_charge, (peptides,))
-
-    results['hydrophobicity_moment'] = hydrophobicity_result.get()
-    results['length'] = length_result.get()
-    results['charge'] = charge_result.get()
-
+    results['hydrophobicity_moment'] = pool.apply_async(calculate_hydrophobicity, (peptides,))
+    results['length'] = pool.apply_async(calculate_length, (peptides,))
+    results['charge'] = pool.apply_async(calculate_charge, (peptides,))
     return results
 
-# def gather_physchem_results(async_results):
-#     """Zbiera wyniki obliczone asynchronicznie dla właściwości fizykochemicznych."""
-#     return {
-#         'hydrophobicity_moment': async_results['hydrophobicity_moment'].get(),
-#         'length': async_results['length'].get(),
-#         'charge': async_results['charge'].get()
-#     }
+def gather_physchem_results(async_results):
+    """Zbiera wyniki obliczone asynchronicznie dla właściwości fizykochemicznych."""
+    return {
+        'hydrophobicity_moment': async_results['hydrophobicity_moment'].get(),
+        'length': async_results['length'].get(),
+        'charge': async_results['charge'].get()
+    }
 
 # dataset = TensorDataset(amp_x, tensor(amp_y))
 # train_size = int(0.8 * len(dataset))
@@ -536,7 +531,7 @@ def run_epoch_iwae(
         z = q_distr.rsample((K,)) # K, B, L
         if mode == 'test':
             latent_codes.append(z.reshape(-1,z.shape[2]).cpu().detach().numpy())
-            physchem_original = physchem_original_async # Pobierz wynik jako dict
+            physchem_original = gather_physchem_results(physchem_original_async) # Pobierz wynik jako dict
             print("physchem_original:", physchem_original)
             print("Długość length:", len(physchem_original['length']))
             print("Długość charge:", len(physchem_original['charge']))

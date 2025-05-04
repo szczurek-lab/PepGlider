@@ -377,7 +377,7 @@ def reg_loss_sign(latent_code, attribute, device, factor=1.0):
     lc_dist_mat = latent_code - latent_code.T
 
     # compute attribute distance matrix
-    attribute_tensor = tensor(attribute.values).to(device)
+    attribute_tensor = tensor(attribute).to(device)
     attribute_tensor = attribute_tensor.reshape(-1, 1)
     attribute_dist_mat = attribute_tensor - attribute_tensor.T
 
@@ -518,6 +518,7 @@ def run_epoch_iwae(
     C = VOCAB_SIZE + 1
 
     for batch, labels in dataloader:       
+        print(f"Inspecting batch shape: {batch.shape}")
         physchem_original_async = calculate_physchem(pool, (dataset_lib.decoded(batch, ""),)) 
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         S, B = peptides.shape
@@ -535,7 +536,11 @@ def run_epoch_iwae(
         z = q_distr.rsample((K,)) # K, B, L
         if mode == 'test':
             latent_codes.append(z.reshape(-1,z.shape[2]).cpu().detach().numpy())
-            physchem_original = physchem_original_async.get() # Pobierz wynik jako dict
+            physchem_original = physchem_original_async # Pobierz wynik jako dict
+            print("physchem_original:", physchem_original)
+            print("Długość length:", len(physchem_original['length']))
+            print("Długość charge:", len(physchem_original['charge']))
+            print("Długość hydrophobicity_moment:", len(physchem_original['hydrophobicity_moment']))
             physchem_expanded_list = []
             for _ in range(K):
                 # Powiel każdy element listy właściwości K razy

@@ -77,7 +77,8 @@ def calculate_length(data:list):
 def calculate_charge(data:list):
     h = modlamp.analysis.GlobalAnalysis(data)
     h.calc_charge()
-    return h.charge
+    # return h.charge
+    return list(h.charge)
 
 def calculate_isoelectricpoint(data:list):
     h = modlamp.analysis.GlobalDescriptor(data)
@@ -100,26 +101,51 @@ def calculate_hydrophobicmoment(data:list):
     h.calculate_moment()
     return list(h.descriptor.flatten())
 
+# def calculate_physchem(peptides):
+#     physchem = {}
+#     #physchem['dataset'] = []
+#     physchem['length'] = []
+#     physchem['charge'] = []
+#     #physchem['pi'] = []
+#     #physchem['aromacity'] = []
+#     physchem['hydrophobicity_moment'] = []
+#     #physchem['hm'] = []
 
-def calculate_physchem(peptides):
-    physchem = {}
-    #physchem['dataset'] = []
-    physchem['length'] = []
-    physchem['charge'] = []
-    #physchem['pi'] = []
-    #physchem['aromacity'] = []
-    physchem['hydrophobicity_moment'] = []
-    #physchem['hm'] = []
+#     # physchem['dataset'] = len(peptides)
+#     physchem['length'] = calculate_length(peptides)
+#     physchem['charge'] = calculate_charge(peptides)[0].tolist()
+#     # physchem['pi'] = calculate_isoelectricpoint(peptides)
+#     # physchem['aromacity'] = calculate_aromaticity(peptides)
+#     physchem['hydrophobicity_moment'] = calculate_hydrophobicity(peptides)[0].tolist()
+#     # physchem['hm'] = calculate_hydrophobicmoment(peptides)
 
-    # physchem['dataset'] = len(peptides)
-    physchem['length'] = calculate_length(peptides)
-    physchem['charge'] = calculate_charge(peptides)[0].tolist()
-    # physchem['pi'] = calculate_isoelectricpoint(peptides)
-    # physchem['aromacity'] = calculate_aromaticity(peptides)
-    physchem['hydrophobicity_moment'] = calculate_hydrophobicity(peptides)[0].tolist()
-    # physchem['hm'] = calculate_hydrophobicmoment(peptides)
+#     return pd.DataFrame(dict([ (k, pd.Series(v)) for k,v in physchem.items() ]))
 
-    return pd.DataFrame(dict([ (k, pd.Series(v)) for k,v in physchem.items() ]))
+def calculate_physchem(peptides, num_processes=8):
+    """
+    Oblicza właściwości fizykochemiczne dla listy peptydów równolegle,
+    dzieląc obliczenia dla każdej właściwości.
+
+    Args:
+        peptides: Lista sekwencji peptydów (ciągów znaków).
+        num_processes: Liczba procesów do użycia w puli.
+
+    Returns:
+        dict: Słownik, w którym kluczami są nazwy właściwości
+              ('length', 'charge', 'hydrophobicity_moment'),
+              a wartościami są listy tych właściwości dla wszystkich peptydów.
+    """
+    results = {}
+    with mp.Pool(processes=num_processes) as pool:
+        hydrophobicity_result = pool.apply_async(calculate_hydrophobicity, (peptides,))
+        length_result = pool.apply_async(calculate_length, (peptides,))
+        charge_result = pool.apply_async(calculate_charge, (peptides,))
+
+        results['hydrophobicity_moment'] = hydrophobicity_result.get()
+        results['length'] = length_result.get()
+        results['charge'] = charge_result.get()
+
+    return results
 
 dataset = TensorDataset(amp_x, tensor(amp_y))
 train_size = int(0.8 * len(dataset))
@@ -152,7 +178,7 @@ params = {
     "deeper_eval_every": 20,
     "save_model_every": 100,
     "reg_dim": [0,1,2], # [length, charge, hydrophobicity]
-    "gamma_schedule": (100, 1000, 3000)
+    "gamma_schedule": (1000000, 100000000, 8000)
 }
 encoder = EncoderRNN(
     params["num_heads"],
@@ -274,14 +300,32 @@ def report_sequence_char(
             title="Empty Token Accuracy", series=hue, value=empty_acc, iteration=epoch
         )
         if filtered_list:
+            # logger.report_scalar(
+            #     title="Average length metric from modlamp", series=hue, value=physchem_decoded.iloc[:,0].mean(), iteration=epoch
+            # )
+            # logger.report_scalar(
+            #     title="Average charge metric from modlamp", series=hue, value=physchem_decoded.iloc[:,1].mean(), iteration=epoch
+            # )
+            # logger.report_scalar(
+            #     title="Average hydrophobicity moment metric from modlamp", series=hue, value=physchem_decoded.iloc[:,2].mean(), iteration=epoch
+            # )
             logger.report_scalar(
-                title="Average length metric from modlamp", series=hue, value=physchem_decoded.iloc[:,0].mean(), iteration=epoch
+                title="Average length metric from modlamp",
+                series=hue,
+                value=np.mean(physchem_decoded['length']),
+                iteration=epoch
             )
             logger.report_scalar(
-                title="Average charge metric from modlamp", series=hue, value=physchem_decoded.iloc[:,1].mean(), iteration=epoch
+                title="Average charge metric from modlamp",
+                series=hue,
+                value=np.mean(physchem_decoded['charge']),
+                iteration=epoch
             )
             logger.report_scalar(
-                title="Average hydrophobicity moment metric from modlamp", series=hue, value=physchem_decoded.iloc[:,2].mean(), iteration=epoch
+                title="Average hydrophobicity moment metric from modlamp",
+                series=hue,
+                value=np.mean(physchem_decoded['hydrophobicity_moment']),
+                iteration=epoch
             )
     else:
         print(f'hue {str(hue)}')
@@ -333,6 +377,27 @@ def reg_loss_sign(latent_code, attribute, factor=1.0):
 
     return sign_loss.to(DEVICE)
 
+def _parallel_compute_reg_loss(args):
+    """Pomocnicza funkcja do równoległego obliczania reg_loss dla danego wymiaru."""
+    z_indexed, attribute_column, dim, gamma, factor = args
+    return compute_reg_loss(z_indexed, attribute_column, dim, gamma=gamma, factor=factor)
+
+def compute_reg_loss_parallel(z, indexes, physchem_decoded, reg_dim, gamma=1.0, factor=1.0, num_processes=4):
+    """Oblicza reg_loss równolegle dla podanych wymiarów."""
+    reg_loss = 0
+    args_list = []
+    z_reshaped_indexed = z.reshape(-1, z.shape[2])[indexes, :]
+
+    for dim in reg_dim:
+        attribute_column = physchem_decoded[f'attribute_{dim}']  # Zakładam, że dostęp do kolumn jest przez klucze
+        args_list.append((z_reshaped_indexed, attribute_column, dim, gamma, factor))
+
+    with mp.Pool(processes=num_processes) as pool:
+        partial_losses = pool.map(_parallel_compute_reg_loss, args_list)
+
+    reg_loss = sum(partial_losses)
+    return reg_loss
+
 def _extract_relevant_attributes(labels, reg_dim): 
     attr_list = ['Length', 'Charge', 'Hydrophobicity moment']
     attr_labels = labels[:, reg_dim]
@@ -358,7 +423,7 @@ def calculate_metric(metric_name, latent_codes, attributes, *args):
     else:
         return {}
 
-def compute_all_metrics_parallel(latent_codes, attributes, attr_list, num_processes=4):
+def compute_all_metrics_parallel(latent_codes, attributes, attr_list, num_processes=8):
     """Oblicza wszystkie metryki AR-VAE równolegle."""
     metrics_to_calculate = [
         ("interpretability", latent_codes, attributes, attr_list),
@@ -472,11 +537,12 @@ def run_epoch_iwae(
             tgt,
         ).sum(dim=2)
 
-        reg_loss = 0
-        for dim in reg_dim:
-            reg_loss += compute_reg_loss(
-            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=gamma, factor=1.0 #gamma i delta z papera
-        )
+        # reg_loss = 0
+        # for dim in reg_dim:
+        #     reg_loss += compute_reg_loss(
+        #     z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=gamma, factor=1.0 #gamma i delta z papera
+        # )
+        reg_loss = compute_reg_loss_parallel(z, indexes, physchem_decoded, reg_dim, gamma=gamma, factor=1.0)
 
         loss = logsumexp(
             cross_entropy + kl_beta * (log_qzx - log_pz) + reg_loss, dim=0
@@ -545,7 +611,8 @@ def run_epoch_iwae(
                 ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
                 ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
                 ("KL Beta", kl_beta),
-                ("Regularization Loss", reg_loss/100.0),#gamma delete
+                ("Regularization Loss", reg_loss/gamma),
+                ("Regularization Loss with gamma", reg_loss),
             ],
         )
         if eval_mode == "deep":

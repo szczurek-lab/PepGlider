@@ -403,7 +403,7 @@ def compute_reg_loss_parallel(args):
             factor=factor
         )
     else:
-        print(f"Ostrzeżenie: Brak odpowiadającej kolumny physchem dla dim {dim}")
+        print(f"Ostrzeżenie: Brak odpowiadającej kolumny physchem dla dim {reg_dim[0]}")
     return reg_loss
 
 def _extract_relevant_attributes(labels, reg_dim): 
@@ -513,7 +513,7 @@ def run_epoch_iwae(
 
     for batch, labels in dataloader:       
         # print(f"Inspecting batch shape: {batch.shape}")
-        physchem_original_async = calculate_physchem(pool, (dataset_lib.decoded(batch, ""),)) 
+        physchem_original_async = calculate_physchem(pool, dataset_lib.decoded(batch, ""),) 
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         S, B = peptides.shape
         if optimizer:

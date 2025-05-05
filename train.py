@@ -511,7 +511,7 @@ def run_epoch_iwae(
     C = VOCAB_SIZE + 1
 
     for batch, labels in dataloader:       
-        print(f"Inspecting batch shape: {batch.shape}")
+        # print(f"Inspecting batch shape: {batch.shape}")
         physchem_original_async = calculate_physchem(pool, (dataset_lib.decoded(batch, ""),)) 
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         S, B = peptides.shape
@@ -541,7 +541,7 @@ def run_epoch_iwae(
                 physchem_expanded_list.append(expanded_batch_features)
             physchem_expanded = np.array(physchem_expanded_list)
 
-        attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1,1).numpy(), physchem_expanded), axis =1))
+            attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1,1).numpy(), physchem_expanded), axis =1))
         # Kullback Leibler divergence
         log_qzx = q_distr.log_prob(z).sum(dim=2)
         log_pz = prior_distr.log_prob(z).sum(dim=2)
@@ -595,15 +595,15 @@ def run_epoch_iwae(
             )
             reg_losses_async.append(pool.apply_async(compute_reg_loss_parallel, (args,)))
 
-        aggregated_reg_loss = 0
+        reg_loss = 0
         for async_loss in reg_losses_async:
             loss_value = async_loss.get()
             if loss_value is not None:
-                aggregated_reg_loss += loss_value
+                reg_loss += loss_value
 
 
         loss = logsumexp(
-            cross_entropy + kl_beta * (log_qzx - log_pz) + tensor(aggregated_reg_loss).to(device), dim=0
+            cross_entropy + kl_beta * (log_qzx - log_pz) + tensor(reg_loss).to(device), dim=0
         ).mean(dim=0)
 
         # stats
@@ -670,8 +670,8 @@ def run_epoch_iwae(
                 ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
                 ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
                 ("KL Beta", kl_beta),
-                ("Regularization Loss", reg_loss.get()/gamma),
-                ("Regularization Loss with gamma", reg_loss.get()),
+                ("Regularization Loss", reg_loss/gamma),
+                ("Regularization Loss with gamma", reg_loss),
             ],
         )
         if eval_mode == "deep":

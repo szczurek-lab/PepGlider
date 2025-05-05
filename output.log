@@ -17,35 +17,54 @@ See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stab
   pos_dataset.loc[:, 'Label'] = 1
 ClearML Task: overwriting (reusing) task id=87bafae7b5b243c1a9553a40e03c3129
 Torch Distributed Local Rank 1 Task ID 87bafae7b5b243c1a9553a40e03c3129 detected
-2025-05-05 01:20:39,325 - clearml.Task - WARNING - Torch Distributed execution detected: Failed Detecting launch arguments, skipping
+2025-05-05 16:39:20,840 - clearml.Task - WARNING - Torch Distributed execution detected: Failed Detecting launch arguments, skipping
 ClearML results page: https://app.clear.ml/projects/3fd79a1843204536988a99bd61947a17/experiments/87bafae7b5b243c1a9553a40e03c3129/output/log
-  0%|          | 0/10000 [00:00<?, ?it/s]  0%|          | 0/10000 [00:00<?, ?it/s]Inspecting batch shape: torch.Size([256, 25])
-Inspecting batch shape: torch.Size([256, 25])
-  0%|          | 0/10000 [00:05<?, ?it/s]
-  0%|          | 0/10000 [00:05<?, ?it/s]
+  0%|          | 0/10000 [00:00<?, ?it/s]  0%|          | 0/10000 [00:00<?, ?it/s]train.py:606: UserWarning:
+
+To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+
+train.py:606: UserWarning:
+
+To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+
+  0%|          | 0/10000 [01:17<?, ?it/s]
+  0%|          | 0/10000 [01:17<?, ?it/s]
 Traceback (most recent call last):
-  File "train.py", line 868, in <module>
+  File "train.py", line 860, in <module>
     run()
-  File "train.py", line 747, in run
+  File "train.py", line 739, in run
     run_epoch_iwae(
-  File "train.py", line 547, in run_epoch_iwae
-    attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1,1).numpy(), physchem_expanded), axis =1))
-UnboundLocalError: local variable 'physchem_expanded' referenced before assignment
+  File "train.py", line 678, in run_epoch_iwae
+    report_sequence_char(
+  File "train.py", line 322, in report_sequence_char
+    value=np.mean(physchem_decoded['length']),
+  File "<__array_function__ internals>", line 200, in mean
+  File "/home/gwiazale/myenv/lib/python3.8/site-packages/numpy/core/fromnumeric.py", line 3464, in mean
+    return _methods._mean(a, axis=axis, dtype=dtype,
+  File "/home/gwiazale/myenv/lib/python3.8/site-packages/numpy/core/_methods.py", line 194, in _mean
+    ret = ret / rcount
+TypeError: unsupported operand type(s) for /: 'ApplyResult' and 'int'
 Traceback (most recent call last):
-  File "train.py", line 868, in <module>
+  File "train.py", line 860, in <module>
     run()
-  File "train.py", line 747, in run
+  File "train.py", line 739, in run
     run_epoch_iwae(
-  File "train.py", line 547, in run_epoch_iwae
-    attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1,1).numpy(), physchem_expanded), axis =1))
-UnboundLocalError: local variable 'physchem_expanded' referenced before assignment
-2025-05-05 01:20:50,073 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
+  File "train.py", line 678, in run_epoch_iwae
+    report_sequence_char(
+  File "train.py", line 322, in report_sequence_char
+    value=np.mean(physchem_decoded['length']),
+  File "<__array_function__ internals>", line 200, in mean
+  File "/home/gwiazale/myenv/lib/python3.8/site-packages/numpy/core/fromnumeric.py", line 3464, in mean
+    return _methods._mean(a, axis=axis, dtype=dtype,
+  File "/home/gwiazale/myenv/lib/python3.8/site-packages/numpy/core/_methods.py", line 194, in _mean
+    ret = ret / rcount
+TypeError: unsupported operand type(s) for /: 'ApplyResult' and 'int'
+2025-05-05 16:40:45,229 - clearml.Task - WARNING - ### TASK STOPPED - USER ABORTED - STATUS CHANGED ###
 /usr/lib/python3.8/multiprocessing/resource_tracker.py:216: UserWarning: resource_tracker: There appear to be 5 leaked semaphore objects to clean up at shutdown
   warnings.warn('resource_tracker: There appear to be %d '
-WARNING:torch.distributed.elastic.multiprocessing.api:Sending process 3770560 closing signal SIGTERM
 /usr/lib/python3.8/multiprocessing/resource_tracker.py:216: UserWarning: resource_tracker: There appear to be 5 leaked semaphore objects to clean up at shutdown
   warnings.warn('resource_tracker: There appear to be %d '
-ERROR:torch.distributed.elastic.multiprocessing.api:failed (exitcode: 1) local_rank: 0 (pid: 3770559) of binary: /home/gwiazale/myenv/bin/python3
+ERROR:torch.distributed.elastic.multiprocessing.api:failed (exitcode: 1) local_rank: 0 (pid: 2611184) of binary: /home/gwiazale/myenv/bin/python3
 Traceback (most recent call last):
   File "/home/gwiazale/myenv/bin/torchrun", line 8, in <module>
     sys.exit(main())
@@ -64,14 +83,20 @@ torch.distributed.elastic.multiprocessing.errors.ChildFailedError:
 train.py FAILED
 ------------------------------------------------------------
 Failures:
-  <NO_OTHER_FAILURES>
+[1]:
+  time      : 2025-05-05_16:40:51
+  host      : rudy.mimuw.edu.pl
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 2611185)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
 ------------------------------------------------------------
 Root Cause (first observed failure):
 [0]:
-  time      : 2025-05-05_01:20:51
+  time      : 2025-05-05_16:40:51
   host      : rudy.mimuw.edu.pl
   rank      : 0 (local_rank: 0)
-  exitcode  : 1 (pid: 3770559)
+  exitcode  : 1 (pid: 2611184)
   error_file: <N/A>
   traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
 ============================================================

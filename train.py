@@ -76,7 +76,7 @@ def set_seed(seed: int = 42) -> None:
 
 def calculate_length(data:list):
     lengths = [len(x) for x in data]
-    return lengths
+    return [np.array(lengths)]
 
 def calculate_charge(data:list):
     h = modlamp.analysis.GlobalAnalysis(data)

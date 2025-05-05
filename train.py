@@ -529,21 +529,25 @@ def run_epoch_iwae(
         q_distr = Normal(mu, std)
         z = q_distr.rsample((K,)) # K, B, L
         if mode == 'test':
-            latent_codes.append(z.reshape(-1,z.shape[2]).cpu().detach().numpy())
-            physchem_original = gather_physchem_results(physchem_original_async) # Pobierz wynik jako dict
-            print("physchem_original:", physchem_original)
-            print("Długość length:", len(physchem_original['length']))
-            print("Długość charge:", len(physchem_original['charge']))
-            print("Długość hydrophobicity_moment:", len(physchem_original['hydrophobicity_moment']))
-            physchem_expanded_list = []
-            for _ in range(K):
-                # Powiel każdy element listy właściwości K razy
-                expanded_batch_features = np.array([physchem_original[key] for key in ['length', 'charge', 'hydrophobicity_moment']]).T.flatten()
-                physchem_expanded_list.append(expanded_batch_features)
-            physchem_expanded = np.array(physchem_expanded_list)
+                    latent_codes.append(z.reshape(-1, z.shape[2]).cpu().detach().numpy())
+                    physchem_original = gather_physchem_results(physchem_original_async) # Pobierz wynik jako dict
 
-            attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1,1).numpy(), physchem_expanded), axis =1))
-        # Kullback Leibler divergence
+                    num_peptides = len(physchem_original['length'][0])
+                    physchem_expanded_list = []
+
+                    for i in range(num_peptides):
+                        peptide_features = np.array([
+                            physchem_original['length'][0][i],
+                            physchem_original['charge'][0][i],
+                            physchem_original['hydrophobicity_moment'][0][i]
+                        ])
+                        # Powielaj cechy peptydu K razy
+                        expanded_peptide_features = np.repeat(peptide_features[np.newaxis, :], K, axis=0)
+                        physchem_expanded_list.append(expanded_peptide_features)
+
+                    physchem_expanded = np.concatenate(physchem_expanded_list, axis=0)
+
+                    attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1, 1).numpy(), physchem_expanded), axis=1))        # Kullback Leibler divergence
         log_qzx = q_distr.log_prob(z).sum(dim=2)
         log_pz = prior_distr.log_prob(z).sum(dim=2)
 

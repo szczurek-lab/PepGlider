@@ -544,7 +544,7 @@ def run_epoch_iwae(
                 physchem_expanded_list.append(expanded_batch_features)
             physchem_expanded = np.array(physchem_expanded_list)
 
-            attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1,1).numpy(), physchem_expanded), axis =1))
+        attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1,1).numpy(), physchem_expanded), axis =1))
         # Kullback Leibler divergence
         log_qzx = q_distr.log_prob(z).sum(dim=2)
         log_pz = prior_distr.log_prob(z).sum(dim=2)

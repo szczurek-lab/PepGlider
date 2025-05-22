@@ -336,9 +336,9 @@ def report_sequence_char(
                 iteration=epoch
             )
     else:
-        print(f'hue {str(hue)}')
-        print(f'metrics {metrics}')
-        print(f'epoch {epoch}')
+        #print(f'hue {str(hue)}')
+        #print(f'metrics {metrics}')
+        #print(f'epoch {epoch}')
         for attr in metrics.keys():
             if attr == 'Interpretability':
                 for subattr in metrics[attr].keys():
@@ -456,7 +456,7 @@ def gather_metrics(async_results):
     ar_vae_metrics = {}
     for name, async_result in async_results.items():
         result = async_result.get()
-        print(f"Przetworzono wynik dla {name}: {result}")
+        #print(f"Przetworzono wynik dla {name}: {result}")
         ar_vae_metrics.update(result)
     return ar_vae_metrics
 
@@ -590,7 +590,8 @@ def run_epoch_iwae(
         reg_losses_async = []
         for i, dim in enumerate(reg_dim):
             args = (
-                z.detach().cpu(),
+                z,
+# .detach().cpu(),
                 indexes,
                 physchem_decoded,
                 [dim],  # Przekazujemy tylko jeden wymiar na proces
@@ -738,9 +739,9 @@ def run():
             train_loader.sampler.set_epoch(epoch)
             eval_mode = "deep" if epoch % params["deeper_eval_every"] == 0 else "fast"
             beta_0, beta_1, t_1 = params["kl_beta_schedule"]
-            kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, 0.01)
+            kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, beta_1)
             gamma_0, gamma_1, t_1 = params["gamma_schedule"]
-            gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, 0.01)
+            gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, gamma_1)
             run_epoch_iwae(
                 mode="train",
                 encoder=encoder,
@@ -822,7 +823,7 @@ if __name__ == '__main__':
         "deeper_eval_every": 20,
         "save_model_every": 100,
         "reg_dim": [0,1,2], # [length, charge, hydrophobicity]
-        "gamma_schedule": (1000000, 100000000, 8000)
+        "gamma_schedule": (10, 1000, 8000)
     }
     encoder = EncoderRNN(
         params["num_heads"],

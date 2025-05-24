@@ -94,7 +94,7 @@ def calculate_physchem(peptides):
     physchem['charge'] = []
     #physchem['pi'] = []
     #physchem['aromacity'] = []
-    physchem['hydrophobicity'] = []
+    physchem['hydrophobicity_moment'] = []
     #physchem['hm'] = []
 
     # physchem['dataset'] = len(peptides)
@@ -296,6 +296,8 @@ def reg_loss_sign(latent_code, attribute, factor=1.0):
     # compute latent distance matrix
     latent_code = latent_code.to(DEVICE).reshape(-1, 1)
     lc_dist_mat = latent_code - latent_code.T
+    print(attribute.head())
+    print(attribute.dtype)
 
     # compute attribute distance matrix
     attribute_tensor = tensor(attribute.values).to(DEVICE)

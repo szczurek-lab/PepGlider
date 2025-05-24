@@ -136,7 +136,7 @@ params = {
     "deeper_eval_every": 20,
     "save_model_every": 100,
     "reg_dim": [0,1,2], # [length, charge, hydrophobicity]
-    "gamma_schedule": (1000000, 100000000, 8000)
+    "gamma_schedule": (1, 20, 8000)
 }
 encoder = EncoderRNN(
     params["num_heads"],
@@ -528,9 +528,9 @@ def run():
     for epoch in tqdm(range(params["epochs"])):
         eval_mode = "deep" if epoch % params["deeper_eval_every"] == 0 else "fast"
         beta_0, beta_1, t_1 = params["kl_beta_schedule"]
-        kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, 0.01)
+        kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, beta_1)
         gamma_0, gamma_1, t_1 = params["gamma_schedule"]
-        gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, 0.01)
+        gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, gamma_0)
         run_epoch_iwae(
             mode="train",
             encoder=encoder,

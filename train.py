@@ -333,7 +333,7 @@ def run(rank, world_size):
     )
     if params["use_clearml"]:
         task = clearml.Task.init(
-            project_name="ar-vae-v3_pooling_test", task_name=params["task_name"]
+            project_name="ar-vae-v4", task_name=params["task_name"]
         )
         task.set_parameters(params)
         logger = task.logger
@@ -420,7 +420,7 @@ if __name__ == '__main__':
     set_seed()
     # Inicjalizacja DDP jest już na poziomie globalnym
     world_size = cuda.device_count()
-    tmp.spawn(run, args=(world_size), nprocs=world_size)
+    tmp.spawn(run, args=(world_size,), nprocs=world_size)
 # autoencoder.load_state_dict(load('./gmm_model.pt'))
 # autoencoder = autoencoder.to('cpu')  
 

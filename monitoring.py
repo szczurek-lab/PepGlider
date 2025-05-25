@@ -103,19 +103,19 @@ def report_sequence_char(
             logger.report_scalar(
                 title="Average length metric from modlamp",
                 series=hue,
-                value=np.mean(physchem_decoded['length']),
+                value=np.mean(physchem_decoded[1]),
                 iteration=epoch
             )
             logger.report_scalar(
                 title="Average charge metric from modlamp",
                 series=hue,
-                value=np.mean(physchem_decoded['charge']),
+                value=np.mean(physchem_decoded[2]),
                 iteration=epoch
             )
             logger.report_scalar(
                 title="Average hydrophobicity moment metric from modlamp",
                 series=hue,
-                value=np.mean(physchem_decoded['hydrophobicity_moment']),
+                value=np.mean(physchem_decoded[0]),
                 iteration=epoch
             )
     else:

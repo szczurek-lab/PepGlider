@@ -136,7 +136,7 @@ def run_epoch_iwae(
                     latent_codes.append(z.reshape(-1, z.shape[2]).cpu().detach().numpy())
                     physchem_original = d.gather_physchem_results(physchem_original_async) # Pobierz wynik jako dict
 
-                    num_peptides = len(physchem_original['length'][0])
+                    num_peptides = len(physchem_original[1][0])
                     physchem_expanded_list = []
 
                     for i in range(num_peptides):

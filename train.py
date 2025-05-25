@@ -141,9 +141,9 @@ def run_epoch_iwae(
 
                     for i in range(num_peptides):
                         peptide_features = np.array([
-                            physchem_original['length'][0][i],
-                            physchem_original['charge'][0][i],
-                            physchem_original['hydrophobicity_moment'][0][i]
+                            physchem_original[0][0][i],
+                            physchem_original[1][0][i],
+                            physchem_original[2][0][i],
                         ])
                         # Powielaj cechy peptydu K razy
                         expanded_peptide_features = np.repeat(peptide_features[np.newaxis, :], K, axis=0)
@@ -177,7 +177,7 @@ def run_epoch_iwae(
         reg_loss = 0
         for dim in reg_dim:
             reg_loss += r.compute_reg_loss(
-            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=gamma, factor=1.0 #gamma i delta z papera
+            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded[dim], dim, gamma=gamma, factor=1.0 #gamma i delta z papera
         )
 
         loss = logsumexp(
@@ -299,7 +299,7 @@ def run(rank, world_size):
         "device": "cuda",
         "deeper_eval_every": 20,
         "save_model_every": 100,
-        "reg_dim": [0,1,2], # [length, charge, hydrophobicity]
+        "reg_dim": [0,1,2], # [hydrophobicity_moment, length, charge]
         "gamma_schedule": (0.1, 20, 8000)
     }
     encoder = EncoderRNN(

@@ -54,8 +54,8 @@ def calculate_physchem(pool, peptides):
 
 def gather_physchem_results(async_results):
     """Zbiera wyniki obliczone asynchronicznie dla właściwości fizykochemicznych."""
-    return {
-        'hydrophobicity_moment': async_results['hydrophobicity_moment'].get(),
-        'length': async_results['length'].get(),
-        'charge': async_results['charge'].get()
-    }
+    return [
+        async_results['hydrophobicity_moment'].get(),  # index 0
+        async_results['length'].get(),                 # index 1
+        async_results['charge'].get()                  # index 2
+    ]

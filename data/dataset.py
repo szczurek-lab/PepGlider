@@ -17,12 +17,10 @@ def check_if_std_aa(sequence):
         return True
     return False
 
-
 def check_length(sequence, min_length, max_length):
     if min_length <= len(sequence) <= max_length:
         return True
     return False
-
 
 def to_one_hot(x):
     alphabet = list('ACDEFGHIKLMNPQRSTVWY')
@@ -70,8 +68,6 @@ def pad(x: List[List[float]], max_length: int = 25) -> torch.Tensor:
         return torch.cat((padded_sequences, padding), dim=1)
     else:
         return padded_sequences
-
-
 
 class AMPDataManager:
 

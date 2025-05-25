@@ -177,3 +177,57 @@ def _compute_score_matrix(mus, ys):
             else:
                 score_matrix[i, j] = 0.
     return score_matrix
+
+def _extract_relevant_attributes(labels, reg_dim): 
+    attr_list = ['Length', 'Charge', 'Hydrophobicity moment']
+    attr_labels = labels[:, reg_dim]
+    return attr_labels, attr_list #kiedys do zmiany na bardziej uniwersalne
+
+def calculate_metric(metric_name, latent_codes, attributes, *args):
+    """Oblicza daną metrykę i zwraca ją w formie słownika."""
+    if metric_name == "interpretability":
+        result = compute_interpretability_metric(latent_codes, attributes, *args)
+        return {"Interpretability": result}
+    elif metric_name == "correlation":
+        result = compute_correlation_score(latent_codes, attributes)
+        return result
+    elif metric_name == "modularity":
+        result = compute_modularity(latent_codes, attributes)
+        return result
+    elif metric_name == "mig":
+        result = compute_mig(latent_codes, attributes)
+        return result
+    elif metric_name == "sap_score":
+        result = compute_sap_score(latent_codes, attributes)
+        return result
+    else:
+        return {}
+
+def calculate_metric_async(pool, name, latent_codes, attributes, *args):
+    """Asynchronicznie oblicza pojedynczą metrykę."""
+    return pool.apply_async(calculate_metric, (name, latent_codes, attributes, *args))
+
+def compute_all_metrics_async(pool, latent_codes, attributes, attr_list):
+    """Wysyła zadania obliczenia wszystkich metryk AR-VAE do puli procesów asynchronicznie."""
+    metrics_to_calculate = [
+        ("interpretability", latent_codes, attributes, attr_list),
+        ("correlation", latent_codes, attributes),
+        ("modularity", latent_codes, attributes),
+        ("mig", latent_codes, attributes),
+        ("sap_score", latent_codes, attributes),
+    ]
+
+    async_results = {}
+    for name, lc, attr, *args in metrics_to_calculate:
+        async_results[name] = calculate_metric_async(pool, name, lc, attr, *args)
+
+    return async_results
+
+def gather_metrics(async_results):
+    """Zbiera wyniki obliczonych asynchronicznie metryk."""
+    ar_vae_metrics = {}
+    for name, async_result in async_results.items():
+        result = async_result.get()
+        #print(f"Przetworzono wynik dla {name}: {result}")
+        ar_vae_metrics.update(result)
+    return ar_vae_metrics

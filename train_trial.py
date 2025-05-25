@@ -24,7 +24,7 @@ import json
 import modlamp.descriptors
 import modlamp.analysis
 import modlamp.sequences
-import metrics as m
+import ar_vae_metrics as m
 
 cuda.memory._set_allocator_settings("max_split_size_mb:128")
 ROOT_DIR = Path(__file__).parent#.parent

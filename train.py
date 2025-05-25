@@ -177,7 +177,7 @@ def run_epoch_iwae(
         reg_loss = 0
         for dim in reg_dim:
             reg_loss += r.compute_reg_loss(
-            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded[dim], dim, gamma=gamma, factor=1.0 #gamma i delta z papera
+            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded[dim], dim, gamma, DEVICE.index #gamma i delta z papera
         )
 
         loss = logsumexp(

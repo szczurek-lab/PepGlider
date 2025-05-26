@@ -276,12 +276,34 @@ def run_epoch_iwae(
             )
     return stat_sum["total"] / len_data
 
-def run(rank, world_size, params, logger):
+def run(rank, world_size):
     global ROOT_DIR 
     ROOT_DIR = Path(__file__).parent#.parent
     DATA_DIR = ROOT_DIR / "data"
     global MODELS_DIR 
     MODELS_DIR = ROOT_DIR
+    params = {
+        "num_heads": 4,
+        "num_layers": 6,
+        "layer_norm": True,
+        "latent_dim": 56,
+        "encoding": "add",
+        "dropout": 0.1,
+        "batch_size": 512,
+        "lr": 0.001,
+        "kl_beta_schedule": (0.000001, 0.01, 8000),
+        "train_size": None,
+        "epochs": 10000,
+        "iwae_samples": 10,
+        "model_name": "basic",
+        "use_clearml": True,
+        "task_name": "ar_vae_with_ar_vae_metrics",
+        "device": "cuda",
+        "deeper_eval_every": 20,
+        "save_model_every": 100,
+        "reg_dim": [0,1,2], # [hydrophobicity_moment, length, charge]
+        "gamma_schedule": (0.1, 20, 8000)
+    }
     encoder = EncoderRNN(
         params["num_heads"],
         params["num_layers"],
@@ -311,6 +333,14 @@ def run(rank, world_size, params, logger):
         lr=params["lr"],
         betas=(0.9, 0.999),
     )
+    if params["use_clearml"]:
+        task = clearml.Task.init(
+            project_name="ar-vae-v4", task_name=params["task_name"]
+        )
+        task.set_parameters(params)
+        logger = task.logger
+    else:
+        logger = None
 
     best_loss = 1e18
     num_processes = 8
@@ -390,39 +420,9 @@ if __name__ == '__main__':
     # os.environ["USE_DISTRIBUTED"] = "1"
     cuda.memory._set_allocator_settings("max_split_size_mb:128")
     set_seed()
-    params = {
-        "num_heads": 4,
-        "num_layers": 6,
-        "layer_norm": True,
-        "latent_dim": 56,
-        "encoding": "add",
-        "dropout": 0.1,
-        "batch_size": 512,
-        "lr": 0.001,
-        "kl_beta_schedule": (0.000001, 0.01, 8000),
-        "train_size": None,
-        "epochs": 10000,
-        "iwae_samples": 10,
-        "model_name": "basic",
-        "use_clearml": True,
-        "task_name": "ar_vae_with_ar_vae_metrics",
-        "device": "cuda",
-        "deeper_eval_every": 20,
-        "save_model_every": 100,
-        "reg_dim": [0,1,2], # [hydrophobicity_moment, length, charge]
-        "gamma_schedule": (0.1, 20, 8000)
-    }
-    if params["use_clearml"]:
-        task = clearml.Task.init(
-            project_name="ar-vae-v4", task_name=params["task_name"]
-        )
-        task.set_parameters(params)
-        logger = task.logger
-    else:
-        logger = None
     # Inicjalizacja DDP jest już na poziomie globalnym
     world_size = cuda.device_count()
-    tmp.spawn(run, args=(world_size,params, logger,), nprocs=world_size)
+    tmp.spawn(run, args=(world_size,), nprocs=world_size)
 # autoencoder.load_state_dict(load('./gmm_model.pt'))
 # autoencoder = autoencoder.to('cpu')  
 

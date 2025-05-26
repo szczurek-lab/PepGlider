@@ -30,10 +30,11 @@ import regularization as r
 
 def setup_ddp(rank, world_size):
     # local_rank = int(os.environ["LOCAL_RANK"])
-    os.environ["MASTER_ADDR"] = "0"
-    os.environ["MASTER_PORT"] = "12355"
+#    os.environ["MASTER_ADDR"] = "0"
+#    os.environ["MASTER_PORT"] = "12355"
     cuda.set_device(rank)
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
+    init_method="env://"
     return device(f"cuda:{rank}")
 
 def set_seed(seed: int = 42) -> None:
@@ -277,6 +278,7 @@ def run_epoch_iwae(
     return stat_sum["total"] / len_data
 
 def run(rank, world_size):
+    print(f'rank:{rank}')
     global ROOT_DIR 
     ROOT_DIR = Path(__file__).parent#.parent
     DATA_DIR = ROOT_DIR / "data"

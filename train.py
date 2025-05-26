@@ -30,7 +30,7 @@ import regularization as r
 
 def setup_ddp(rank, world_size):
     # local_rank = int(os.environ["LOCAL_RANK"])
-    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_ADDR"] = "cuda:0"
     os.environ["MASTER_PORT"] = "12355"
     cuda.set_device(rank)
     init_process_group(backend="nccl", rank=rank, world_size=world_size)

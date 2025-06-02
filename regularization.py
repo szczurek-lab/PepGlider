@@ -40,7 +40,7 @@ def compute_reg_loss_test(z, labels, reg_dim, gamma, device, factor=1.0):
     Computes the regularization loss
     """
     x = z[:, reg_dim]
-    reg_loss = reg_loss_sign(x, labels, device = device, factor=factor)
+    reg_loss = reg_loss_sign_test(x, labels, device = device, factor=factor)
     return gamma * reg_loss
 
 def reg_loss_sign_test(latent_code, attribute, device, factor=1.0):

@@ -6,6 +6,10 @@ def calculate_length(data:list):
     lengths = [len(x) for x in data]
     return [np.array(lengths)]
 
+def calculate_length_test(data:list):
+    lengths = [len(x) for x in data]
+    return lengths
+
 def calculate_charge(data:list):
     h = modlamp.analysis.GlobalAnalysis(data)
     h.calc_charge()
@@ -71,7 +75,7 @@ def calculate_physchem_test(peptides):
     #physchem['hm'] = []
 
     # physchem['dataset'] = len(peptides)
-    physchem['length'] = calculate_length(peptides)
+    physchem['length'] = calculate_length_test(peptides)
     physchem['charge'] = calculate_charge(peptides)[0].tolist()
     # physchem['pi'] = calculate_isoelectricpoint(peptides)
     # physchem['aromacity'] = calculate_aromaticity(peptides)

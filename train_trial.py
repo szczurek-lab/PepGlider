@@ -137,7 +137,7 @@ def run_epoch_iwae(
         if mode == 'test':
             latent_codes.append(z.reshape(-1,z.shape[2]).cpu().detach().numpy())
             physchem_expanded = pd.concat([physchem_original]* K, ignore_index=True).to_numpy()
-            attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1,1).numpy(), physchem_expanded), axis =1))        log_qzx = q_distr.log_prob(z).sum(dim=2)
+            attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1,1).numpy(), physchem_expanded), axis =1))
         log_pz = prior_distr.log_prob(z).sum(dim=2)
 
         kl_div = log_qzx - log_pz

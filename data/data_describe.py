@@ -1,6 +1,6 @@
 import numpy as np
 import modlamp.analysis
-
+import pandas as pd
 
 def calculate_length(data:list):
     lengths = [len(x) for x in data]
@@ -59,3 +59,23 @@ def gather_physchem_results(async_results):
         async_results['length'].get(),                 # index 1
         async_results['charge'].get()                  # index 2
     ]
+
+def calculate_physchem_test(peptides):
+    physchem = {}
+    #physchem['dataset'] = []
+    physchem['length'] = []
+    physchem['charge'] = []
+    #physchem['pi'] = []
+    #physchem['aromacity'] = []
+    physchem['hydrophobicity_moment'] = []
+    #physchem['hm'] = []
+
+    # physchem['dataset'] = len(peptides)
+    physchem['length'] = calculate_length(peptides)
+    physchem['charge'] = calculate_charge(peptides)[0].tolist()
+    # physchem['pi'] = calculate_isoelectricpoint(peptides)
+    # physchem['aromacity'] = calculate_aromaticity(peptides)
+    physchem['hydrophobicity_moment'] = calculate_hydrophobicmoment(peptides)[0].tolist()
+    # physchem['hm'] = calculate_hydrophobicmoment(peptides)
+
+    return pd.DataFrame(dict([ (k, pd.Series(v)) for k,v in physchem.items() ]))

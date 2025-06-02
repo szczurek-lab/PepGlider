@@ -1,18 +1,19 @@
 import os
-from torch import optim, nn, utils, logsumexp, device, cuda, save, isinf, backends, manual_seed, LongTensor, zeros_like, ones_like, isnan
+from torch import optim, nn, logsumexp, device, cuda, save, isinf, backends, manual_seed, LongTensor, zeros_like, ones_like, isnan, tensor
 from torch.distributions import Normal
 from torch.utils.data import TensorDataset, DataLoader, random_split
-from model.model import EncoderRNN, DecoderRNN#, VAE
-import pandas as pd
-DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
+import torch.multiprocessing as tmp
+from torch.utils.data.distributed import DistributedSampler
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed import init_process_group, destroy_process_group
+from model.model import EncoderRNN, DecoderRNN
 import pandas as pd
 import numpy as np
-from  torch import tensor, long, tanh, sign, isnan
-from torch.autograd import Variable
+# from torch.autograd import Variable
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import clearml
-from typing import Optional, Literal, List, Tuple, Union
+from typing import Optional, Literal
 from torch.optim import Adam
 import itertools
 import random
@@ -21,15 +22,20 @@ from tqdm import tqdm
 import data.dataset as dataset_lib
 from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
 import json
-import modlamp.descriptors
-import modlamp.analysis
-import modlamp.sequences
+import multiprocessing as mp
 import ar_vae_metrics as m
+import data.data_describe as d
+import monitoring as mn
+import regularization as r
 
-cuda.memory._set_allocator_settings("max_split_size_mb:128")
-ROOT_DIR = Path(__file__).parent#.parent
-DATA_DIR = ROOT_DIR / "data"
-MODELS_DIR = ROOT_DIR
+def setup_ddp(rank, world_size):
+    # local_rank = int(os.environ["LOCAL_RANK"])
+#    os.environ["MASTER_ADDR"] = "0"
+#    os.environ["MASTER_PORT"] = "12355"
+    cuda.set_device(rank)
+    init_process_group(backend="nccl", rank=rank, world_size=world_size)
+    init_method="env://"
+    return device(f"cuda:{rank}")
 
 def set_seed(seed: int = 42) -> None:
     """
@@ -47,113 +53,6 @@ def set_seed(seed: int = 42) -> None:
     os.environ["PYTHONHASHSEED"] = str(seed)
     # logger.info(f"Random seed set to {seed}")
     return None
-set_seed()
-
-data_manager = dataset_lib.AMPDataManager(
-    DATA_DIR / 'unlabelled_positive.csv',
-    DATA_DIR / 'unlabelled_negative.csv',
-    min_len=MIN_LENGTH,
-    max_len=MAX_LENGTH)
-
-amp_x, amp_y, amp_x_raw = data_manager.get_merged_data()
-
-def calculate_length(data:list):
-    lengths = [len(x) for x in data]
-    return lengths
-
-def calculate_charge(data:list):
-    h = modlamp.analysis.GlobalAnalysis(data)
-    h.calc_charge()
-    return h.charge
-
-def calculate_isoelectricpoint(data:list):
-    h = modlamp.analysis.GlobalDescriptor(data)
-    h.isoelectric_point()
-    return list(h.descriptor.flatten())
-
-def calculate_aromaticity(data:list):
-    h = modlamp.analysis.GlobalDescriptor(data)
-    h.aromaticity()
-    return list(h.descriptor.flatten())
-
-def calculate_hydrophobicity(data:list):
-    h = modlamp.analysis.GlobalAnalysis(data)
-    h.calc_H(scale='eisenberg')
-    return list(h.H)
-
-def calculate_hydrophobicmoment(data:list):
-    h = modlamp.analysis.GlobalAnalysis(data)
-    # h.calc_H(scale='eisenberg')
-    h.calc_uH()
-    return list(h.uH)
-
-def calculate_physchem(peptides):
-    physchem = {}
-    #physchem['dataset'] = []
-    physchem['length'] = []
-    physchem['charge'] = []
-    #physchem['pi'] = []
-    #physchem['aromacity'] = []
-    physchem['hydrophobicity_moment'] = []
-    #physchem['hm'] = []
-
-    # physchem['dataset'] = len(peptides)
-    physchem['length'] = calculate_length(peptides)
-    physchem['charge'] = calculate_charge(peptides)[0].tolist()
-    # physchem['pi'] = calculate_isoelectricpoint(peptides)
-    # physchem['aromacity'] = calculate_aromaticity(peptides)
-    physchem['hydrophobicity_moment'] = calculate_hydrophobicity(peptides)[0].tolist()
-    # physchem['hm'] = calculate_hydrophobicmoment(peptides)
-
-    return pd.DataFrame(dict([ (k, pd.Series(v)) for k,v in physchem.items() ]))
-
-dataset = TensorDataset(amp_x, tensor(amp_y))
-train_size = int(0.8 * len(dataset))
-eval_size = len(dataset) - train_size
-
-train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
-
-train_loader = DataLoader(train_dataset, batch_size=512, shuffle=True)
-eval_loader = DataLoader(eval_dataset, batch_size=512, shuffle=False)
-
-params = {
-    "num_heads": 4,
-    "num_layers": 6,
-    "layer_norm": True,
-    "latent_dim": 56,
-    "encoding": "add",
-    "dropout": 0.1,
-    "batch_size": 512,
-    "lr": 0.001,
-    "kl_beta_schedule": (0.000001, 0.01, 8000),
-    "train_size": None,
-    "epochs": 10000,
-    "iwae_samples": 10,
-    "model_name": "basic",
-    "use_clearml": True,
-    "task_name": "ar_vae_with_ar_vae_metrics",
-    "device": "cuda",
-    "deeper_eval_every": 20,
-    "save_model_every": 100,
-    "reg_dim": [0,1,2], # [length, charge, hydrophobicity]
-    "gamma_schedule": (0.1, 20, 8000)
-}
-encoder = EncoderRNN(
-    params["num_heads"],
-    params["num_layers"],
-    params["latent_dim"],
-    params["encoding"],
-    params["dropout"],
-    params["layer_norm"],
-)
-decoder = DecoderRNN(
-    params["num_heads"],
-    params["num_layers"],
-    params["latent_dim"],
-    params["encoding"],
-    params["dropout"],
-    params["layer_norm"],
-)
 
 def get_model_arch_hash(model: nn.Module) -> int:
     return hash(";".join(sorted([str(v.shape) for v in model.state_dict().values()])))
@@ -167,155 +66,6 @@ def save_model(model: nn.Module, name: str, with_hash: bool = True) -> None:
     save(
         model.state_dict(), (MODELS_DIR / model_name).with_suffix(".pt")
     )
-
-def report_scalars(
-    logger: clearml.Logger,
-    hue: str,
-    epoch: int,
-    scalars: List[Union[Tuple[str, float], Tuple[str, str, float]]],
-):
-    for tpl in scalars:
-        if len(tpl) == 2:
-            name, val = tpl
-            current_hue = hue
-        else:
-            name, hue_suffix, val = tpl
-            current_hue = f"{hue} - {hue_suffix}"
-        logger.report_scalar(title=name, series=current_hue, value=val, iteration=epoch)
-
-def report_sequence_char(
-    logger: clearml.Logger,
-    hue: str,
-    epoch: int,
-    seq_true: np.ndarray,
-    model_out: np.ndarray,
-    metrics: dict
-):
-    if metrics is None:
-        seq_pred = model_out.argmax(axis=2)
-        src_pred = dataset_lib.decoded(tensor(seq_pred).permute(1, 0), "")
-        filtered_list = [item for item in src_pred if item.strip()]
-        if not filtered_list:
-            print('All predicted sequences are empty')
-        else:
-            physchem_decoded = calculate_physchem(filtered_list)
-        len_true = seq_true.argmin(axis=0)
-        len_pred = seq_pred.argmin(axis=0)
-
-        pred_len_acc = (len_true == len_pred).mean()
-        pred_len_mae = np.abs(len_true - len_pred).mean()
-
-        correct, overall = 0, 0
-        amino_correct, amino_total = 0, 0
-        empty_correct, empty_total = 0, 0
-
-        for len_ in range(len_pred.max() + 1):
-            idx = len_pred == len_
-            true_sub = seq_true[:, idx]
-            pred_sub = seq_pred[:, idx]
-
-            # Overall token accuracy (within the predicted length)
-            correct += (true_sub[:len_].reshape(-1) == pred_sub[:len_].reshape(-1)).sum()
-            overall += len_ * idx.sum()
-
-            # Amino acid accuracy (non-padding tokens)
-            amino_mask = true_sub > 0
-            amino_correct += (true_sub[amino_mask] == pred_sub[amino_mask]).sum()
-            amino_total += amino_mask.sum()
-
-            # Empty (padding) token accuracy
-            empty_mask = true_sub == 0
-            empty_correct += (true_sub[empty_mask] == pred_sub[empty_mask]).sum()
-            empty_total += empty_mask.sum()
-
-        on_predicted_acc = correct / overall if overall > 0 else 0
-        amino_acc = amino_correct / amino_total if amino_total > 0 else 0
-        empty_acc = empty_correct / empty_total if empty_total > 0 else 0
-
-        logger.report_scalar(
-            title="Length Prediction Accuracy",
-            series=hue,
-            value=pred_len_acc,
-            iteration=epoch,
-        )
-        logger.report_scalar(
-            title="Length Loss [mae]", series=hue, value=pred_len_mae, iteration=epoch
-        )
-        logger.report_scalar(
-            title="Token Prediction Accuracy (on predicted length)",
-            series=hue,
-            value=on_predicted_acc,
-            iteration=epoch,
-        )
-        logger.report_scalar(
-            title="Amino Token Accuracy", series=hue, value=amino_acc, iteration=epoch
-        )
-        logger.report_scalar(
-            title="Empty Token Accuracy", series=hue, value=empty_acc, iteration=epoch
-        )
-        if filtered_list:
-            logger.report_scalar(
-                title="Average length metric from modlamp", series=hue, value=physchem_decoded.iloc[:,0].mean(), iteration=epoch
-            )
-            logger.report_scalar(
-                title="Average charge metric from modlamp", series=hue, value=physchem_decoded.iloc[:,1].mean(), iteration=epoch
-            )
-            logger.report_scalar(
-                title="Average hydrophobicity metric from modlamp", series=hue, value=physchem_decoded.iloc[:,2].mean(), iteration=epoch
-            )
-    else:
-        for attr in metrics.keys():
-            if attr == 'Interpretability':
-                for subattr in metrics[attr].keys():
-                    logger.report_scalar(
-                        title=f"Interpretability - {subattr} of latent space", series=hue, value=metrics["Interpretability"][subattr][1], iteration=epoch
-                    )
-            else:
-                logger.report_scalar(
-                    title=f"{attr} of latent space", series=hue, value=metrics[attr], iteration=epoch
-                )
-
-def compute_reg_loss(z, labels, reg_dim, gamma, factor=1.0):
-    """
-    Computes the regularization loss
-    """
-    x = z[:, reg_dim]
-    reg_loss = reg_loss_sign(x, labels, factor=factor)
-    return gamma * reg_loss
-
-def reg_loss_sign(latent_code, attribute, factor=1.0):
-    """
-    Computes the regularization loss given the latent code and attribute
-    Args:
-        latent_code: torch Variable, (N,)
-        attribute: torch Variable, (N,)
-        factor: parameter for scaling the loss
-    Returns
-        scalar, loss
-    """
-    # compute latent distance matrix
-    latent_code = latent_code.to(DEVICE).reshape(-1, 1)
-    lc_dist_mat = latent_code - latent_code.T
-    print(attribute.head())
-    print(attribute.dtype)
-
-    # compute attribute distance matrix
-    attribute_tensor = tensor(attribute.values).to(DEVICE)
-    attribute_tensor = attribute_tensor.reshape(-1, 1)
-    attribute_dist_mat = attribute_tensor - attribute_tensor.T
-
-    # compute regularization loss
-    loss_fn = nn.L1Loss()
-    lc_tanh = tanh(lc_dist_mat * factor)
-    attribute_sign = sign(attribute_dist_mat)
-    sign_loss = loss_fn(lc_tanh, attribute_sign.float())
-
-    return sign_loss.to(DEVICE)
-
-def _extract_relevant_attributes(labels, reg_dim): 
-    attr_list = ['Length', 'Charge', 'Hydrophobicity']
-    attr_labels = labels[:, reg_dim]
-    return attr_labels, attr_list #kiedys do zmiany na bardziej uniwersalne
 
 def run_epoch_iwae(
     mode: Literal["test", "train"],
@@ -333,6 +83,10 @@ def run_epoch_iwae(
     gamma
 ):
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
+    encoder.to(DEVICE)
+    decoder.to(DEVICE)
+    encoder= nn.parallel.DistributedDataParallel(encoder, device_ids=[DEVICE.index])
+    decoder= nn.parallel.DistributedDataParallel(decoder, device_ids=[DEVICE.index])
     encoder.to(device), decoder.to(device)
     if mode == "train":
         encoder.train(), decoder.train()
@@ -364,7 +118,8 @@ def run_epoch_iwae(
     C = VOCAB_SIZE + 1
 
     for batch, labels in dataloader:       
-        physchem_original = calculate_physchem(dataset_lib.decoded(batch, "")) 
+        # print(f"Inspecting batch shape: {batch.shape}")
+        physchem_original = d.calculate_physchem_test(dataset_lib.decoded(batch, ""),) 
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         S, B = peptides.shape
         if optimizer:
@@ -382,23 +137,21 @@ def run_epoch_iwae(
         if mode == 'test':
             latent_codes.append(z.reshape(-1,z.shape[2]).cpu().detach().numpy())
             physchem_expanded = pd.concat([physchem_original]* K, ignore_index=True).to_numpy()
-            attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1,1).numpy(), physchem_expanded), axis =1))
-        # Kullback Leibler divergence
-        log_qzx = q_distr.log_prob(z).sum(dim=2)
+            attributes.append(np.concatenate((labels.unsqueeze(0).expand(K, -1).reshape(-1,1).numpy(), physchem_expanded), axis =1))        log_qzx = q_distr.log_prob(z).sum(dim=2)
         log_pz = prior_distr.log_prob(z).sum(dim=2)
 
         kl_div = log_qzx - log_pz
 
         # reconstruction - cross entropy
-        sampled_peptide_logits = decoder(z.reshape(K * B, -1)).reshape(S, K, B, C)
+        sampled_peptide_logits = decoder(z.reshape(K*B,-1))
+        sampled_peptide_logits = sampled_peptide_logits.view(S, K, B, C)
         src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
         src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
         tgt = peptides.permute(1, 0).reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
         src_decoded = dataset_lib.decoded(src_decoded, "")
         indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
         filtered_list = [item for item in src_decoded if item.strip()]
-        physchem_decoded = calculate_physchem(filtered_list)
-
+        physchem_decoded = d.calculate_physchem_test(filtered_list)
         # K x B
         cross_entropy = ce_loss_fun(
             src,
@@ -407,13 +160,13 @@ def run_epoch_iwae(
 
         reg_loss = 0
         for dim in reg_dim:
-            reg_loss += compute_reg_loss(
-            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma=gamma, factor=1.0 #gamma i delta z papera
+            reg_loss += r.compute_reg_loss(
+            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded.iloc[:, dim], dim, gamma, DEVICE.index #gamma i delta z papera
         )
 
         loss = logsumexp(
-            cross_entropy + kl_beta * (log_qzx - log_pz) + reg_loss, dim=0
-        ).mean(dim=0)
+            cross_entropy + kl_beta * (log_qzx - log_pz), dim=0
+        ).mean(dim=0) + tensor(reg_loss).to(device)
 
         # stats
         stat_sum["kl_mean"] += kl_div.mean(dim=0).sum(dim=0).item()
@@ -442,7 +195,7 @@ def run_epoch_iwae(
     if mode == 'test':
         latent_codes = np.concatenate(latent_codes, 0)
         attributes = np.concatenate(attributes, 0)
-        attributes, attr_list = _extract_relevant_attributes(attributes, reg_dim)
+        attributes, attr_list = m._extract_relevant_attributes(attributes, reg_dim)
         interp_metrics = m.compute_interpretability_metric(
             latent_codes, attributes, attr_list
         )
@@ -453,15 +206,15 @@ def run_epoch_iwae(
         ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
         with open(results_fp, 'w') as outfile:
             json.dump(ar_vae_metrics, outfile, indent=2)
-        # print("Interpretability metrics:", ar_vae_metrics)
+
     if logger is not None:
-        report_scalars(
+        mn.report_scalars(
             logger,
             mode,
             epoch,
             scalars=[
                 ("Total Loss", stat_sum["total"] / len_data),
-                ("Posterior Standard Deviation [mean]", stat_sum["std"] / len_data),
+                    ("Posterior Standard Deviation [mean]", stat_sum["std"] / len_data),
                 (
                     "Cross Entropy Loss",
                     "mean over samples",
@@ -482,7 +235,7 @@ def run_epoch_iwae(
             ],
         )
         if eval_mode == "deep":
-            report_sequence_char(
+            mn.report_sequence_char_test(
                 logger,
                 hue=f"{mode} - mu",
                 epoch=epoch,
@@ -490,7 +243,7 @@ def run_epoch_iwae(
                 model_out=np.concatenate(model_out, axis=1),
                 metrics = None
             )
-            report_sequence_char(
+            mn.report_sequence_char_test(
                 logger,
                 hue=f"{mode} - z",
                 epoch=epoch,
@@ -498,7 +251,7 @@ def run_epoch_iwae(
                 model_out=np.concatenate(model_out_sampled, axis=1),
                 metrics = None
             )
-            report_sequence_char(
+            mn.report_sequence_char_test(
                 logger,
                 hue=f"{mode} - ar-vae metrics",
                 epoch=epoch,
@@ -508,75 +261,152 @@ def run_epoch_iwae(
             )
     return stat_sum["total"] / len_data
 
-optimizer = Adam(
-    itertools.chain(encoder.parameters(), decoder.parameters()),
-    lr=params["lr"],
-    betas=(0.9, 0.999),
-)
-
-if params["use_clearml"]:
-    task = clearml.Task.init(
-        project_name="ar-vae-reg_loss_correct", task_name=params["task_name"]
+def run(rank, world_size):
+    print(f'rank:{rank}')
+    global ROOT_DIR 
+    ROOT_DIR = Path(__file__).parent#.parent
+    DATA_DIR = ROOT_DIR / "data"
+    global MODELS_DIR 
+    MODELS_DIR = ROOT_DIR
+    params = {
+        "num_heads": 4,
+        "num_layers": 6,
+        "layer_norm": True,
+        "latent_dim": 56,
+        "encoding": "add",
+        "dropout": 0.1,
+        "batch_size": 512,
+        "lr": 0.001,
+        "kl_beta_schedule": (0.000001, 0.01, 8000),
+        "train_size": None,
+        "epochs": 10000,
+        "iwae_samples": 10,
+        "model_name": "basic",
+        "use_clearml": True,
+        "task_name": "ar_vae_with_ar_vae_metrics",
+        "device": "cuda",
+        "deeper_eval_every": 20,
+        "save_model_every": 100,
+        "reg_dim": [0,1,2], # [hydrophobicity_moment, length, charge]
+        "gamma_schedule": (0.1, 20, 8000)
+    }
+    encoder = EncoderRNN(
+        params["num_heads"],
+        params["num_layers"],
+        params["latent_dim"],
+        params["encoding"],
+        params["dropout"],
+        params["layer_norm"],
     )
-    task.set_parameters(params)
-    logger = task.logger
-else:
-    logger = None
+    decoder = DecoderRNN(
+        params["num_heads"],
+        params["num_layers"],
+        params["latent_dim"],
+        params["encoding"],
+        params["dropout"],
+        params["layer_norm"],
+    )
 
-def run():
-    best_loss = 1e18
-    for epoch in tqdm(range(params["epochs"])):
-        eval_mode = "deep" if epoch % params["deeper_eval_every"] == 0 else "fast"
-        beta_0, beta_1, t_1 = params["kl_beta_schedule"]
-        kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, beta_1)
-        gamma_0, gamma_1, t_1 = params["gamma_schedule"]
-        gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, gamma_1)
-        run_epoch_iwae(
-            mode="train",
-            encoder=encoder,
-            decoder=decoder,
-            dataloader=train_loader,
-            device=device(params["device"]),
-            logger=logger,
-            epoch=epoch,
-            optimizer=optimizer,
-            kl_beta=kl_beta,
-            eval_mode=eval_mode,
-            iwae_samples=params["iwae_samples"],
-            reg_dim=params["reg_dim"],
-            gamma=gamma
+    data_manager = dataset_lib.AMPDataManager(
+        DATA_DIR / 'unlabelled_positive.csv',
+        DATA_DIR / 'unlabelled_negative.csv',
+        min_len=MIN_LENGTH,
+        max_len=MAX_LENGTH)
+
+    amp_x, amp_y, amp_x_raw = data_manager.get_merged_data()
+    optimizer = Adam(
+        itertools.chain(encoder.parameters(), decoder.parameters()),
+        lr=params["lr"],
+        betas=(0.9, 0.999),
+    )
+    if params["use_clearml"]:
+        task = clearml.Task.init(
+            project_name="ar-vae-v4_multiprocessing_testing", task_name=params["task_name"]
         )
-        if eval_mode == "deep":
-            loss = run_epoch_iwae(
-                mode="test",
+        task.set_parameters(params)
+        logger = task.logger
+    else:
+        logger = None
+
+    best_loss = 1e18
+    num_processes = 8
+    global DEVICE 
+    DEVICE = setup_ddp(rank, world_size)
+
+    # with mp.Pool(processes=num_processes) as pool:
+    dataset = TensorDataset(amp_x, tensor(amp_y))
+    train_size = int(0.8 * len(dataset))
+    eval_size = len(dataset) - train_size
+
+    train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
+    train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], sampler=DistributedSampler(train_dataset), pin_memory=True, shuffle=False)
+    eval_loader = DataLoader(eval_dataset, batch_size=params["batch_size"], sampler=DistributedSampler(eval_dataset), pin_memory=True, shuffle=False)
+    for epoch in tqdm(range(params["epochs"])):
+            train_loader.sampler.set_epoch(epoch)
+            eval_mode = "deep" if epoch % params["deeper_eval_every"] == 0 else "fast"
+            beta_0, beta_1, t_1 = params["kl_beta_schedule"]
+            kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, beta_1)
+            gamma_0, gamma_1, t_1 = params["gamma_schedule"]
+            gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, gamma_1)
+            run_epoch_iwae(
+                mode="train",
                 encoder=encoder,
                 decoder=decoder,
-                dataloader=eval_loader,
+                dataloader=train_loader,
                 device=device(params["device"]),
                 logger=logger,
                 epoch=epoch,
-                optimizer=None,
+                optimizer=optimizer,
                 kl_beta=kl_beta,
                 eval_mode=eval_mode,
                 iwae_samples=params["iwae_samples"],
                 reg_dim=params["reg_dim"],
-                gamma=gamma
+                gamma = gamma
             )
+            if eval_mode == "deep":
+                eval_loader.sampler.set_epoch(epoch)
+                loss = run_epoch_iwae(
+                    mode="test",
+                    encoder=encoder,
+                    decoder=decoder,
+                    dataloader=eval_loader,
+                    device=device(params["device"]),
+                    logger=logger,
+                    epoch=epoch,
+                    optimizer=None,
+                    kl_beta=kl_beta,
+                    eval_mode=eval_mode,
+                    iwae_samples=params["iwae_samples"],
+                    reg_dim=params["reg_dim"],
+                    gamma=gamma
+                )
 
-            if epoch > 0 and epoch % params["save_model_every"] == 0:
-                save_model(
-                    encoder,
-                    f"{params['task_name']}_{params['model_name']}_epoch{epoch}_encoder.pt",
-                    with_hash=False,
-                )
-                save_model(
-                    decoder,
-                    f"{params['task_name']}_{params['model_name']}_epoch{epoch}_decoder.pt",
-                    with_hash=False,
-                )
+                if epoch > 0 and epoch % params["save_model_every"] == 0:
+                    save_model(
+                        encoder,
+                        f"{params['task_name']}_{params['model_name']}_epoch{epoch}_encoder.pt",
+                        with_hash=False,
+                    )
+                    save_model(
+                        decoder,
+                        f"{params['task_name']}_{params['model_name']}_epoch{epoch}_decoder.pt",
+                        with_hash=False,
+                    )
     eval_model()
+    destroy_process_group()
 
-run()
+if __name__ == '__main__':
+    # try:
+    #     mp.set_start_method('spawn')
+    # except RuntimeError:
+    #     # Metoda uruchamiania została już ustawiona (np. w innym module)
+    #     pass
+    # os.environ["USE_DISTRIBUTED"] = "1"
+    cuda.memory._set_allocator_settings("max_split_size_mb:128")
+    set_seed()
+    # Inicjalizacja DDP jest już na poziomie globalnym
+    world_size = cuda.device_count()
+    tmp.spawn(run, args=(world_size,), nprocs=world_size)
 # autoencoder.load_state_dict(load('./gmm_model.pt'))
 # autoencoder = autoencoder.to('cpu')  
 

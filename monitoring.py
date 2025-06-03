@@ -43,7 +43,7 @@ def report_sequence_char(
         if not filtered_list:
             print('All predicted sequences are empty')
         else:
-            physchem_decoded_async = d.calculate_physchem_test(pool, filtered_list)
+            physchem_decoded_async = d.calculate_physchem(pool, filtered_list)
             physchem_decoded = d.gather_physchem_results(physchem_decoded_async)
         len_true = seq_true.argmin(axis=0)
         len_pred = seq_pred.argmin(axis=0)

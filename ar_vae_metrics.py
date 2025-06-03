@@ -180,7 +180,7 @@ def _compute_score_matrix(mus, ys):
 
 def _extract_relevant_attributes(labels, reg_dim): 
     attr_list = ['Length']#, 'Charge', 'Hydrophobicity moment']
-    attr_labels = labels[:, reg_dim+1]
+    attr_labels = labels[:, reg_dim]
     return attr_labels, attr_list #kiedys do zmiany na bardziej uniwersalne
 
 def calculate_metric(metric_name, latent_codes, attributes, *args):

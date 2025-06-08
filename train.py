@@ -129,6 +129,7 @@ def run_epoch_iwae(
         # autoencoding
 
         mu, std = encoder(peptides)
+        print(f'mu = {mu}, std = {std}')
         assert not (isnan(mu).all() or isnan(std).all() ), f" contains all NaN values: {mu}, {std}"
         assert not (isinf(mu).all() or isinf(std).all()), f" contains all Inf values: {mu}, {std}"
 
@@ -214,7 +215,7 @@ def run_epoch_iwae(
     if mode == 'test':
         latent_codes = np.concatenate(latent_codes, 0)
         attributes = np.concatenate(attributes, 0)
-        attributes, attr_list = m._extract_relevant_attributes(attributes, reg_dim)
+        attributes, attr_list = m.extract_relevant_attributes(attributes, reg_dim)
         async_metrics = m.compute_all_metrics_async(pool, latent_codes, attributes, attr_list)
         ar_vae_metrics = m.gather_metrics(async_metrics)
         with open(results_fp, 'w') as outfile:

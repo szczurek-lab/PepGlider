@@ -35,20 +35,29 @@ import ar_vae_metrics as m
 batch_size_encoder_output = 512
 latent_dim = 56
 num_features_before_reshape = 10
-num_dataloader_iterations = 17809
-
-mu = randn(batch_size_encoder_output, latent_dim)
-std = exp(0.5 * randn(batch_size_encoder_output, latent_dim))
+samples_per_iteration = num_features_before_reshape * batch_size_encoder_output
+desired_total_samples = 44530
+num_full_iterations = desired_total_samples // samples_per_iteration
+remaining_samples = desired_total_samples % samples_per_iteration
+mu = torch.randn(batch_size_encoder_output, latent_dim)
+std = torch.exp(0.5 * torch.randn(batch_size_encoder_output, latent_dim))
 q_distr = Normal(mu, std)
 
 all_processed_z_samples = []
-for _ in range(num_dataloader_iterations):
+for _ in range(num_full_iterations):
     z_raw_sample = q_distr.rsample((num_features_before_reshape,))
     z_reshaped = z_raw_sample.reshape(-1, z_raw_sample.shape[2])
     all_processed_z_samples.append(z_reshaped.cpu().detach())
-latent_codes_torch = cat(all_processed_z_samples, dim=0)
+if remaining_samples > 0:
+    z_raw_sample_full = q_distr.rsample((num_features_before_reshape,))
+    z_reshaped_full = z_raw_sample_full.reshape(-1, z_raw_sample_full.shape[2])
+    z_partial_batch = z_reshaped_full[:remaining_samples, :]
+    all_processed_z_samples.append(z_partial_batch.cpu().detach())
+latent_codes_torch = torch.cat(all_processed_z_samples, dim=0)
 latent_codes = latent_codes_torch.numpy()
-attributes = np.random.normal(loc=0.0, scale=1.0, size=(44530, 4))
+
+print(f"\nFinal shape of latent_codes NumPy array: {latent_codes.shape}")
+attributes = np.random.normal(loc=0.0, scale=1.0, size=(44530, 1))
 attr_list = ['Length']
 
 start_time = time.time()

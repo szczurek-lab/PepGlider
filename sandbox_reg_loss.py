@@ -1,4 +1,11 @@
-from  torch import tensor, nn, tanh, sign
+from  torch import tensor, nn, tanh, sign, from_numpy
+import numpy as np
+from sklearn.preprocessing import QuantileTransformer
+
+latent_code = np.array([[5],[6],[7],[8]])
+qt = QuantileTransformer(output_distribution='normal', random_state=0)
+normalized_latent_code_np = qt.fit_transform(latent_code)
+normalized_latent_code = from_numpy(normalized_latent_code_np).float()
 
 device= "cuda"
 #1 identical

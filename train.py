@@ -106,7 +106,6 @@ def run_epoch_iwae(
     }
     seq_true, model_out, model_out_sampled = [], [], []
     len_data = len(dataloader.dataset)
-    print(f"len_data = {len_data}")
 
     results_fp = os.path.join(
     os.path.dirname(ROOT_DIR),
@@ -216,6 +215,7 @@ def run_epoch_iwae(
     if mode == 'test':
         latent_codes = np.concatenate(latent_codes, 0)
         attributes = np.concatenate(attributes, 0)
+        print(f'attributes shape = {attributes.shape}')
         attributes, attr_list = m.extract_relevant_attributes(attributes, reg_dim)
         async_metrics = m.compute_all_metrics_async(pool, latent_codes, attributes, attr_list)
         ar_vae_metrics = m.gather_metrics(async_metrics)

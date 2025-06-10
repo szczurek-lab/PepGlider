@@ -214,9 +214,11 @@ def run_epoch_iwae(
             )
     if mode == 'test':
         latent_codes = np.concatenate(latent_codes, 0)
+        print(f'latent_codes shape = {latent_codes.shape}')
         attributes = np.concatenate(attributes, 0)
         print(f'attributes shape = {attributes.shape}')
         attributes, attr_list = m.extract_relevant_attributes(attributes, reg_dim)
+        print(f'attributes shape = {attributes.shape}')
         async_metrics = m.compute_all_metrics_async(pool, latent_codes, attributes, attr_list)
         ar_vae_metrics = m.gather_metrics(async_metrics)
         with open(results_fp, 'w') as outfile:

@@ -106,6 +106,7 @@ def run_epoch_iwae(
     }
     seq_true, model_out, model_out_sampled = [], [], []
     len_data = len(dataloader.dataset)
+    print(f"len_data = {len_data}")
 
     results_fp = os.path.join(
     os.path.dirname(ROOT_DIR),
@@ -129,7 +130,7 @@ def run_epoch_iwae(
         # autoencoding
 
         mu, std = encoder(peptides)
-        print(f'mu = {mu}, std = {std}')
+        # print(f'mu = {mu}, std = {std}')
         assert not (isnan(mu).all() or isnan(std).all() ), f" contains all NaN values: {mu}, {std}"
         assert not (isinf(mu).all() or isinf(std).all()), f" contains all Inf values: {mu}, {std}"
 

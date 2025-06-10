@@ -16,7 +16,7 @@ latent_code = tensor([[5],[6],[7],[8]])
 attribute_tensor = tensor([[10],[11],[12],[13]]).to(device)
 
 # compute latent distance matrix
-latent_code = latent_code.to(device).reshape(-1, 1)
+latent_code = normalized_latent_code.to(device).reshape(-1, 1)
 
 lc_dist_mat = latent_code - latent_code.T
 

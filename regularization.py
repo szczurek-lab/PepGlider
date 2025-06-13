@@ -45,38 +45,3 @@ def reg_loss_sign(latent_code, attribute, device, factor=1.0):
     # print(f'sign_loss shape {sign_loss.shape}')
     # print(f'sign_loss {sign_loss}')
     return sign_loss.to(device)
-
-def compute_reg_loss_test(z, labels, reg_dim, gamma, device, factor=1.0):
-    """
-    Computes the regularization loss
-    """
-    x = z[:, reg_dim]
-    reg_loss = reg_loss_sign_test(x, labels, device = device, factor=factor)
-    return gamma * reg_loss
-
-def reg_loss_sign_test(latent_code, attribute, device, factor=1.0):
-    """
-    Computes the regularization loss given the latent code and attribute
-    Args:
-        latent_code: torch Variable, (N,)
-        attribute: torch Variable, (N,)
-        factor: parameter for scaling the loss
-    Returns
-        scalar, loss
-    """
-    # compute latent distance matrix
-    latent_code = latent_code.to(device).reshape(-1, 1)
-    lc_dist_mat = latent_code - latent_code.T
-
-    # compute attribute distance matrix
-    attribute_tensor = tensor(attribute.values).to(device)
-    attribute_tensor = attribute_tensor.reshape(-1, 1)
-    attribute_dist_mat = attribute_tensor - attribute_tensor.T
-
-    # compute regularization loss
-    loss_fn = nn.L1Loss()
-    lc_tanh = tanh(lc_dist_mat * factor)
-    attribute_sign = sign(attribute_dist_mat)
-    sign_loss = loss_fn(lc_tanh, attribute_sign.float())
-
-    return sign_loss.to(device)

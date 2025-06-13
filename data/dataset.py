@@ -8,6 +8,7 @@ import pandas as pd
 import seaborn as sns
 import torch
 from Bio import SeqIO
+import modlamp
 
 STD_AA = list('ACDEFGHIKLMNPQRSTVWY')
 
@@ -39,8 +40,67 @@ def decoded(encoded_seqs, mode):
     for i, seq in enumerate(encoded_seqs):
         decoded_seq = ''.join(mode if idx == 0 else str(aa_encoding[idx.item()]) for idx in seq)
         decoded_seqs.append(decoded_seq)
-
     return decoded_seqs
+
+def calculate_length_test(data:list):
+    lengths = [len(x) for x in data]
+    return lengths
+
+def calculate_charge(data:list):
+    h = modlamp.analysis.GlobalAnalysis(data)
+    h.calc_charge()
+    # return h.charge
+    return list(h.charge)
+
+def calculate_hydrophobicmoment(data:list):
+    h = modlamp.analysis.GlobalAnalysis(data)
+    h.calc_uH()
+    return list(h.uH)
+
+def calculate_physchem_test(peptides: List[str]) -> torch.Tensor:
+    """
+    Calculates physicochemical properties of peptides and returns them as a PyTorch tensor.
+
+    Args:
+        peptides (List[str]): A list of peptide sequences.
+
+    Returns:
+        torch.Tensor: A tensor containing the physicochemical properties.
+                      Shape will be (num_peptides, num_physchem_features).
+    """
+    # Initialize lists to store properties for each peptide
+    # We'll collect properties for each peptide as sub-lists
+    all_features_per_peptide = []
+
+    # Calculate properties for the entire list of peptides
+    # This is more efficient than calling GlobalAnalysis for each peptide
+    global_analysis_obj = modlamp.analysis.GlobalAnalysis(peptides)
+
+    # Length
+    lengths = calculate_length_test(peptides)
+    # Charge
+    global_analysis_obj.calc_charge()
+    charges = global_analysis_obj.charge.tolist()
+    # Hydrophobic Moment
+    global_analysis_obj.calc_uH()
+    hydrophobic_moments = global_analysis_obj.uH.tolist()
+
+    # Consolidate features for each peptide
+    # Assuming all lists (lengths, charges, hydrophobic_moments) have the same length
+    # which should be len(peptides)
+    for i in range(len(peptides)):
+        peptide_features = [
+            lengths[i],
+            charges[i],
+            hydrophobic_moments[i]
+        ]
+        all_features_per_peptide.append(peptide_features)
+
+    # Convert the list of lists into a PyTorch tensor
+    # It will automatically infer the shape (num_peptides, num_features)
+    physchem_tensor = torch.tensor(all_features_per_peptide, dtype=torch.float32)
+
+    return physchem_tensor
 
 def pad(x: List[List[float]], max_length: int = 25) -> torch.Tensor:
     """
@@ -198,7 +258,8 @@ class AMPDataManager:
         x = np.asarray(merged['Sequence'].tolist())
         y = np.asarray(merged['Label'].tolist())
         x_changed = pad(to_one_hot(x))
-        return x_changed, y, x
+        attributes = calculate_physchem_test(decoded(x_changed, ""),) 
+        return x_changed, y, attributes
 
     def get_data(self, balanced: bool = True):
         pos_dataset, neg_dataset = self._filter_data()

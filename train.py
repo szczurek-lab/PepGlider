@@ -118,9 +118,9 @@ def run_epoch_iwae(
     K = iwae_samples
     C = VOCAB_SIZE + 1
 
-    for batch, labels in dataloader:       
+    for batch, labels, physchem in dataloader:       
         # print(f"Inspecting batch shape: {batch.shape}")
-        physchem_original_async = d.calculate_physchem(pool, dataset_lib.decoded(batch, ""),) 
+        # physchem_original_async = d.calculate_physchem(pool, dataset_lib.decoded(batch, ""),) 
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         S, B = peptides.shape
         if optimizer:
@@ -138,7 +138,7 @@ def run_epoch_iwae(
         z = q_distr.rsample((K,)) # K, B, L
         if mode == 'test':
                     latent_codes.append(z.reshape(-1, z.shape[2]).cpu().detach().numpy())
-                    physchem_original = d.gather_physchem_results(physchem_original_async) # Pobierz wynik jako dict
+                    # physchem_original = d.gather_physchem_results(physchem_original_async) # Pobierz wynik jako dict
 
                     num_peptides = len(physchem_original[1][0])
                     physchem_expanded_list = []
@@ -169,9 +169,6 @@ def run_epoch_iwae(
         tgt = peptides.permute(1, 0).reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
         src_decoded = dataset_lib.decoded(src_decoded, "")
         indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
-        filtered_list = [item for item in src_decoded if item.strip()]
-        physchem_decoded_async = d.calculate_physchem(pool, filtered_list)
-        physchem_decoded = d.gather_physchem_results(physchem_decoded_async)
         # K x B
         cross_entropy = ce_loss_fun(
             src,
@@ -333,7 +330,7 @@ def run(rank, world_size):
         min_len=MIN_LENGTH,
         max_len=MAX_LENGTH)
 
-    amp_x, amp_y, amp_x_raw = data_manager.get_merged_data()
+    amp_x, amp_y, attributes = data_manager.get_merged_data()
     optimizer = Adam(
         itertools.chain(encoder.parameters(), decoder.parameters()),
         lr=params["lr"],
@@ -354,7 +351,9 @@ def run(rank, world_size):
     DEVICE = setup_ddp(rank, world_size)
 
     with mp.Pool(processes=num_processes) as pool:
-        dataset = TensorDataset(amp_x, tensor(amp_y))
+        dataset = TensorDataset(amp_x, tensor(amp_y), attributes)
+        print(f"\nCombined TensorDataset has {len(dataset)} samples.")
+        print(f"First sample from combined_dataset: {dataset[0]}")
         train_size = int(0.8 * len(dataset))
         eval_size = len(dataset) - train_size
 

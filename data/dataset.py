@@ -80,10 +80,10 @@ def calculate_physchem_test(peptides: List[str]) -> torch.Tensor:
     lengths = calculate_length_test(peptides)
     # Charge
     global_analysis_obj.calc_charge()
-    charges = global_analysis_obj.charge
+    charges = list(global_analysis_obj.charge)
     # Hydrophobic Moment
     global_analysis_obj.calc_uH()
-    hydrophobic_moments = global_analysis_obj.uH
+    hydrophobic_moments = list(global_analysis_obj.uH)
 
     # Consolidate features for each peptide
     # Assuming all lists (lengths, charges, hydrophobic_moments) have the same length

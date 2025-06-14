@@ -78,6 +78,7 @@ def calculate_physchem_test(peptides: List[str]) -> torch.Tensor:
 
     # Length
     lengths = calculate_length_test(peptides)
+    global_analysis_obj.calc_charge()
     charges_np_array = np.asarray(global_analysis_obj.charge).flatten() # <--- KLUCZOWA ZMIANA
     charges = charges_np_array.tolist()
 

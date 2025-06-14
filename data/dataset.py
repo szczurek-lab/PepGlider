@@ -81,6 +81,7 @@ def calculate_physchem_test(peptides: List[str]) -> torch.Tensor:
     # Charge
     global_analysis_obj.calc_charge()
     charges = list(global_analysis_obj.charge)
+    print(charges)
     # Hydrophobic Moment
     global_analysis_obj.calc_uH()
     hydrophobic_moments = list(global_analysis_obj.uH)

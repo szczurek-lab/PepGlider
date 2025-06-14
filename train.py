@@ -1,5 +1,5 @@
 import os
-from torch import optim, nn, logsumexp, device, cuda, save, isinf, backends, manual_seed, LongTensor, zeros_like, ones_like, isnan, tensor
+from torch import optim, nn, logsumexp, device, cuda, save, isinf, backends, manual_seed, LongTensor, zeros_like, ones_like, isnan, tensor, cat
 from torch.distributions import Normal
 from torch.utils.data import TensorDataset, DataLoader, random_split
 import torch.multiprocessing as tmp
@@ -139,23 +139,31 @@ def run_epoch_iwae(
         if mode == 'test':
                     latent_codes.append(z.reshape(-1, z.shape[2]).cpu().detach().numpy())
                     # physchem_original = d.gather_physchem_results(physchem_original_async) # Pobierz wynik jako dict
+                    physchem_expanded_torch = physchem.repeat_interleave(K, dim=0)
+                    print(f'physchem_expanded_torch shape = {physchem_expanded_torch.shape}')
+                    labels_expanded_torch = labels.repeat_interleave(K, dim=0).unsqueeze(1)
+                    labels_expanded_torch = labels_expanded_torch.to(physchem_expanded_torch.dtype)
+                    print(f'labels_expanded_torch shape = {labels_expanded_torch.shape}')
+                    attributes.append(cat(
+                        (physchem_expanded_torch, labels_expanded_torch), dim=1
+                    ))
+                    print(f'attributes = {attributes}')
+                    # num_peptides = len(physchem_original[1][0])
+                    # physchem_expanded_list = []
 
-                    num_peptides = len(physchem_original[1][0])
-                    physchem_expanded_list = []
+                    # for i in range(num_peptides):
+                    #     peptide_features = np.array([
+                    #         physchem_original[0][0][i],
+                    #         physchem_original[1][0][i],
+                    #         physchem_original[2][0][i],
+                    #     ])
+                    #     # Powielaj cechy peptydu K razy
+                    #     expanded_peptide_features = np.repeat(peptide_features[np.newaxis, :], K, axis=0)
+                    #     physchem_expanded_list.append(expanded_peptide_features)
 
-                    for i in range(num_peptides):
-                        peptide_features = np.array([
-                            physchem_original[0][0][i],
-                            physchem_original[1][0][i],
-                            physchem_original[2][0][i],
-                        ])
-                        # Powielaj cechy peptydu K razy
-                        expanded_peptide_features = np.repeat(peptide_features[np.newaxis, :], K, axis=0)
-                        physchem_expanded_list.append(expanded_peptide_features)
+                    # physchem_expanded = np.concatenate(physchem_expanded_list, axis=0)
 
-                    physchem_expanded = np.concatenate(physchem_expanded_list, axis=0)
-
-                    attributes.append(np.concatenate((physchem_expanded, labels.unsqueeze(0).expand(K, -1).reshape(-1, 1).numpy()), axis=1))        # Kullback Leibler divergence
+                    # attributes.append(np.concatenate((physchem_expanded, labels.unsqueeze(0).expand(K, -1).reshape(-1, 1).numpy()), axis=1))        # Kullback Leibler divergence
         log_qzx = q_distr.log_prob(z).sum(dim=2)
         log_pz = prior_distr.log_prob(z).sum(dim=2)
 
@@ -178,7 +186,7 @@ def run_epoch_iwae(
         reg_loss = 0
         for dim in reg_dim:
             reg_loss += r.compute_reg_loss(
-            z.reshape(-1,z.shape[2])[indexes,:], physchem_decoded[dim], dim, gamma, DEVICE.index #gamma i delta z papera
+            z.reshape(-1,z.shape[2])[indexes,:], physchem_expanded_torch[:, dim], dim, gamma, DEVICE.index #gamma i delta z papera
         )
 
         loss = logsumexp(
@@ -212,7 +220,7 @@ def run_epoch_iwae(
     if mode == 'test':
         latent_codes = np.concatenate(latent_codes, 0)
         print(f'latent_codes shape = {latent_codes.shape}')
-        attributes = np.concatenate(attributes, 0)
+        attributes = cat(attributes, dim=0).numpy()
         print(f'attributes shape = {attributes.shape}')
         attributes, attr_list = m.extract_relevant_attributes(attributes, reg_dim)
         print(f'attributes shape = {attributes.shape}')

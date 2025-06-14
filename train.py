@@ -122,6 +122,8 @@ def run_epoch_iwae(
         # print(f"Inspecting batch shape: {batch.shape}")
         # physchem_original_async = d.calculate_physchem(pool, dataset_lib.decoded(batch, ""),) 
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
+        physchem_expanded_torch = physchem.repeat_interleave(K, dim=0)
+        print(f'physchem_expanded_torch shape = {physchem_expanded_torch.shape}')
         S, B = peptides.shape
         if optimizer:
             optimizer.zero_grad()
@@ -139,8 +141,6 @@ def run_epoch_iwae(
         if mode == 'test':
                     latent_codes.append(z.reshape(-1, z.shape[2]).cpu().detach().numpy())
                     # physchem_original = d.gather_physchem_results(physchem_original_async) # Pobierz wynik jako dict
-                    physchem_expanded_torch = physchem.repeat_interleave(K, dim=0)
-                    print(f'physchem_expanded_torch shape = {physchem_expanded_torch.shape}')
                     labels_expanded_torch = labels.repeat_interleave(K, dim=0).unsqueeze(1)
                     labels_expanded_torch = labels_expanded_torch.to(physchem_expanded_torch.dtype)
                     print(f'labels_expanded_torch shape = {labels_expanded_torch.shape}')

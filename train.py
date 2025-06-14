@@ -119,7 +119,7 @@ def run_epoch_iwae(
     C = VOCAB_SIZE + 1
 
     for batch, labels, physchem in dataloader:       
-        # print(f"Inspecting batch shape: {batch.shape}")
+        print(f"Inspecting batch shape: {batch.shape}")
         # physchem_original_async = d.calculate_physchem(pool, dataset_lib.decoded(batch, ""),) 
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         physchem_expanded_torch = physchem.repeat_interleave(K, dim=0)
@@ -138,6 +138,7 @@ def run_epoch_iwae(
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
         z = q_distr.rsample((K,)) # K, B, L
+        print(f'z shape = {z.shape}')
         if mode == 'test':
                     latent_codes.append(z.reshape(-1, z.shape[2]).cpu().detach().numpy())
                     # physchem_original = d.gather_physchem_results(physchem_original_async) # Pobierz wynik jako dict
@@ -176,7 +177,7 @@ def run_epoch_iwae(
         src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
         tgt = peptides.permute(1, 0).reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
         src_decoded = dataset_lib.decoded(src_decoded, "")
-        indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
+#        indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
         # K x B
         cross_entropy = ce_loss_fun(
             src,
@@ -186,7 +187,7 @@ def run_epoch_iwae(
         reg_loss = 0
         for dim in reg_dim:
             reg_loss += r.compute_reg_loss(
-            z.reshape(-1,z.shape[2])[indexes,:], physchem_expanded_torch[:, dim], dim, gamma, DEVICE.index #gamma i delta z papera
+            z.reshape(-1,z.shape[2]), physchem_expanded_torch[:, dim], dim, gamma, DEVICE.index #gamma i delta z papera
         )
 
         loss = logsumexp(

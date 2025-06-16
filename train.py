@@ -340,7 +340,13 @@ def run(rank, world_size):
         max_len=MAX_LENGTH)
 
     amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
+    print(amp_x shape = {amp_x.shape})
+    print(amp_y shape = {tensor(amp_y).shape})
+    print(attributes_input shape = {attributes_input.shape})
+
     attributes = dataset_lib.normalize_attributes(attributes_input)
+    print(attributes shape = {attributes.shape})
+
     optimizer = Adam(
         itertools.chain(encoder.parameters(), decoder.parameters()),
         lr=params["lr"],

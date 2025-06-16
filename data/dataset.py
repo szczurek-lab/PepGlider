@@ -135,6 +135,9 @@ def pad(x: List[List[float]], max_length: int = 25) -> torch.Tensor:
         return torch.cat((padded_sequences, padding), dim=1)
     else:
         return padded_sequences
+    
+# def normalize_attributes():
+
 
 class AMPDataManager:
 
@@ -266,7 +269,7 @@ class AMPDataManager:
         y = np.asarray(merged['Label'].tolist())
         x_changed = pad(to_one_hot(x))
         attributes = calculate_physchem_test(decoded(x_changed, ""),) 
-        return x_changed, y, attributes
+        return x_changed, y, attributes, x
 
     def get_data(self, balanced: bool = True):
         pos_dataset, neg_dataset = self._filter_data()

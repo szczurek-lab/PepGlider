@@ -5,7 +5,7 @@ def compute_reg_loss(z, labels, reg_dim, gamma, device, factor=1.0):
     Computes the regularization loss
     """
     x = z[:, reg_dim]
-    print(f'z in reg loss shape = {x.shape}')
+    # print(f'z in reg loss shape = {x.shape}')
     reg_loss = reg_loss_sign(x, labels, device = device, factor=factor)
     return gamma * reg_loss
 

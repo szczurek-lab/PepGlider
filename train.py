@@ -119,11 +119,11 @@ def run_epoch_iwae(
     C = VOCAB_SIZE + 1
 
     for batch, labels, physchem in dataloader:       
-        print(f"Inspecting batch shape: {batch.shape}")
+        # print(f"Inspecting batch shape: {batch.shape}")
         # physchem_original_async = d.calculate_physchem(pool, dataset_lib.decoded(batch, ""),) 
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         physchem_expanded_torch = physchem.repeat_interleave(K, dim=0)
-        print(f'physchem_expanded_torch shape = {physchem_expanded_torch.shape}')
+        # print(f'physchem_expanded_torch shape = {physchem_expanded_torch.shape}')
         S, B = peptides.shape
         if optimizer:
             optimizer.zero_grad()
@@ -138,17 +138,17 @@ def run_epoch_iwae(
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
         z = q_distr.rsample((K,)) # K, B, L
-        print(f'z shape = {z.shape}')
+        # print(f'z shape = {z.shape}')
         if mode == 'test':
                     latent_codes.append(z.reshape(-1, z.shape[2]).cpu().detach().numpy())
                     # physchem_original = d.gather_physchem_results(physchem_original_async) # Pobierz wynik jako dict
                     labels_expanded_torch = labels.repeat_interleave(K, dim=0).unsqueeze(1)
                     labels_expanded_torch = labels_expanded_torch.to(physchem_expanded_torch.dtype)
-                    print(f'labels_expanded_torch shape = {labels_expanded_torch.shape}')
+                    # print(f'labels_expanded_torch shape = {labels_expanded_torch.shape}')
                     attributes.append(cat(
                         (physchem_expanded_torch, labels_expanded_torch), dim=1
                     ))
-                    print(f'attributes = {attributes}')
+                    # print(f'attributes = {attributes}')
                     # num_peptides = len(physchem_original[1][0])
                     # physchem_expanded_list = []
 
@@ -220,11 +220,11 @@ def run_epoch_iwae(
             )
     if mode == 'test':
         latent_codes = np.concatenate(latent_codes, 0)
-        print(f'latent_codes shape = {latent_codes.shape}')
+        # print(f'latent_codes shape = {latent_codes.shape}')
         attributes = cat(attributes, dim=0).numpy()
-        print(f'attributes shape = {attributes.shape}')
+        # print(f'attributes shape = {attributes.shape}')
         attributes, attr_list = m.extract_relevant_attributes(attributes, reg_dim)
-        print(f'attributes shape = {attributes.shape}')
+        # print(f'attributes shape = {attributes.shape}')
         async_metrics = m.compute_all_metrics_async(pool, latent_codes, attributes, attr_list)
         ar_vae_metrics = m.gather_metrics(async_metrics)
         with open(results_fp, 'w') as outfile:
@@ -339,8 +339,8 @@ def run(rank, world_size):
         min_len=MIN_LENGTH,
         max_len=MAX_LENGTH)
 
-    amp_x, amp_y, attributes, _ = data_manager.get_merged_data()
-    print(attributes)
+    amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
+    attributes = dataset_lib.normalize_attributes(attributes_input)
     optimizer = Adam(
         itertools.chain(encoder.parameters(), decoder.parameters()),
         lr=params["lr"],
@@ -362,8 +362,8 @@ def run(rank, world_size):
 
     with mp.Pool(processes=num_processes) as pool:
         dataset = TensorDataset(amp_x, tensor(amp_y), attributes)
-        print(f"\nCombined TensorDataset has {len(dataset)} samples.")
-        print(f"First sample from combined_dataset: {dataset[0]}")
+        # print(f"\nCombined TensorDataset has {len(dataset)} samples.")
+        # print(f"First sample from combined_dataset: {dataset[0]}")
         train_size = int(0.8 * len(dataset))
         eval_size = len(dataset) - train_size
 

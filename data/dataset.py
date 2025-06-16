@@ -9,6 +9,7 @@ import seaborn as sns
 import torch
 from Bio import SeqIO
 import modlamp
+from sklearn.preprocessing import QuantileTransformer
 
 STD_AA = list('ACDEFGHIKLMNPQRSTVWY')
 
@@ -136,7 +137,35 @@ def pad(x: List[List[float]], max_length: int = 25) -> torch.Tensor:
     else:
         return padded_sequences
     
-# def normalize_attributes():
+def normalize_attributes(physchem_tensor_original, ):
+    fitted_transformers: Dict[int, QuantileTransformer] = {}
+    feature_names = ["Length", "Charge", "Hydrophobic Moment"]
+    physchem_tensor_normalized = torch.empty_like(physchem_tensor_original) # Tworzy tensor o tym samym kształcie i dtype co original
+    for col_idx in range(3):
+        feature_name = feature_names[col_idx] if col_idx < len(feature_names) else f"Column_{col_idx}"
+        print(f"\nProcessing column {col_idx} ('{feature_name}') with Quantile Transformation...")
+
+        column_tensor = physchem_tensor_original[:, col_idx]
+
+        data_to_transform_np = column_tensor.cpu().numpy().reshape(-1, 1)
+
+        qt = QuantileTransformer(output_distribution='normal', random_state=42)
+
+        transformed_data_np = qt.fit_transform(data_to_transform_np)
+
+        fitted_transformers[col_idx] = qt
+
+        transformed_column_tensor_2d = torch.from_numpy(transformed_data_np).float() # to jest już (N, 1)
+
+        physchem_tensor_normalized[:, col_idx] = transformed_column_tensor_2d.squeeze(1) # Squeeze, bo przypisujemy 1D do 1D slices
+
+        print(f"Applied Quantile Transformation to '{feature_name}'. Min: {transformed_column_tensor_2d.min():.4f}, Max: {transformed_column_tensor_2d.max():.4f}")
+
+
+    print("\nNormalized physchem_tensor (first 5 rows):")
+    print(physchem_tensor_normalized[:5])
+    print(f"Shape of normalized physchem_tensor: {physchem_tensor_normalized.shape}")
+
 
 
 class AMPDataManager:

@@ -339,7 +339,8 @@ def run(rank, world_size):
         min_len=MIN_LENGTH,
         max_len=MAX_LENGTH)
 
-    amp_x, amp_y, attributes = data_manager.get_merged_data()
+    amp_x, amp_y, attributes, _ = data_manager.get_merged_data()
+    print(attributes)
     optimizer = Adam(
         itertools.chain(encoder.parameters(), decoder.parameters()),
         lr=params["lr"],

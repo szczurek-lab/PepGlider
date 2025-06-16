@@ -165,8 +165,7 @@ def normalize_attributes(physchem_tensor_original, ):
     print("\nNormalized physchem_tensor (first 5 rows):")
     print(physchem_tensor_normalized[:5])
     print(f"Shape of normalized physchem_tensor: {physchem_tensor_normalized.shape}")
-
-
+    return physchem_tensor_normalized
 
 class AMPDataManager:
 

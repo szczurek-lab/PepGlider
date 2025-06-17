@@ -118,11 +118,12 @@ def run_epoch_iwae(
     K = iwae_samples
     C = VOCAB_SIZE + 1
 
-    for batch, labels, physchem in dataloader:       
+    for batch, labels, physchem, attributes_input in dataloader:       
         # print(f"Inspecting batch shape: {batch.shape}")
         # physchem_original_async = d.calculate_physchem(pool, dataset_lib.decoded(batch, ""),) 
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         physchem_expanded_torch = physchem.repeat_interleave(K, dim=0)
+        print(f"Min value: {physchem_expanded_torch.min()} and max value: {physchem_expanded_torch.max()}")
         # print(f'physchem_expanded_torch shape = {physchem_expanded_torch.shape}')
         S, B = peptides.shape
         if optimizer:
@@ -140,13 +141,14 @@ def run_epoch_iwae(
         z = q_distr.rsample((K,)) # K, B, L
         # print(f'z shape = {z.shape}')
         if mode == 'test':
+                    attributes_input_expanded_torch = attributes_input.repeat_interleave(K, dim=0)
                     latent_codes.append(z.reshape(-1, z.shape[2]).cpu().detach().numpy())
                     # physchem_original = d.gather_physchem_results(physchem_original_async) # Pobierz wynik jako dict
                     labels_expanded_torch = labels.repeat_interleave(K, dim=0).unsqueeze(1)
-                    labels_expanded_torch = labels_expanded_torch.to(physchem_expanded_torch.dtype)
+                    labels_expanded_torch = labels_expanded_torch.to(attributes_input_expanded_torch.dtype)
                     # print(f'labels_expanded_torch shape = {labels_expanded_torch.shape}')
                     attributes.append(cat(
-                        (physchem_expanded_torch, labels_expanded_torch), dim=1
+                        (attributes_input_expanded_torch, labels_expanded_torch), dim=1
                     ))
                     # print(f'attributes = {attributes}')
                     # num_peptides = len(physchem_original[1][0])
@@ -340,12 +342,12 @@ def run(rank, world_size):
         max_len=MAX_LENGTH)
 
     amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
-    print(f'amp_x shape = {amp_x.shape}')
-    print(f'amp_y shape = {tensor(amp_y).shape}')
-    print(f'attributes_input shape = {attributes_input.shape}')
+    # print(f'amp_x shape = {amp_x.shape}')
+    # print(f'amp_y shape = {tensor(amp_y).shape}')
+    # print(f'attributes_input shape = {attributes_input.shape}')
 
     attributes = dataset_lib.normalize_attributes(attributes_input)
-    print(f'attributes shape = {attributes.shape}')
+    # print(f'attributes shape = {attributes.shape}')
 
     optimizer = Adam(
         itertools.chain(encoder.parameters(), decoder.parameters()),
@@ -367,7 +369,7 @@ def run(rank, world_size):
     DEVICE = setup_ddp(rank, world_size)
 
     with mp.Pool(processes=num_processes) as pool:
-        dataset = TensorDataset(amp_x, tensor(amp_y), attributes)
+        dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
         # print(f"\nCombined TensorDataset has {len(dataset)} samples.")
         # print(f"First sample from combined_dataset: {dataset[0]}")
         train_size = int(0.8 * len(dataset))

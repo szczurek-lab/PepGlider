@@ -139,7 +139,7 @@ def pad(x: List[List[float]], max_length: int = 25) -> torch.Tensor:
     
 def normalize_attributes(physchem_tensor_original, ):
     fitted_transformers: Dict[int, QuantileTransformer] = {}
-    feature_names = ["Length", "Charge", "Hydrophobic Moment"]
+    feature_names = ["Hydrophobic Moment", "Length", "Charge"]# [hydrophobicity_moment, length, charge] - correct order
     physchem_tensor_normalized = torch.empty_like(physchem_tensor_original) # Tworzy tensor o tym samym kształcie i dtype co original
     for col_idx in range(3):
         feature_name = feature_names[col_idx] if col_idx < len(feature_names) else f"Column_{col_idx}"

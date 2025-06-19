@@ -24,9 +24,9 @@ from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
 import json
 import multiprocessing as mp
 import ar_vae_metrics as m
-import data.data_describe as d
 import monitoring as mn
 import regularization as r
+import time
 
 def setup_ddp(rank, world_size):
     # local_rank = int(os.environ["LOCAL_RANK"])
@@ -119,8 +119,6 @@ def run_epoch_iwae(
     C = VOCAB_SIZE + 1
 
     for batch, labels, physchem, attributes_input in dataloader:       
-        # print(f"Inspecting batch shape: {batch.shape}")
-        # physchem_original_async = d.calculate_physchem(pool, dataset_lib.decoded(batch, ""),) 
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         physchem_expanded_torch = physchem.repeat_interleave(K, dim=0)
         print(f"Min value: {physchem_expanded_torch.min()} and max value: {physchem_expanded_torch.max()}")
@@ -130,8 +128,10 @@ def run_epoch_iwae(
             optimizer.zero_grad()
 
         # autoencoding
-
-        mu, std = encoder(peptides)
+        start_time = time.time()
+        mu, std = encoder(peptides) #TODO zmierz czas
+        end_time = time.time()
+        print(f'encoding time: {end_time-start_time}')
         # print(f'mu = {mu}, std = {std}')
         assert not (isnan(mu).all() or isnan(std).all() ), f" contains all NaN values: {mu}, {std}"
         assert not (isinf(mu).all() or isinf(std).all()), f" contains all Inf values: {mu}, {std}"
@@ -170,10 +170,16 @@ def run_epoch_iwae(
         log_qzx = q_distr.log_prob(z).sum(dim=2)
         log_pz = prior_distr.log_prob(z).sum(dim=2)
 
-        kl_div = log_qzx - log_pz
+        start_time = time.time()
+        kl_div = log_qzx - log_pz #TODO zmierz czas
+        end_time = time.time()
+        print(f'kl_div time: {end_time-start_time}')
 
         # reconstruction - cross entropy
-        sampled_peptide_logits = decoder(z.reshape(K*B,-1))
+        start_time = time.time()
+        sampled_peptide_logits = decoder(z.reshape(K*B,-1)) #TODO zmierz czas
+        end_time = time.time()
+        print(f'decoding time: {end_time-start_time}')
         sampled_peptide_logits = sampled_peptide_logits.view(S, K, B, C)
         src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
         src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
@@ -181,19 +187,25 @@ def run_epoch_iwae(
         src_decoded = dataset_lib.decoded(src_decoded, "")
 #        indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
         # K x B
+        start_time = time.time()
         cross_entropy = ce_loss_fun(
             src,
             tgt,
-        ).sum(dim=2)
+        ).sum(dim=2) #TODO zmierz czas
+        end_time = time.time()
+        print(f'cross entropy time: {end_time-start_time}')
 
         reg_loss = 0
+        start_time = time.time()
         for dim in reg_dim:
             reg_loss += r.compute_reg_loss(
             z.reshape(-1,z.shape[2]), physchem_expanded_torch[:, dim], dim, gamma, DEVICE.index #gamma i delta z papera
-        )
+        ) #TODO zmierz czas
+        end_time = time.time()
+        print(f'reg loss time: {end_time-start_time}')
 
         loss = logsumexp(
-            cross_entropy + kl_beta * (log_qzx - log_pz), dim=0
+            cross_entropy + kl_beta * kl_div, dim=0
         ).mean(dim=0) + tensor(reg_loss).to(device)
 
         # stats
@@ -220,7 +232,9 @@ def run_epoch_iwae(
             model_out_sampled.append(
                 sampled_peptide_logits.mean(dim=1).cpu().detach().numpy() #to ensure this is okay, mean across K for one batch sequence
             )
-    if mode == 'test':
+
+    if eval_mode == "deep":
+        start_time = time.time()
         latent_codes = np.concatenate(latent_codes, 0)
         # print(f'latent_codes shape = {latent_codes.shape}')
         attributes = cat(attributes, dim=0).numpy()
@@ -231,6 +245,8 @@ def run_epoch_iwae(
         ar_vae_metrics = m.gather_metrics(async_metrics)
         with open(results_fp, 'w') as outfile:
             json.dump(ar_vae_metrics, outfile, indent=2)
+        end_time = time.time()
+        print(f'ar-vae metrics counting time: {end_time-start_time}')
 
     if logger is not None:
         mn.report_scalars(
@@ -368,16 +384,17 @@ def run(rank, world_size):
     global DEVICE 
     DEVICE = setup_ddp(rank, world_size)
 
-    with mp.Pool(processes=num_processes) as pool:
-        dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
-        # print(f"\nCombined TensorDataset has {len(dataset)} samples.")
-        # print(f"First sample from combined_dataset: {dataset[0]}")
-        train_size = int(0.8 * len(dataset))
-        eval_size = len(dataset) - train_size
+    dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
+    # print(f"\nCombined TensorDataset has {len(dataset)} samples.")
+    # print(f"First sample from combined_dataset: {dataset[0]}")
+    train_size = int(0.8 * len(dataset))
+    eval_size = len(dataset) - train_size
 
-        train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
-        train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], sampler=DistributedSampler(train_dataset), pin_memory=True, shuffle=False)
-        eval_loader = DataLoader(eval_dataset, batch_size=params["batch_size"], sampler=DistributedSampler(eval_dataset), pin_memory=True, shuffle=False)
+    train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
+    train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], sampler=DistributedSampler(train_dataset), pin_memory=True, shuffle=False)
+    eval_loader = DataLoader(eval_dataset, batch_size=params["batch_size"], sampler=DistributedSampler(eval_dataset), pin_memory=True, shuffle=False)
+
+    with mp.Pool(processes=num_processes) as pool:
         for epoch in tqdm(range(params["epochs"])):
             train_loader.sampler.set_epoch(epoch)
             eval_mode = "deep" if epoch % params["deeper_eval_every"] == 0 else "fast"
@@ -441,11 +458,11 @@ if __name__ == '__main__':
         # Metoda uruchamiania została już ustawiona (np. w innym module)
         pass
     # os.environ["USE_DISTRIBUTED"] = "1"
-    cuda.memory._set_allocator_settings("max_split_size_mb:128")
+    cuda.memory._set_allocator_settings("max_split_size_mb:128")# im mniejszy tym lepiej zapobiega OOM
     set_seed()
     # Inicjalizacja DDP jest już na poziomie globalnym
     world_size = cuda.device_count()
-    tmp.spawn(run, args=(world_size,), nprocs=world_size)
+    tmp.spawn(run, args=(world_size,), nprocs=world_size)#TODO:poczytaj o tym
 # autoencoder.load_state_dict(load('./gmm_model.pt'))
 # autoencoder = autoencoder.to('cpu')  
 

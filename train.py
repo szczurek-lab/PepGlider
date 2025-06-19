@@ -30,11 +30,10 @@ import time
 
 def setup_ddp(rank, world_size):
     # local_rank = int(os.environ["LOCAL_RANK"])
-#    os.environ["MASTER_ADDR"] = "0"
-#    os.environ["MASTER_PORT"] = "12355"
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "12355"
     cuda.set_device(rank)
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
-    init_method="env://"
     return device(f"cuda:{rank}")
 
 def set_seed(seed: int = 42) -> None:
@@ -306,6 +305,8 @@ def run_epoch_iwae(
     return stat_sum["total"] / len_data
 
 def run(rank, world_size):
+    global DEVICE 
+    DEVICE = setup_ddp(rank, world_size)
     # print(f'rank:{rank}')
     global ROOT_DIR 
     ROOT_DIR = Path(__file__).parent#.parent
@@ -324,7 +325,7 @@ def run(rank, world_size):
         "kl_beta_schedule": (0.000001, 0.01, 8000),
         "train_size": None,
         "epochs": 10000,
-        "iwae_samples": 16,
+        "iwae_samples": 10,
         "model_name": "basic",
         "use_clearml": True,
         "task_name": "ar_vae_with_ar_vae_metrics",
@@ -381,8 +382,7 @@ def run(rank, world_size):
 
     best_loss = 1e18
     num_processes = 8
-    global DEVICE 
-    DEVICE = setup_ddp(rank, world_size)
+    
 
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
     # print(f"\nCombined TensorDataset has {len(dataset)} samples.")
@@ -460,6 +460,7 @@ if __name__ == '__main__':
     # os.environ["USE_DISTRIBUTED"] = "1"
     cuda.memory._set_allocator_settings("max_split_size_mb:128")# im mniejszy tym lepiej zapobiega OOM
     set_seed()
+
     # Inicjalizacja DDP jest już na poziomie globalnym
     world_size = cuda.device_count()
     tmp.spawn(run, args=(world_size,), nprocs=world_size)#TODO:poczytaj o tym

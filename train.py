@@ -233,7 +233,7 @@ def run_epoch_iwae(
                 sampled_peptide_logits.mean(dim=1).cpu().detach().numpy() #to ensure this is okay, mean across K for one batch sequence
             )
 
-    if eval_mode == "deep":
+    if mode == 'test':
         start_time = time.time()
         latent_codes = np.concatenate(latent_codes, 0)
         # print(f'latent_codes shape = {latent_codes.shape}')
@@ -275,7 +275,7 @@ def run_epoch_iwae(
                 ("Regularization Loss with gamma", reg_loss),
             ],
         )
-        if eval_mode == "deep":
+        if eval_mode == "deep": 
             mn.report_sequence_char(
                 logger,
                 hue=f"{mode} - mu",
@@ -324,7 +324,7 @@ def run(rank, world_size):
         "kl_beta_schedule": (0.000001, 0.01, 8000),
         "train_size": None,
         "epochs": 10000,
-        "iwae_samples": 10,
+        "iwae_samples": 16,
         "model_name": "basic",
         "use_clearml": True,
         "task_name": "ar_vae_with_ar_vae_metrics",

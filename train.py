@@ -307,7 +307,7 @@ def run_epoch_iwae(
 def run(rank, world_size):
     global DEVICE 
     DEVICE = setup_ddp(rank, world_size)
-    # print(f'rank:{rank}')
+    print(f'rank:{rank}')
     global ROOT_DIR 
     ROOT_DIR = Path(__file__).parent#.parent
     DATA_DIR = ROOT_DIR / "data"

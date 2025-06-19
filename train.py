@@ -371,7 +371,7 @@ def run(rank, world_size):
         lr=params["lr"],
         betas=(0.9, 0.999),
     )
-    if params["use_clearml"]:
+    if params["use_clearml"] and rank == 0:
         task = clearml.Task.init(
             project_name="ar-vae-v4", task_name=params["task_name"]
         )

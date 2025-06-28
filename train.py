@@ -5,7 +5,7 @@ from torch.utils.data import TensorDataset, DataLoader, random_split
 import torch.multiprocessing as tmp
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.distributed import init_process_group, destroy_process_group
+from torch.distributed import init_process_group, destroy_process_group, barrier
 from model.model import EncoderRNN, DecoderRNN
 # import pandas as pd
 import numpy as np
@@ -85,12 +85,14 @@ def run_epoch_iwae(
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
     encoder.to(DEVICE)
     decoder.to(DEVICE)
-    encoder= nn.parallel.DistributedDataParallel(encoder, device_ids=[DEVICE.index])
-    decoder= nn.parallel.DistributedDataParallel(decoder, device_ids=[DEVICE.index])
-    encoder.to(device), decoder.to(device)
+    encoder= DDP(encoder, device_ids=[device])
+    decoder= DDP(decoder, device_ids=[device])
+    # encoder.to(device), decoder.to(device)
     if mode == "train":
         encoder.train(), decoder.train()
     else:
+        # barrier()
+        # print(f'Rank {}')
         encoder.eval(), decoder.eval()
 
     stat_sum = {
@@ -116,10 +118,11 @@ def run_epoch_iwae(
 
     K = iwae_samples
     C = VOCAB_SIZE + 1
+    dataloader.sampler.set_epoch(epoch)
 
     for batch, labels, physchem, attributes_input in dataloader:       
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
-        physchem_expanded_torch = physchem.repeat_interleave(K, dim=0)
+        physchem_expanded_torch = physchem.repeat_interleave(K, dim=0).to(device)
         print(f"Min value: {physchem_expanded_torch.min()} and max value: {physchem_expanded_torch.max()}")
         # print(f'physchem_expanded_torch shape = {physchem_expanded_torch.shape}')
         S, B = peptides.shape
@@ -130,14 +133,14 @@ def run_epoch_iwae(
         start_time = time.time()
         mu, std = encoder(peptides) #TODO zmierz czas
         end_time = time.time()
-        print(f'encoding time: {end_time-start_time}')
+        # print(f'encoding time: {end_time-start_time}')
         # print(f'mu = {mu}, std = {std}')
         assert not (isnan(mu).all() or isnan(std).all() ), f" contains all NaN values: {mu}, {std}"
         assert not (isinf(mu).all() or isinf(std).all()), f" contains all Inf values: {mu}, {std}"
 
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
-        z = q_distr.rsample((K,)) # K, B, L
+        z = q_distr.rsample((K,)).to(device) # K, B, L
         # print(f'z shape = {z.shape}')
         if mode == 'test':
                     attributes_input_expanded_torch = attributes_input.repeat_interleave(K, dim=0)
@@ -172,13 +175,13 @@ def run_epoch_iwae(
         start_time = time.time()
         kl_div = log_qzx - log_pz #TODO zmierz czas
         end_time = time.time()
-        print(f'kl_div time: {end_time-start_time}')
+        # print(f'kl_div time: {end_time-start_time}')
 
         # reconstruction - cross entropy
         start_time = time.time()
         sampled_peptide_logits = decoder(z.reshape(K*B,-1)) #TODO zmierz czas
         end_time = time.time()
-        print(f'decoding time: {end_time-start_time}')
+        # print(f'decoding time: {end_time-start_time}')
         sampled_peptide_logits = sampled_peptide_logits.view(S, K, B, C)
         src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
         src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
@@ -192,7 +195,7 @@ def run_epoch_iwae(
             tgt,
         ).sum(dim=2) #TODO zmierz czas
         end_time = time.time()
-        print(f'cross entropy time: {end_time-start_time}')
+        # print(f'cross entropy time: {end_time-start_time}')
 
         reg_loss = 0
         start_time = time.time()
@@ -201,7 +204,7 @@ def run_epoch_iwae(
             z.reshape(-1,z.shape[2]), physchem_expanded_torch[:, dim], dim, gamma, DEVICE.index #gamma i delta z papera
         ) #TODO zmierz czas
         end_time = time.time()
-        print(f'reg loss time: {end_time-start_time}')
+        # print(f'reg loss time: {end_time-start_time}')
 
         loss = logsumexp(
             cross_entropy + kl_beta * kl_div, dim=0
@@ -307,7 +310,7 @@ def run_epoch_iwae(
 def run(rank, world_size):
     global DEVICE 
     DEVICE = setup_ddp(rank, world_size)
-    print(f'rank:{rank}')
+    # print(f'rank:{rank}')
     global ROOT_DIR 
     ROOT_DIR = Path(__file__).parent#.parent
     DATA_DIR = ROOT_DIR / "data"
@@ -407,7 +410,7 @@ def run(rank, world_size):
                 encoder=encoder,
                 decoder=decoder,
                 dataloader=train_loader,
-                device=device(params["device"]),
+                device=rank,
                 logger=logger,
                 epoch=epoch,
                 optimizer=optimizer,

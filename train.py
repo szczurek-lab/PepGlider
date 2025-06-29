@@ -84,8 +84,10 @@ def run_epoch_iwae(
     pool
 ):
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
-    encoder.to(device)
-    decoder.to(device)
+    device_first = device(f"cuda:{device}")
+    # encoder = encoder.to(device)
+    encoder.to(device_first)
+    decoder.to(device_first)
     encoder= DDP(encoder, device_ids=[device])
     decoder= DDP(decoder, device_ids=[device])
     # encoder.to(device), decoder.to(device)
@@ -122,8 +124,8 @@ def run_epoch_iwae(
     dataloader.sampler.set_epoch(epoch)
 
     for batch, labels, physchem, attributes_input in dataloader:       
-        peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
-        physchem_expanded_torch = physchem.repeat_interleave(K, dim=0).to(device)
+        peptides = batch.permute(1, 0).type(LongTensor).to(device_first) # S x B
+        physchem_expanded_torch = physchem.repeat_interleave(K, dim=0).to(device_first)
         print(f"Min value: {physchem_expanded_torch.min()} and max value: {physchem_expanded_torch.max()}")
         # print(f'physchem_expanded_torch shape = {physchem_expanded_torch.shape}')
         S, B = peptides.shape
@@ -141,7 +143,7 @@ def run_epoch_iwae(
 
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
-        z = q_distr.rsample((K,)).to(device) # K, B, L
+        z = q_distr.rsample((K,)).to(device_first) # K, B, L
         # print(f'z shape = {z.shape}')
         if mode == 'test':
                     attributes_input_expanded_torch = attributes_input.repeat_interleave(K, dim=0)
@@ -202,14 +204,14 @@ def run_epoch_iwae(
         start_time = time.time()
         for dim in reg_dim:
             reg_loss += r.compute_reg_loss(
-            z.reshape(-1,z.shape[2]), physchem_expanded_torch[:, dim], dim, gamma, device #gamma i delta z papera
+            z.reshape(-1,z.shape[2]), physchem_expanded_torch[:, dim], dim, gamma, device_first #gamma i delta z papera
         ) #TODO zmierz czas
         end_time = time.time()
         # print(f'reg loss time: {end_time-start_time}')
 
         loss = logsumexp(
             cross_entropy + kl_beta * kl_div, dim=0
-        ).mean(dim=0) + tensor(reg_loss).to(device)
+        ).mean(dim=0) + tensor(reg_loss).to(device_first)
 
         # stats
         stat_sum["kl_mean"] += kl_div.mean(dim=0).sum(dim=0).item()

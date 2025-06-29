@@ -84,7 +84,7 @@ def run_epoch_iwae(
     pool
 ):
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
-    device_first = device(f"cuda:{device}")
+    device_first = device(f'cuda:{str(device)}')
     # encoder = encoder.to(device)
     encoder.to(device_first)
     decoder.to(device_first)

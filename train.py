@@ -34,7 +34,7 @@ def setup_ddp(rank, world_size):
     os.environ["MASTER_PORT"] = "12355"
     cuda.set_device(rank)
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
-    return device(f"cuda:{rank}")
+    # return device(f"cuda:{rank}")
 
 def set_seed(seed: int = 42) -> None:
     """
@@ -83,8 +83,8 @@ def run_epoch_iwae(
     pool
 ):
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
-    encoder.to(DEVICE)
-    decoder.to(DEVICE)
+    # encoder.to(DEVICE)
+    # decoder.to(DEVICE)
     encoder= DDP(encoder, device_ids=[device])
     decoder= DDP(decoder, device_ids=[device])
     # encoder.to(device), decoder.to(device)
@@ -201,7 +201,7 @@ def run_epoch_iwae(
         start_time = time.time()
         for dim in reg_dim:
             reg_loss += r.compute_reg_loss(
-            z.reshape(-1,z.shape[2]), physchem_expanded_torch[:, dim], dim, gamma, DEVICE.index #gamma i delta z papera
+            z.reshape(-1,z.shape[2]), physchem_expanded_torch[:, dim], dim, gamma, device #gamma i delta z papera
         ) #TODO zmierz czas
         end_time = time.time()
         # print(f'reg loss time: {end_time-start_time}')
@@ -308,8 +308,9 @@ def run_epoch_iwae(
     return stat_sum["total"] / len_data
 
 def run(rank, world_size):
-    global DEVICE 
-    DEVICE = setup_ddp(rank, world_size)
+    # global DEVICE 
+    # DEVICE = 
+    setup_ddp(rank, world_size)
     # print(f'rank:{rank}')
     global ROOT_DIR 
     ROOT_DIR = Path(__file__).parent#.parent

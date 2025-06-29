@@ -143,7 +143,7 @@ def normalize_attributes(physchem_tensor_original, ):
     physchem_tensor_normalized = torch.empty_like(physchem_tensor_original) # Tworzy tensor o tym samym kształcie i dtype co original
     for col_idx in range(3):
         feature_name = feature_names[col_idx] if col_idx < len(feature_names) else f"Column_{col_idx}"
-        print(f"\nProcessing column {col_idx} ('{feature_name}') with Quantile Transformation...")
+        # print(f"\nProcessing column {col_idx} ('{feature_name}') with Quantile Transformation...")
 
         column_tensor = physchem_tensor_original[:, col_idx]
 
@@ -159,12 +159,12 @@ def normalize_attributes(physchem_tensor_original, ):
 
         physchem_tensor_normalized[:, col_idx] = transformed_column_tensor_2d.squeeze(1) # Squeeze, bo przypisujemy 1D do 1D slices
 
-        print(f"Applied Quantile Transformation to '{feature_name}'. Min: {transformed_column_tensor_2d.min():.4f}, Max: {transformed_column_tensor_2d.max():.4f}")
+        # print(f"Applied Quantile Transformation to '{feature_name}'. Min: {transformed_column_tensor_2d.min():.4f}, Max: {transformed_column_tensor_2d.max():.4f}")
 
 
-    print("\nNormalized physchem_tensor (first 5 rows):")
-    print(physchem_tensor_normalized[:5])
-    print(f"Shape of normalized physchem_tensor: {physchem_tensor_normalized.shape}")
+    # print("\nNormalized physchem_tensor (first 5 rows):")
+    # print(physchem_tensor_normalized[:5])
+    # print(f"Shape of normalized physchem_tensor: {physchem_tensor_normalized.shape}")
     return physchem_tensor_normalized
 
 class AMPDataManager:

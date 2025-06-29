@@ -337,7 +337,7 @@ def run():#rank, world_size
         "device": "cuda",
         "deeper_eval_every": 20,
         "save_model_every": 100,
-        "reg_dim": [0], # [hydrophobicity_moment, length, charge]
+        "reg_dim": [1], # [length, charge, hydrophobicity_moment]
         "gamma_schedule": (1, 200, 8000)
     }
     encoder = EncoderRNN(

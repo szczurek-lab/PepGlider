@@ -28,12 +28,13 @@ import monitoring as mn
 import regularization as r
 import time
 
-def setup_ddp(rank, world_size):
+def setup_ddp():#rank, world_size
     # local_rank = int(os.environ["LOCAL_RANK"])
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "12355"
-    cuda.set_device(rank)
-    init_process_group(backend="nccl", rank=rank, world_size=world_size)
+    # os.environ["MASTER_ADDR"] = "localhost"
+    # os.environ["MASTER_PORT"] = "12355"
+    # cuda.set_device(rank)
+    cuda.set_device(int(os.environ["LOCAL_RANK"]))
+    init_process_group(backend="nccl")#, rank=rank, world_size=world_size
     # return device(f"cuda:{rank}")
 
 def set_seed(seed: int = 42) -> None:
@@ -307,10 +308,10 @@ def run_epoch_iwae(
             )
     return stat_sum["total"] / len_data
 
-def run(rank, world_size):
+def run():#rank, world_size
     # global DEVICE 
     # DEVICE = 
-    setup_ddp(rank, world_size)
+    setup_ddp()#rank, world_size
     # print(f'rank:{rank}')
     global ROOT_DIR 
     ROOT_DIR = Path(__file__).parent#.parent
@@ -375,7 +376,7 @@ def run(rank, world_size):
         lr=params["lr"],
         betas=(0.9, 0.999),
     )
-    if params["use_clearml"] and rank == 0:
+    if params["use_clearml"] and int(os.environ["LOCAL_RANK"]) == 0:
         task = clearml.Task.init(
             project_name="ar-vae-v4", task_name=params["task_name"]
         )
@@ -411,7 +412,7 @@ def run(rank, world_size):
                 encoder=encoder,
                 decoder=decoder,
                 dataloader=train_loader,
-                device=rank,
+                device=int(os.environ["LOCAL_RANK"]),
                 logger=logger,
                 epoch=epoch,
                 optimizer=optimizer,
@@ -429,7 +430,7 @@ def run(rank, world_size):
                     encoder=encoder,
                     decoder=decoder,
                     dataloader=eval_loader,
-                    device=device(params["device"]),
+                    device=int(os.environ["LOCAL_RANK"]),
                     logger=logger,
                     epoch=epoch,
                     optimizer=None,
@@ -466,8 +467,9 @@ if __name__ == '__main__':
     set_seed()
 
     # Inicjalizacja DDP jest już na poziomie globalnym
-    world_size = cuda.device_count()
-    tmp.spawn(run, args=(world_size,), nprocs=world_size)#TODO:poczytaj o tym
+    # world_size = cuda.device_count()
+    # tmp.spawn(run, args=(world_size,), nprocs=world_size)#TODO:poczytaj o tym
+    run()
 # autoencoder.load_state_dict(load('./gmm_model.pt'))
 # autoencoder = autoencoder.to('cpu')  
 

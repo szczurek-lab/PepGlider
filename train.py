@@ -72,7 +72,7 @@ def run_epoch_iwae(
     encoder: EncoderRNN,
     decoder: DecoderRNN,
     dataloader: DataLoader,
-    device: device,
+    local_rank: int,
     epoch: int,
     kl_beta: float,
     logger: Optional[clearml.Logger],
@@ -84,12 +84,12 @@ def run_epoch_iwae(
     pool
 ):
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
-    device_first = device(f"cuda:{device}")
+    device_first = device(f"cuda:{local_rank}")
     # encoder = encoder.to(device)
     encoder.to(device_first)
     decoder.to(device_first)
-    encoder= DDP(encoder, device_ids=[device])
-    decoder= DDP(decoder, device_ids=[device])
+    encoder= DDP(encoder, device_ids=[local_rank])
+    decoder= DDP(decoder, device_ids=[local_rank])
     # encoder.to(device), decoder.to(device)
     if mode == "train":
         encoder.train(), decoder.train()
@@ -414,7 +414,7 @@ def run():#rank, world_size
                 encoder=encoder,
                 decoder=decoder,
                 dataloader=train_loader,
-                device=int(os.environ["LOCAL_RANK"]),
+                local_rank=int(os.environ["LOCAL_RANK"]),
                 logger=logger,
                 epoch=epoch,
                 optimizer=optimizer,
@@ -432,7 +432,7 @@ def run():#rank, world_size
                     encoder=encoder,
                     decoder=decoder,
                     dataloader=eval_loader,
-                    device=int(os.environ["LOCAL_RANK"]),
+                    local_rank=int(os.environ["LOCAL_RANK"]),
                     logger=logger,
                     epoch=epoch,
                     optimizer=None,

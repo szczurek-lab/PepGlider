@@ -83,8 +83,8 @@ def run_epoch_iwae(
     pool
 ):
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
-    # encoder.to(DEVICE)
-    # decoder.to(DEVICE)
+    encoder.to(device)
+    decoder.to(device)
     encoder= DDP(encoder, device_ids=[device])
     decoder= DDP(decoder, device_ids=[device])
     # encoder.to(device), decoder.to(device)

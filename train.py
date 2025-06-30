@@ -2,16 +2,16 @@ import os
 from torch import optim, nn, logsumexp, device, cuda, save, isinf, backends, manual_seed, LongTensor, zeros_like, ones_like, isnan, tensor, cat
 from torch.distributions import Normal
 from torch.utils.data import TensorDataset, DataLoader, random_split
-import torch.multiprocessing as tmp
+# import torch.multiprocessing as tmp
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.distributed import init_process_group, destroy_process_group, barrier
+from torch.distributed import init_process_group, destroy_process_group
 from model.model import EncoderRNN, DecoderRNN
 # import pandas as pd
 import numpy as np
 # from torch.autograd import Variable
-from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
+# from sklearn.decomposition import PCA
+# import matplotlib.pyplot as plt
 import clearml
 from typing import Optional, Literal
 from torch.optim import Adam
@@ -21,12 +21,12 @@ from pathlib import Path
 from tqdm import tqdm
 import data.dataset as dataset_lib
 from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
-import json
+# import json
 import multiprocessing as mp
 import ar_vae_metrics as m
 import monitoring as mn
 import regularization as r
-import time
+# import time
 
 def setup_ddp():#rank, world_size
     # local_rank = int(os.environ["LOCAL_RANK"])
@@ -86,10 +86,10 @@ def run_epoch_iwae(
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
     device_first = device(f"cuda:{local_rank}")
     # encoder = encoder.to(device)
-    encoder.to(device_first)
-    decoder.to(device_first)
-    encoder= DDP(encoder, device_ids=[local_rank])
-    decoder= DDP(decoder, device_ids=[local_rank])
+    # encoder.to(device_first)
+    # decoder.to(device_first)
+    # encoder= DDP(encoder, device_ids=[local_rank])
+    # decoder= DDP(decoder, device_ids=[local_rank])
     # encoder.to(device), decoder.to(device)
     if mode == "train":
         encoder.train(), decoder.train()
@@ -111,10 +111,10 @@ def run_epoch_iwae(
     seq_true, model_out, model_out_sampled = [], [], []
     len_data = len(dataloader.dataset)
 
-    results_fp = os.path.join(
-    os.path.dirname(ROOT_DIR),
-        'results_dict.json'
-    )
+    # results_fp = os.path.join(
+    # os.path.dirname(ROOT_DIR),
+    #     'results_dict.json'
+    # )
     latent_codes = []
     attributes = []
     ar_vae_metrics = {}
@@ -126,16 +126,16 @@ def run_epoch_iwae(
     for batch, labels, physchem, attributes_input in dataloader:       
         peptides = batch.permute(1, 0).type(LongTensor).to(device_first) # S x B
         physchem_expanded_torch = physchem.repeat_interleave(K, dim=0).to(device_first)
-        print(f"Min value: {physchem_expanded_torch.min()} and max value: {physchem_expanded_torch.max()}")
+        # print(f"Min value: {physchem_expanded_torch.min()} and max value: {physchem_expanded_torch.max()}")
         # print(f'physchem_expanded_torch shape = {physchem_expanded_torch.shape}')
         S, B = peptides.shape
         if optimizer:
             optimizer.zero_grad()
 
         # autoencoding
-        start_time = time.time()
+        # start_time = time.time()
         mu, std = encoder(peptides) #TODO zmierz czas
-        end_time = time.time()
+        # end_time = time.time()
         # print(f'encoding time: {end_time-start_time}')
         # print(f'mu = {mu}, std = {std}')
         assert not (isnan(mu).all() or isnan(std).all() ), f" contains all NaN values: {mu}, {std}"
@@ -175,38 +175,38 @@ def run_epoch_iwae(
         log_qzx = q_distr.log_prob(z).sum(dim=2)
         log_pz = prior_distr.log_prob(z).sum(dim=2)
 
-        start_time = time.time()
+        # start_time = time.time()
         kl_div = log_qzx - log_pz #TODO zmierz czas
-        end_time = time.time()
+        # end_time = time.time()
         # print(f'kl_div time: {end_time-start_time}')
 
         # reconstruction - cross entropy
-        start_time = time.time()
+        # start_time = time.time()
         sampled_peptide_logits = decoder(z.reshape(K*B,-1)) #TODO zmierz czas
-        end_time = time.time()
+        # end_time = time.time()
         # print(f'decoding time: {end_time-start_time}')
         sampled_peptide_logits = sampled_peptide_logits.view(S, K, B, C)
         src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
-        src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
+        # src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
         tgt = peptides.permute(1, 0).reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
-        src_decoded = dataset_lib.decoded(src_decoded, "")
+        # src_decoded = dataset_lib.decoded(src_decoded, "")
 #        indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
         # K x B
-        start_time = time.time()
+        # start_time = time.time()
         cross_entropy = ce_loss_fun(
             src,
             tgt,
         ).sum(dim=2) #TODO zmierz czas
-        end_time = time.time()
+        # end_time = time.time()
         # print(f'cross entropy time: {end_time-start_time}')
 
         reg_loss = 0
-        start_time = time.time()
+        # start_time = time.time()
         for dim in reg_dim:
             reg_loss += r.compute_reg_loss(
             z.reshape(-1,z.shape[2]), physchem_expanded_torch[:, dim], dim, gamma, device_first #gamma i delta z papera
         ) #TODO zmierz czas
-        end_time = time.time()
+        # end_time = time.time()
         # print(f'reg loss time: {end_time-start_time}')
 
         loss = logsumexp(
@@ -239,7 +239,7 @@ def run_epoch_iwae(
             )
 
     if mode == 'test':
-        start_time = time.time()
+        # start_time = time.time()
         latent_codes = np.concatenate(latent_codes, 0)
         # print(f'latent_codes shape = {latent_codes.shape}')
         attributes = cat(attributes, dim=0).numpy()
@@ -248,10 +248,10 @@ def run_epoch_iwae(
         # print(f'attributes shape = {attributes.shape}')
         async_metrics = m.compute_all_metrics_async(pool, latent_codes, attributes, attr_list)
         ar_vae_metrics = m.gather_metrics(async_metrics)
-        with open(results_fp, 'w') as outfile:
-            json.dump(ar_vae_metrics, outfile, indent=2)
-        end_time = time.time()
-        print(f'ar-vae metrics counting time: {end_time-start_time}')
+        # with open(results_fp, 'w') as outfile:
+            # json.dump(ar_vae_metrics, outfile, indent=2)
+        # end_time = time.time()
+        # print(f'ar-vae metrics counting time: {end_time-start_time}')
 
     if logger is not None:
         mn.report_scalars(
@@ -339,7 +339,7 @@ def run():#rank, world_size
         "device": "cuda",
         "deeper_eval_every": 20,
         "save_model_every": 100,
-        "reg_dim": [0], # [hydrophobicity_moment, length, charge]
+        "reg_dim": [1], # [hydrophobicity_moment, length, charge]
         "gamma_schedule": (1, 200, 8000)
     }
     encoder = EncoderRNN(
@@ -358,6 +358,12 @@ def run():#rank, world_size
         params["dropout"],
         params["layer_norm"],
     )
+    device_first = device(f"cuda:{int(os.environ["LOCAL_RANK"])}")
+    # encoder = encoder.to(device)
+    encoder.to(device_first)
+    decoder.to(device_first)
+    encoder= DDP(encoder, device_ids=[int(os.environ["LOCAL_RANK"])])
+    decoder= DDP(decoder, device_ids=[int(os.environ["LOCAL_RANK"])])
 
     data_manager = dataset_lib.AMPDataManager(
         DATA_DIR / 'unlabelled_positive.csv',

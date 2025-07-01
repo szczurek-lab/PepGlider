@@ -122,7 +122,7 @@ def run_epoch_iwae(
 
     K = iwae_samples
     C = VOCAB_SIZE + 1
-    dataloader.sampler.set_epoch(epoch)
+    # dataloader.sampler.set_epoch(epoch)
 
     for batch, labels, physchem, attributes_input in dataloader:       
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
@@ -247,8 +247,15 @@ def run_epoch_iwae(
         # print(f'attributes shape = {attributes.shape}')
         attributes, attr_list = m.extract_relevant_attributes(attributes, reg_dim)
         # print(f'attributes shape = {attributes.shape}')
-        async_metrics = m.compute_all_metrics_async(pool, latent_codes, attributes, attr_list)
-        ar_vae_metrics = m.gather_metrics(async_metrics)
+        interp_metrics = m.compute_interpretability_metric(
+            latent_codes, attributes, attr_list
+        )
+        ar_vae_metrics = {}
+        ar_vae_metrics["Interpretability"] = interp_metrics
+        ar_vae_metrics.update(m.compute_correlation_score(latent_codes, attributes))
+        ar_vae_metrics.update(m.compute_modularity(latent_codes, attributes))
+        ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
+        ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
         # with open(results_fp, 'w') as outfile:
             # json.dump(ar_vae_metrics, outfile, indent=2)
         # end_time = time.time()
@@ -282,32 +289,29 @@ def run_epoch_iwae(
             ],
         )
         if eval_mode == "deep": 
-            mn.report_sequence_char(
+            mn.report_sequence_char_test(
                 logger,
                 hue=f"{mode} - mu",
                 epoch=epoch,
                 seq_true=np.concatenate(seq_true, axis=1),
                 model_out=np.concatenate(model_out, axis=1),
-                metrics = None,
-                pool = pool
+                metrics = None
             )
-            mn.report_sequence_char(
+            mn.report_sequence_char_test(
                 logger,
                 hue=f"{mode} - z",
                 epoch=epoch,
                 seq_true=np.concatenate(seq_true, axis=1),
                 model_out=np.concatenate(model_out_sampled, axis=1),
-                metrics = None,
-                pool = pool
+                metrics = None
             )
-            mn.report_sequence_char(
+            mn.report_sequence_char_test(
                 logger,
                 hue=f"{mode} - ar-vae metrics",
                 epoch=epoch,
                 seq_true=np.concatenate(seq_true, axis=1),
                 model_out=None,
-                metrics = ar_vae_metrics,
-                pool = pool
+                metrics = ar_vae_metrics
             )
     return stat_sum["total"] / len_data
 

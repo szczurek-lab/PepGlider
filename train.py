@@ -358,7 +358,7 @@ def run():#rank, world_size
         params["dropout"],
         params["layer_norm"],
     )
-    device_first = device(f"cuda:{int(os.environ["LOCAL_RANK"])}")
+    device_first = device(f"cuda:{int(os.environ['LOCAL_RANK'])}")
     # encoder = encoder.to(device)
     encoder.to(device_first)
     decoder.to(device_first)

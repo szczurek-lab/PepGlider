@@ -1,5 +1,6 @@
+import torch
 import os
-from torch import optim, nn, logsumexp, device, cuda, save, isinf, backends, manual_seed, LongTensor, zeros_like, ones_like, isnan, tensor, cat
+from torch import optim, nn, logsumexp, cuda, save, isinf, backends, manual_seed, LongTensor, zeros_like, ones_like, isnan, tensor, cat
 from torch.distributions import Normal
 from torch.utils.data import TensorDataset, DataLoader, random_split
 # import torch.multiprocessing as tmp
@@ -72,7 +73,7 @@ def run_epoch_iwae(
     encoder: EncoderRNN,
     decoder: DecoderRNN,
     dataloader: DataLoader,
-    device: device,
+    device: torch.device,
     epoch: int,
     kl_beta: float,
     logger: Optional[clearml.Logger],
@@ -358,10 +359,10 @@ def run():#rank, world_size
         params["dropout"],
         params["layer_norm"],
     )
-    DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
+    DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
     # device_first = device(f"cuda:{int(os.environ["LOCAL_RANK"])}")
-    encoder = encoder.to(device)
-    decoder = decoder.to(device)
+    encoder = encoder.to(DEVICE)
+    decoder = decoder.to(DEVICE)
     # encoder.to(device_first)
     # decoder.to(device_first)
     # encoder= DDP(encoder, device_ids=[int(os.environ["LOCAL_RANK"])])
@@ -386,7 +387,7 @@ def run():#rank, world_size
         lr=params["lr"],
         betas=(0.9, 0.999),
     )
-    if params["use_clearml"] and int(os.environ["LOCAL_RANK"]) == 0:
+    if params["use_clearml"]: # and int(os.environ["LOCAL_RANK"]) == 0:
         task = clearml.Task.init(
             project_name="ar-vae-v4", task_name=params["task_name"]
         )
@@ -422,7 +423,7 @@ def run():#rank, world_size
                 encoder=encoder,
                 decoder=decoder,
                 dataloader=train_loader,
-                device=DEVICE,#int(os.environ["LOCAL_RANK"]),
+                device=DEVICE, # int(os.environ["LOCAL_RANK"]),
                 logger=logger,
                 epoch=epoch,
                 optimizer=optimizer,
@@ -440,7 +441,7 @@ def run():#rank, world_size
                     encoder=encoder,
                     decoder=decoder,
                     dataloader=eval_loader,
-                    device=DEVICE,#int(os.environ["LOCAL_RANK"]),
+                    device=DEVICE, #int(os.environ["LOCAL_RANK"]),
                     logger=logger,
                     epoch=epoch,
                     optimizer=None,

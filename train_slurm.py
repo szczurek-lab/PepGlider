@@ -358,7 +358,7 @@ def run():#rank, world_size
         params["dropout"],
         params["layer_norm"],
     )
-    device = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
+    DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
     # device_first = device(f"cuda:{int(os.environ["LOCAL_RANK"])}")
     encoder = encoder.to(device)
     decoder = decoder.to(device)
@@ -422,7 +422,7 @@ def run():#rank, world_size
                 encoder=encoder,
                 decoder=decoder,
                 dataloader=train_loader,
-                device=device,#int(os.environ["LOCAL_RANK"]),
+                device=DEVICE,#int(os.environ["LOCAL_RANK"]),
                 logger=logger,
                 epoch=epoch,
                 optimizer=optimizer,
@@ -440,7 +440,7 @@ def run():#rank, world_size
                     encoder=encoder,
                     decoder=decoder,
                     dataloader=eval_loader,
-                    device=device,#int(os.environ["LOCAL_RANK"]),
+                    device=DEVICE,#int(os.environ["LOCAL_RANK"]),
                     logger=logger,
                     epoch=epoch,
                     optimizer=None,
@@ -473,7 +473,7 @@ if __name__ == '__main__':
         # Metoda uruchamiania została już ustawiona (np. w innym module)
         pass
     # os.environ["USE_DISTRIBUTED"] = "1"
-    cuda.memory._set_allocator_settings("max_split_size_mb:128")# im mniejszy tym lepiej zapobiega OOM
+    # cuda.memory._set_allocator_settings("max_split_size_mb:128")# im mniejszy tym lepiej zapobiega OOM
     set_seed()
 
     # Inicjalizacja DDP jest już na poziomie globalnym

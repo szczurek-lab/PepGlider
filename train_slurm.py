@@ -81,8 +81,8 @@ def run_epoch_iwae(
     eval_mode: Literal["fast", "deep"],
     iwae_samples: int,
     reg_dim,
-    gamma,
-    pool
+    gamma
+    # pool
 ):
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
     # device_first = device(f"cuda:{local_rank}")

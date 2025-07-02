@@ -222,21 +222,22 @@ def run_epoch_iwae(
             )
             loss_mean += (cross_entropy + kl_beta * kl_div).mean(dim=0)
             loss_reg_loss += tensor(reg_loss).to(device)
+            print(f'loss from mean = {loss_mean}')
+            print(f'loss_logsumexp = {loss_logsumexp}')
+            print(f'loss reg loss = {loss_reg_loss}')
+
+            loss += loss_logsumexp
+            loss += loss_reg_loss
+            # stats
+            stat_sum["kl_mean"] += kl_div.mean(dim=0).sum(dim=0).item()
+            stat_sum["kl_best"] += kl_div.min(dim=0).values.sum(dim=0).item()
+            stat_sum["kl_worst"] += kl_div.max(dim=0).values.sum(dim=0).item()
+            stat_sum["ce_mean"] += cross_entropy.mean(dim=0).sum(dim=0).item()
+            stat_sum["ce_best"] += cross_entropy.min(dim=0).values.sum(dim=0).item()
+            stat_sum["ce_worst"] += cross_entropy.max(dim=0).values.sum(dim=0).item()
+            stat_sum["total"] += loss.item() * len(batch)
+            stat_sum["std"] += std.mean(dim=1).sum().item()
         print(f'last cross_entropy = {cross_entropy}')
-        loss += loss_logsumexp
-        print(f'loss from mean = {loss_mean}')
-        print(f'loss_logsumexp = {loss_logsumexp}')
-        loss += loss_reg_loss
-        print(f'loss reg loss = {loss_reg_loss}')
-        # stats
-        stat_sum["kl_mean"] += kl_div.mean(dim=0).sum(dim=0).item()
-        stat_sum["kl_best"] += kl_div.min(dim=0).values.sum(dim=0).item()
-        stat_sum["kl_worst"] += kl_div.max(dim=0).values.sum(dim=0).item()
-        stat_sum["ce_mean"] += cross_entropy.mean(dim=0).sum(dim=0).item()
-        stat_sum["ce_best"] += cross_entropy.min(dim=0).values.sum(dim=0).item()
-        stat_sum["ce_worst"] += cross_entropy.max(dim=0).values.sum(dim=0).item()
-        stat_sum["total"] += loss.item() * len(batch)
-        stat_sum["std"] += std.mean(dim=1).sum().item()
 
         if optimizer:
             loss.backward()

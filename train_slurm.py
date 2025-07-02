@@ -3,6 +3,7 @@ import os
 from torch import optim, nn, logsumexp, cuda, save, isinf, backends, manual_seed, LongTensor, zeros_like, ones_like, isnan, tensor, cat
 from torch.distributions import Normal
 from torch.utils.data import TensorDataset, DataLoader, random_split
+torch.autograd.set_detect_anomaly(True)
 # import torch.multiprocessing as tmp
 # from torch.utils.data.distributed import DistributedSampler
 # from torch.nn.parallel import DistributedDataParallel as DDP

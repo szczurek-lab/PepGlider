@@ -145,8 +145,8 @@ def run_epoch_iwae(
 
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
+        iwae_terms, all_kl_divs, all_cross_entropies = [], [], [], []
         for _ in range(K):
-            loss_logsumexp, loss, loss_mean, loss_reg_loss = 0,0,0,0
             z = q_distr.rsample().to(device) # B, L
             print(f'z shape = {z.shape}')
             if mode == 'test':
@@ -183,6 +183,7 @@ def run_epoch_iwae(
 
             # start_time = time.time()
             kl_div = log_qzx - log_pz #TODO zmierz czas
+            all_kl_divs.append(kl_div)
             # end_time = time.time()
             # print(f'kl_div time: {end_time-start_time}')
 
@@ -206,10 +207,10 @@ def run_epoch_iwae(
                 src,
                 tgt,
             ).sum(dim=1) #TODO zmierz czas
+            all_cross_entropies.append(cross_entropy) # Dodaj do listy dla statystyk
             print(f'cross_entropy shape = {cross_entropy.shape}')
             # end_time = time.time()
             # print(f'cross entropy time: {end_time-start_time}')
-
             reg_loss = 0
             # start_time = time.time()
             for dim in reg_dim:
@@ -218,18 +219,8 @@ def run_epoch_iwae(
             ) #TODO zmierz czas
             # end_time = time.time()
             # print(f'reg loss time: {end_time-start_time}')
-
-            loss_logsumexp += logsumexp(
-                cross_entropy + kl_beta * kl_div, dim=0
-            )
-            loss_mean += (cross_entropy + kl_beta * kl_div).mean(dim=0)
-            loss_reg_loss += tensor(reg_loss).to(device)
-            print(f'loss from mean = {loss_mean}')
-            print(f'loss_logsumexp = {loss_logsumexp}')
-            print(f'loss reg loss = {loss_reg_loss}')
-
-            loss += loss_logsumexp
-            loss += loss_reg_loss
+            iwae_sample_term = cross_entropy + kl_beta * kl_div # (B,)
+            iwae_terms.append(iwae_sample_term) # Dodaj do listy
             # stats
             stat_sum["kl_mean"] += kl_div.sum(dim=0).item()
             stat_sum["kl_best"] += kl_div.max(dim=0).values.item()
@@ -240,13 +231,21 @@ def run_epoch_iwae(
             stat_sum["total"] += loss.item() * len(batch)
             # stat_sum["std"] += std.mean(dim=1).sum().item()
             stat_sum["reg_loss"] += reg_loss
-            if optimizer:
-                loss.backward()
-                nn.utils.clip_grad_norm_(
-                    itertools.chain(encoder.parameters(), decoder.parameters()), max_norm=1.0
-                )
-                optimizer.step()
-        # print(f'last cross_entropy = {cross_entropy}')
+        iwae_terms_stacked = torch.stack(iwae_terms, dim=0)
+
+        loss = logsumexp(iwae_terms_stacked, dim=0)
+        print(f'loss from mean = {(iwae_terms_stacked).mean(dim=0)}')
+        print(f'loss_logsumexp = {logsumexp(iwae_terms_stacked, dim=0)}')
+        print(f'loss reg loss = {stat_sum["reg_loss"]}')
+
+        loss += stat_sum["reg_loss"]         
+        if optimizer:
+            loss.backward()
+            nn.utils.clip_grad_norm_(
+                itertools.chain(encoder.parameters(), decoder.parameters()), max_norm=1.0
+            )
+            optimizer.step()
+        print(f'last cross_entropy = {cross_entropy}')
 
         # reporting
         if eval_mode == "deep":

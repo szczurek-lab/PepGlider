@@ -145,7 +145,7 @@ def run_epoch_iwae(
 
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
-        iwae_terms, all_kl_divs, all_cross_entropies = [], [], [], []
+        iwae_terms, all_kl_divs, all_cross_entropies = [], [], []
         for _ in range(K):
             z = q_distr.rsample().to(device) # B, L
             print(f'z shape = {z.shape}')

@@ -227,7 +227,7 @@ def run_epoch_iwae(
         iwae_terms_stacked = torch.stack(iwae_terms, dim=0).reshape(-1)
 
         loss = logsumexp(iwae_terms_stacked, dim=0)
-        total_reg_loss = torch.stack(reg_losses_per_sample_list, dim=0).reshape(-1)
+        total_reg_loss = torch.stack(reg_losses_per_sample_list, dim=0).reshape(-1).sum()
         loss += total_reg_loss
         print(f'loss = {loss}')
         stacked_kl_divs = torch.stack(all_kl_divs, dim=0).reshape(-1)  

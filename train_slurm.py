@@ -186,6 +186,7 @@ def run_epoch_iwae(
             # reconstruction - cross entropy
             # start_time = time.time()
             sampled_peptide_logits = decoder(z) #TODO zmierz czas
+            print(f'sampled_peptide_logits shape = {sampled_peptide_logits.shape}')
             # end_time = time.time()
             # print(f'decoding time: {end_time-start_time}')
             sampled_peptide_logits = sampled_peptide_logits.view(S, B, C)
@@ -247,7 +248,7 @@ def run_epoch_iwae(
             seq_true.append(peptides.cpu().detach().numpy())
             model_out.append(decoder(mu).cpu().detach().numpy())
             model_out_sampled.append(
-                sampled_peptide_logits.mean(dim=1).cpu().detach().numpy() #to ensure this is okay, mean across K for one batch sequence
+                sampled_peptide_logits.cpu().detach().numpy() #to ensure this is okay, mean across K for one batch sequence
             )
 
     if mode == 'test':

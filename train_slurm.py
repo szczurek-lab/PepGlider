@@ -186,15 +186,15 @@ def run_epoch_iwae(
             # reconstruction - cross entropy
             # start_time = time.time()
             sampled_peptide_logits = decoder(z) #TODO zmierz czas
-            print(f'sampled_peptide_logits shape = {sampled_peptide_logits.shape}')
+            # print(f'sampled_peptide_logits shape = {sampled_peptide_logits.shape}')
             # end_time = time.time()
             # print(f'decoding time: {end_time-start_time}')
             sampled_peptide_logits = sampled_peptide_logits.view(S, B, C)
             src = sampled_peptide_logits.permute(1, 2, 0)  # B x C x S
-            print(f'src shape = {src.shape}')
+            # print(f'src shape = {src.shape}')
             # src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
             tgt = peptides.permute(1, 0)#.reshape(B, S).repeat(K, 1, 1)  # B x S
-            print(f'tgt shape = {tgt.shape}')
+            # print(f'tgt shape = {tgt.shape}')
             # src_decoded = dataset_lib.decoded(src_decoded, "")
     #        indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
             # K x B
@@ -203,7 +203,6 @@ def run_epoch_iwae(
                 src,
                 tgt,
             ).sum(dim=1) #TODO zmierz czas
-            print(f'cross_entropy = {cross_entropy}')
             # end_time = time.time()
             # print(f'cross entropy time: {end_time-start_time}')
 
@@ -221,6 +220,7 @@ def run_epoch_iwae(
             )
             loss_mean += (cross_entropy + kl_beta * kl_div).mean(dim=0)
             loss_reg_loss += tensor(reg_loss).to(device)
+        print(f'last cross_entropy = {cross_entropy}')
         loss += loss_logsumexp
         print(f'loss from mean = {loss_mean}')
         print(f'loss_logsumexp = {loss_logsumexp}')

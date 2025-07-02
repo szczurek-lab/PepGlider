@@ -154,6 +154,8 @@ def run_epoch_iwae(
                     # physchem_original = d.gather_physchem_results(attributes_input) # Pobierz wynik jako dict
                     # labels_expanded_torch = labels.repeat_interleave(K, dim=0).unsqueeze(1)
                     labels_torch = labels.to(attributes_input.dtype)
+                    print(f'attributes_input shape = {attributes_input.shape}')
+                    print(f'labels_torch shape = {labels_torch.shape}')
                     # print(f'labels_expanded_torch shape = {labels_expanded_torch.shape}')
                     attributes.append(cat(
                         (attributes_input, labels_torch), dim=1

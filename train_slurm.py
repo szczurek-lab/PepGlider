@@ -232,11 +232,11 @@ def run_epoch_iwae(
             loss += loss_reg_loss
             # stats
             stat_sum["kl_mean"] += kl_div.sum(dim=0).item()
-            stat_sum["kl_best"] += kl_div.max(dim=0).item()
-            stat_sum["kl_worst"] += kl_div.min(dim=0).item()
+            stat_sum["kl_best"] += kl_div.max(dim=0).values.item()
+            stat_sum["kl_worst"] += kl_div.min(dim=0).values.item()
             stat_sum["ce_mean"] += cross_entropy.sum(dim=0).item()
-            stat_sum["ce_best"] += cross_entropy.min(dim=0).item()
-            stat_sum["ce_worst"] += cross_entropy.max(dim=0).item()
+            stat_sum["ce_best"] += cross_entropy.min(dim=0).values.item()
+            stat_sum["ce_worst"] += cross_entropy.max(dim=0).values.item()
             stat_sum["total"] += loss.item() * len(batch)
             # stat_sum["std"] += std.mean(dim=1).sum().item()
             stat_sum["reg_loss"] += reg_loss

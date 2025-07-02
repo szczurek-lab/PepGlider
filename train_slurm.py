@@ -122,9 +122,8 @@ def run_epoch_iwae(
     K = iwae_samples
     C = VOCAB_SIZE + 1
     # dataloader.sampler.set_epoch(epoch)
-
+    loss_logsumexp, loss, loss_mean, loss_reg_loss = 0,0,0,0 
     for batch, labels, physchem, attributes_input in dataloader: 
-        loss_logsumexp, loss, loss_mean, loss_reg_loss = 0,0,0,0      
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         # physchem_expanded_torch = physchem.repeat_interleave(K, dim=0).to(device)
         physchem_torch = physchem.to(device)
@@ -137,6 +136,7 @@ def run_epoch_iwae(
         # autoencoding
         # start_time = time.time()
         mu, std = encoder(peptides) #TODO zmierz czas
+        print(f'std shape = {std.shape}')
         # end_time = time.time()
         # print(f'encoding time: {end_time-start_time}')
         # print(f'mu = {mu}, std = {std}')
@@ -182,6 +182,7 @@ def run_epoch_iwae(
 
             # start_time = time.time()
             kl_div = log_qzx - log_pz #TODO zmierz czas
+            print(f'kl_div shape = {kl_div.shape}')
             # end_time = time.time()
             # print(f'kl_div time: {end_time-start_time}')
 
@@ -205,6 +206,7 @@ def run_epoch_iwae(
                 src,
                 tgt,
             ).sum(dim=1) #TODO zmierz czas
+            print(f'cross_entropy shape = {cross_entropy.shape}')
             # end_time = time.time()
             # print(f'cross entropy time: {end_time-start_time}')
 
@@ -237,7 +239,7 @@ def run_epoch_iwae(
             stat_sum["ce_worst"] += cross_entropy.max(dim=0).values.sum(dim=0).item()
             stat_sum["total"] += loss.item() * len(batch)
             stat_sum["std"] += std.mean(dim=1).sum().item()
-        print(f'last cross_entropy = {cross_entropy}')
+        # print(f'last cross_entropy = {cross_entropy}')
 
         if optimizer:
             loss.backward()

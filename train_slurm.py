@@ -190,8 +190,10 @@ def run_epoch_iwae(
             # print(f'decoding time: {end_time-start_time}')
             sampled_peptide_logits = sampled_peptide_logits.view(S, B, C)
             src = sampled_peptide_logits.permute(2, 1, 0)  # C x B x S
+            print(f'src shape = {src.shape}')
             # src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
-            tgt = peptides.permute(1, 0)#.reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
+            tgt = peptides.permute(1, 0)#.reshape(B, S).repeat(K, 1, 1)  # K x B x S
+            print(f'tgt shape = {tgt.shape}')
             # src_decoded = dataset_lib.decoded(src_decoded, "")
     #        indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
             # K x B

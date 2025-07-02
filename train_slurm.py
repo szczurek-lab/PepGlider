@@ -111,7 +111,6 @@ def run_epoch_iwae(
     }
     seq_true, model_out, model_out_sampled = [], [], []
     len_data = len(dataloader.dataset)
-
     # results_fp = os.path.join(
     # os.path.dirname(ROOT_DIR),
     #     'results_dict.json'
@@ -124,9 +123,11 @@ def run_epoch_iwae(
     C = VOCAB_SIZE + 1
     # dataloader.sampler.set_epoch(epoch)
 
-    for batch, labels, physchem, attributes_input in dataloader:       
+    for batch, labels, physchem, attributes_input in dataloader: 
+        loss_logsumexp, loss, loss_mean, loss_reg_loss = 0,0,0,0      
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
-        physchem_expanded_torch = physchem.repeat_interleave(K, dim=0).to(device)
+        # physchem_expanded_torch = physchem.repeat_interleave(K, dim=0).to(device)
+        physchem_torch = physchem.to(device)
         # print(f"Min value: {physchem_expanded_torch.min()} and max value: {physchem_expanded_torch.max()}")
         # print(f'physchem_expanded_torch shape = {physchem_expanded_torch.shape}')
         S, B = peptides.shape
@@ -144,17 +145,18 @@ def run_epoch_iwae(
 
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
-        z = q_distr.rsample((K,)).to(device) # K, B, L
-        # print(f'z shape = {z.shape}')
-        if mode == 'test':
-                    attributes_input_expanded_torch = attributes_input.repeat_interleave(K, dim=0)
-                    latent_codes.append(z.reshape(-1, z.shape[2]).cpu().detach().numpy())
-                    # physchem_original = d.gather_physchem_results(physchem_original_async) # Pobierz wynik jako dict
-                    labels_expanded_torch = labels.repeat_interleave(K, dim=0).unsqueeze(1)
-                    labels_expanded_torch = labels_expanded_torch.to(attributes_input_expanded_torch.dtype)
+        for _ in range(K):
+            z = q_distr.rsample().to(device) # B, L
+            print(f'z shape = {z.shape}')
+            if mode == 'test':
+                    # attributes_input_expanded_torch = attributes_input.repeat_interleave(K, dim=0)
+                    latent_codes.append(z.reshape(-1, z.shape[1]).cpu().detach().numpy())
+                    # physchem_original = d.gather_physchem_results(attributes_input) # Pobierz wynik jako dict
+                    # labels_expanded_torch = labels.repeat_interleave(K, dim=0).unsqueeze(1)
+                    labels_torch = labels.to(attributes_input.dtype)
                     # print(f'labels_expanded_torch shape = {labels_expanded_torch.shape}')
                     attributes.append(cat(
-                        (attributes_input_expanded_torch, labels_expanded_torch), dim=1
+                        (attributes_input, labels_torch), dim=1
                     ))
                     # print(f'attributes = {attributes}')
                     # num_peptides = len(physchem_original[1][0])
@@ -173,47 +175,54 @@ def run_epoch_iwae(
                     # physchem_expanded = np.concatenate(physchem_expanded_list, axis=0)
 
                     # attributes.append(np.concatenate((physchem_expanded, labels.unsqueeze(0).expand(K, -1).reshape(-1, 1).numpy()), axis=1))        # Kullback Leibler divergence
-        log_qzx = q_distr.log_prob(z).sum(dim=2)
-        log_pz = prior_distr.log_prob(z).sum(dim=2)
+            log_qzx = q_distr.log_prob(z).sum(dim=1)
+            log_pz = prior_distr.log_prob(z).sum(dim=1)
 
-        # start_time = time.time()
-        kl_div = log_qzx - log_pz #TODO zmierz czas
-        # end_time = time.time()
-        # print(f'kl_div time: {end_time-start_time}')
+            # start_time = time.time()
+            kl_div = log_qzx - log_pz #TODO zmierz czas
+            # end_time = time.time()
+            # print(f'kl_div time: {end_time-start_time}')
 
-        # reconstruction - cross entropy
-        # start_time = time.time()
-        sampled_peptide_logits = decoder(z.reshape(K*B,-1)) #TODO zmierz czas
-        # end_time = time.time()
-        # print(f'decoding time: {end_time-start_time}')
-        sampled_peptide_logits = sampled_peptide_logits.view(S, K, B, C)
-        src = sampled_peptide_logits.permute(1, 3, 2, 0)  # K x C x B x S
-        # src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
-        tgt = peptides.permute(1, 0).reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
-        # src_decoded = dataset_lib.decoded(src_decoded, "")
-#        indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
-        # K x B
-        # start_time = time.time()
-        cross_entropy = ce_loss_fun(
-            src,
-            tgt,
-        ).sum(dim=2) #TODO zmierz czas
-        # end_time = time.time()
-        # print(f'cross entropy time: {end_time-start_time}')
+            # reconstruction - cross entropy
+            # start_time = time.time()
+            sampled_peptide_logits = decoder(z) #TODO zmierz czas
+            # end_time = time.time()
+            # print(f'decoding time: {end_time-start_time}')
+            sampled_peptide_logits = sampled_peptide_logits.view(S, B, C)
+            src = sampled_peptide_logits.permute(2, 1, 0)  # C x B x S
+            # src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
+            tgt = peptides.permute(1, 0)#.reshape(1, B, S).repeat(K, 1, 1)  # K x B x S
+            # src_decoded = dataset_lib.decoded(src_decoded, "")
+    #        indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
+            # K x B
+            # start_time = time.time()
+            cross_entropy = ce_loss_fun(
+                src,
+                tgt,
+            ).sum(dim=1) #TODO zmierz czas
+            print(f'cross_entropy = {cross_entropy}')
+            # end_time = time.time()
+            # print(f'cross entropy time: {end_time-start_time}')
 
-        reg_loss = 0
-        # start_time = time.time()
-        for dim in reg_dim:
-            reg_loss += r.compute_reg_loss(
-            z.reshape(-1,z.shape[2]), physchem_expanded_torch[:, dim], dim, gamma, device #gamma i delta z papera
-        ) #TODO zmierz czas
-        # end_time = time.time()
-        # print(f'reg loss time: {end_time-start_time}')
+            reg_loss = 0
+            # start_time = time.time()
+            for dim in reg_dim:
+                reg_loss += r.compute_reg_loss(
+                z.reshape(-1,z.shape[1]), physchem_torch[:, dim], dim, gamma, device #gamma i delta z papera
+            ) #TODO zmierz czas
+            # end_time = time.time()
+            # print(f'reg loss time: {end_time-start_time}')
 
-        loss = logsumexp(
-            cross_entropy + kl_beta * kl_div, dim=0
-        ).mean(dim=0) + tensor(reg_loss).to(device)
-
+            loss_logsumexp += logsumexp(
+                cross_entropy + kl_beta * kl_div, dim=0
+            )
+            loss_mean += (cross_entropy + kl_beta * kl_div).mean(dim=0)
+            loss_reg_loss += tensor(reg_loss).to(device)
+        loss += loss_logsumexp
+        print(f'loss from mean = {loss_mean}')
+        print(f'loss_logsumexp = {loss_logsumexp}')
+        loss += loss_reg_loss
+        print(f'loss reg loss = {loss_reg_loss}')
         # stats
         stat_sum["kl_mean"] += kl_div.mean(dim=0).sum(dim=0).item()
         stat_sum["kl_best"] += kl_div.min(dim=0).values.sum(dim=0).item()

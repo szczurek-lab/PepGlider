@@ -242,7 +242,7 @@ def run_epoch_iwae(
         stat_sum["ce_best"] += stacked_cross_entropies.min(dim=0).values.item()
         stat_sum["ce_worst"] += stacked_cross_entropies.max(dim=0).values.item()
         # stat_sum["std"] += std.mean(dim=1).sum().item()
-        stat_sum["reg_loss"] = total_reg_loss_for_batch_current_sample
+        stat_sum["reg_loss"] = total_reg_loss
         stat_sum["total"] += loss.item() * len(batch)   
 
         print(f'loss from mean = {(iwae_terms_stacked).mean(dim=0)}')

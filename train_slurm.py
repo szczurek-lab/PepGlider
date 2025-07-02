@@ -85,6 +85,7 @@ def run_epoch_iwae(
     gamma
     # pool
 ):
+    print(f'Epoch {epoch}')
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
     # device_first = device(f"cuda:{local_rank}")
     # encoder = encoder.to(device)
@@ -150,15 +151,15 @@ def run_epoch_iwae(
         reg_losses_per_sample_list  = []
         for _ in range(K):
             z = q_distr.rsample().to(device) # B, L
-            print(f'z shape = {z.shape}')
+            # print(f'z shape = {z.shape}')
             if mode == 'test':
                     # attributes_input_expanded_torch = attributes_input.repeat_interleave(K, dim=0)
                     latent_codes.append(z.reshape(-1, z.shape[1]).cpu().detach().numpy())
                     # physchem_original = d.gather_physchem_results(attributes_input) # Pobierz wynik jako dict
                     # labels_expanded_torch = labels.repeat_interleave(K, dim=0).unsqueeze(1)
                     labels_torch = labels.to(attributes_input.dtype).unsqueeze(1)
-                    print(f'attributes_input shape = {attributes_input.shape}')
-                    print(f'labels_torch shape = {labels_torch.shape}')
+                    # print(f'attributes_input shape = {attributes_input.shape}')
+                    # print(f'labels_torch shape = {labels_torch.shape}')
                     # print(f'labels_expanded_torch shape = {labels_expanded_torch.shape}')
                     attributes.append(cat(
                         (attributes_input, labels_torch), dim=1
@@ -210,7 +211,7 @@ def run_epoch_iwae(
                 tgt,
             ).sum(dim=1) #TODO zmierz czas
             all_cross_entropies.append(cross_entropy) # Dodaj do listy dla statystyk
-            print(f'cross_entropy shape = {cross_entropy.shape}')
+            # print(f'cross_entropy shape = {cross_entropy.shape}')
             # end_time = time.time()
             # print(f'cross entropy time: {end_time-start_time}')
             reg_loss = 0
@@ -231,9 +232,9 @@ def run_epoch_iwae(
         loss = logsumexp(iwae_terms_stacked, dim=0) + total_reg_loss
         print(f'loss = {loss}')
         stacked_kl_divs = torch.stack(all_kl_divs, dim=0).reshape(-1)  
-        print(f'stacked_kl_divs shape = {stacked_kl_divs.shape}') 
+        # print(f'stacked_kl_divs shape = {stacked_kl_divs.shape}') 
         stacked_cross_entropies = torch.stack(all_cross_entropies, dim=0).reshape(-1)
-        print(f'stacked_cross_entropies shape = {stacked_cross_entropies.shape}')
+        # print(f'stacked_cross_entropies shape = {stacked_cross_entropies.shape}')
         # stats
         stat_sum["kl_mean"] += stacked_kl_divs.mean(dim=0).item()
         stat_sum["kl_best"] += stacked_kl_divs.max(dim=0).values.item()
@@ -248,13 +249,14 @@ def run_epoch_iwae(
         print(f'loss from mean = {(iwae_terms_stacked).mean(dim=0)}')
         print(f'loss_logsumexp = {logsumexp(iwae_terms_stacked, dim=0)}')
         print(f'loss reg loss = {stat_sum["reg_loss"]}') 
+        print(f'stat_sum = {stat_sum}')
         if optimizer:
             loss.backward()
             nn.utils.clip_grad_norm_(
                 itertools.chain(encoder.parameters(), decoder.parameters()), max_norm=1.0
             )
             optimizer.step()
-        print(f'last cross_entropy = {cross_entropy}')
+        # print(f'last cross_entropy = {cross_entropy}')
 
         # reporting
         if eval_mode == "deep":

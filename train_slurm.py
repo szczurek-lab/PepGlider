@@ -147,7 +147,7 @@ def run_epoch_iwae(
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
         iwae_terms, all_kl_divs, all_cross_entropies = [], [], []
-        total_reg_loss_for_batch_current_sample = 0
+        reg_losses_per_sample_list  = []
         for _ in range(K):
             z = q_distr.rsample().to(device) # B, L
             print(f'z shape = {z.shape}')
@@ -220,14 +220,15 @@ def run_epoch_iwae(
                 z.reshape(-1,z.shape[1]), physchem_torch[:, dim], dim, gamma, device #gamma i delta z papera
             ) #TODO zmierz czas
             # end_time = time.time()
-            total_reg_loss_for_batch_current_sample += reg_loss
+            reg_losses_per_sample_list.append(reg_loss)
             # print(f'reg loss time: {end_time-start_time}')
             iwae_sample_term = cross_entropy + kl_beta * kl_div # (B,)
             iwae_terms.append(iwae_sample_term) # Dodaj do listy
         iwae_terms_stacked = torch.stack(iwae_terms, dim=0).reshape(-1)
 
         loss = logsumexp(iwae_terms_stacked, dim=0)
-        loss += total_reg_loss_for_batch_current_sample
+        total_reg_loss = torch.stack(reg_losses_per_sample_list, dim=0).reshape(-1)
+        loss += total_reg_loss
         print(f'loss = {loss}')
         stacked_kl_divs = torch.stack(all_kl_divs, dim=0).reshape(-1)  
         print(f'stacked_kl_divs shape = {stacked_kl_divs.shape}') 

@@ -108,6 +108,7 @@ def run_epoch_iwae(
         "ce_worst": 0.0,
         "std": 0.0,
         "total": 0.0,
+        "reg_loss": 0.0
     }
     seq_true, model_out, model_out_sampled = [], [], []
     len_data = len(dataloader.dataset)
@@ -122,7 +123,6 @@ def run_epoch_iwae(
     K = iwae_samples
     C = VOCAB_SIZE + 1
     # dataloader.sampler.set_epoch(epoch)
-    loss_logsumexp, loss, loss_mean, loss_reg_loss = 0,0,0,0 
     for batch, labels, physchem, attributes_input in dataloader: 
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
         # physchem_expanded_torch = physchem.repeat_interleave(K, dim=0).to(device)
@@ -136,7 +136,7 @@ def run_epoch_iwae(
         # autoencoding
         # start_time = time.time()
         mu, std = encoder(peptides) #TODO zmierz czas
-        print(f'std shape = {std.shape}')
+        # print(f'std shape = {std.shape}')
         # end_time = time.time()
         # print(f'encoding time: {end_time-start_time}')
         # print(f'mu = {mu}, std = {std}')
@@ -146,6 +146,7 @@ def run_epoch_iwae(
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
         for _ in range(K):
+            loss_logsumexp, loss, loss_mean, loss_reg_loss = 0,0,0,0
             z = q_distr.rsample().to(device) # B, L
             print(f'z shape = {z.shape}')
             if mode == 'test':
@@ -182,7 +183,6 @@ def run_epoch_iwae(
 
             # start_time = time.time()
             kl_div = log_qzx - log_pz #TODO zmierz czas
-            print(f'kl_div shape = {kl_div.shape}')
             # end_time = time.time()
             # print(f'kl_div time: {end_time-start_time}')
 
@@ -231,22 +231,22 @@ def run_epoch_iwae(
             loss += loss_logsumexp
             loss += loss_reg_loss
             # stats
-            stat_sum["kl_mean"] += kl_div.mean(dim=0).sum(dim=0).item()
-            stat_sum["kl_best"] += kl_div.min(dim=0).values.sum(dim=0).item()
-            stat_sum["kl_worst"] += kl_div.max(dim=0).values.sum(dim=0).item()
-            stat_sum["ce_mean"] += cross_entropy.mean(dim=0).sum(dim=0).item()
-            stat_sum["ce_best"] += cross_entropy.min(dim=0).values.sum(dim=0).item()
-            stat_sum["ce_worst"] += cross_entropy.max(dim=0).values.sum(dim=0).item()
+            stat_sum["kl_mean"] += kl_div.sum(dim=0).item()
+            stat_sum["kl_best"] += kl_div.values.sum(dim=0).item()
+            stat_sum["kl_worst"] += kl_div.values.sum(dim=0).item()
+            stat_sum["ce_mean"] += cross_entropy.sum(dim=0).item()
+            stat_sum["ce_best"] += cross_entropy.min(dim=0).item()
+            stat_sum["ce_worst"] += cross_entropy.max(dim=0).item()
             stat_sum["total"] += loss.item() * len(batch)
-            stat_sum["std"] += std.mean(dim=1).sum().item()
+            # stat_sum["std"] += std.mean(dim=1).sum().item()
+            stat_sum["reg_loss"] += reg_loss
+            if optimizer:
+                loss.backward()
+                nn.utils.clip_grad_norm_(
+                    itertools.chain(encoder.parameters(), decoder.parameters()), max_norm=1.0
+                )
+                optimizer.step()
         # print(f'last cross_entropy = {cross_entropy}')
-
-        if optimizer:
-            loss.backward()
-            nn.utils.clip_grad_norm_(
-                itertools.chain(encoder.parameters(), decoder.parameters()), max_norm=1.0
-            )
-            optimizer.step()
 
         # reporting
         if eval_mode == "deep":
@@ -285,7 +285,7 @@ def run_epoch_iwae(
             epoch,
             scalars=[
                 ("Total Loss", stat_sum["total"] / len_data),
-                    ("Posterior Standard Deviation [mean]", stat_sum["std"] / len_data),
+                    # ("Posterior Standard Deviation [mean]", stat_sum["std"] / len_data),
                 (
                     "Cross Entropy Loss",
                     "mean over samples",
@@ -301,8 +301,8 @@ def run_epoch_iwae(
                 ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
                 ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
                 ("KL Beta", kl_beta),
-                ("Regularization Loss", reg_loss/gamma),
-                ("Regularization Loss with gamma", reg_loss),
+                ("Regularization Loss", stat_sum["reg_loss"]/gamma),
+                ("Regularization Loss with gamma", stat_sum["reg_loss"]),
             ],
         )
         if eval_mode == "deep": 

@@ -225,10 +225,10 @@ def run_epoch_iwae(
             # print(f'reg loss time: {end_time-start_time}')
             iwae_sample_term = cross_entropy + kl_beta * kl_div # (B,)
             iwae_terms.append(iwae_sample_term) # Dodaj do listy
-        iwae_terms_stacked = torch.stack(iwae_terms, dim=0).reshape(-1)
+        iwae_terms_stacked = torch.stack(iwae_terms, dim=0).mean(dim=0)#.reshape(-1)
 
         # loss = logsumexp(iwae_terms_stacked, dim=0)
-        total_reg_loss = torch.stack(reg_losses_per_sample_list, dim=0).reshape(-1).sum()
+        total_reg_loss = torch.stack(reg_losses_per_sample_list, dim=0).mean(dim=0).sum()#.reshape(-1).sum()
         loss = logsumexp(iwae_terms_stacked, dim=0) + total_reg_loss
         print(f'loss = {loss}')
         stacked_kl_divs = torch.stack(all_kl_divs, dim=0).reshape(-1)  

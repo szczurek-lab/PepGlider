@@ -256,7 +256,7 @@ def run_epoch_iwae(
                 itertools.chain(encoder.parameters(), decoder.parameters()), max_norm=1.0
             )
             optimizer.step()
-        # print(f'last cross_entropy = {cross_entropy}')
+        print(f'last cross_entropy = {cross_entropy}')
 
         # reporting
         if eval_mode == "deep":
@@ -371,7 +371,7 @@ def run():#rank, world_size
         "device": "cuda",
         "deeper_eval_every": 20,
         "save_model_every": 100,
-        "reg_dim": [1], # [length, charge, hydrophobicity_moment]
+        "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
         "gamma_schedule": (1, 200, 8000)
     }
     encoder = EncoderRNN(
@@ -420,7 +420,7 @@ def run():#rank, world_size
     )
     if params["use_clearml"]: # and int(os.environ["LOCAL_RANK"]) == 0:
         task = clearml.Task.init(
-            project_name="ar-vae-v4", task_name=params["task_name"]
+            project_name=os.getenv("CLEARML_PROJECT_NAME", 'ar-vae-v4'), task_name=os.getenv("CLEARML_TASK_NAME", "ar-vae 3 dims")
         )
         task.set_parameters(params)
         logger = task.logger

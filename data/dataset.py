@@ -83,14 +83,14 @@ def calculate_physchem_test(peptides: List[str]) -> torch.Tensor:
     charges_np_array = np.asarray(global_analysis_obj.charge).flatten() # <--- KLUCZOWA ZMIANA
     charges = charges_np_array.tolist()
 
-    print(f"DEBUG: charges (after asarray and flatten): {charges[:5]} (first 5 elements, len={len(charges)})")
+    # print(f"DEBUG: charges (after asarray and flatten): {charges[:5]} (first 5 elements, len={len(charges)})")
 
     global_analysis_obj.calc_uH()
     # To samo dla hydrophobic_moments
     hydrophobic_moments_np_array = np.asarray(global_analysis_obj.uH).flatten() # <--- KLUCZOWA ZMIANA
     hydrophobic_moments = hydrophobic_moments_np_array.tolist()
 
-    print(f"DEBUG: hydrophobic_moments (after asarray and flatten): {hydrophobic_moments[:5]} (first 5 elements, len={len(hydrophobic_moments)})")
+    # print(f"DEBUG: hydrophobic_moments (after asarray and flatten): {hydrophobic_moments[:5]} (first 5 elements, len={len(hydrophobic_moments)})")
 
 
     # Consolidate features for each peptide

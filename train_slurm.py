@@ -231,15 +231,15 @@ def run_epoch_iwae(
         total_reg_loss = torch.stack(reg_losses_per_sample_list, dim=0).mean(dim=0).sum()#.reshape(-1).sum()
         loss = logsumexp(iwae_terms_stacked, dim=0) + total_reg_loss
         print(f'loss = {loss}')
-        stacked_kl_divs = torch.stack(all_kl_divs, dim=0).reshape(-1)  
+        stacked_kl_divs = torch.stack(all_kl_divs, dim=0).mean(dim=0)
         # print(f'stacked_kl_divs shape = {stacked_kl_divs.shape}') 
-        stacked_cross_entropies = torch.stack(all_cross_entropies, dim=0).reshape(-1)
+        stacked_cross_entropies = torch.stack(all_cross_entropies, dim=0).mean(dim=0)
         # print(f'stacked_cross_entropies shape = {stacked_cross_entropies.shape}')
         # stats
         stat_sum["kl_mean"] += stacked_kl_divs.mean(dim=0).item()
         stat_sum["kl_best"] += stacked_kl_divs.max(dim=0).values.item()
         stat_sum["kl_worst"] += stacked_kl_divs.min(dim=0).values.item()
-        stat_sum["ce_mean"] += stacked_cross_entropies.sum(dim=0).item()
+        stat_sum["ce_mean"] += stacked_cross_entropies.mean(dim=0).item()
         stat_sum["ce_best"] += stacked_cross_entropies.min(dim=0).values.item()
         stat_sum["ce_worst"] += stacked_cross_entropies.max(dim=0).values.item()
         # stat_sum["std"] += std.mean(dim=1).sum().item()

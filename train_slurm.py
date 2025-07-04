@@ -449,7 +449,7 @@ def run():#rank, world_size
         kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, beta_1)
         gamma_0, gamma_1, t_1 = params["gamma_schedule"]
         if epoch < 1000:
-            gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * (epoch-1000), gamma_0)
+            gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, gamma_0)
         else:
             gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * (epoch-1000), gamma_1)
         run_epoch_iwae(

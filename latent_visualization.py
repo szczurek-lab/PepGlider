@@ -270,7 +270,7 @@ def run():#rank, world_size
             dim1=dim1,
             dim2=non_attr_dims[-1],
             grid_res=0.05,
-            params["latent_dim"]
+            z_dim = params["latent_dim"]
         )
 
 if __name__ == '__main__':

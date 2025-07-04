@@ -231,3 +231,19 @@ def gather_metrics(async_results):
         #print(f"Przetworzono wynik dla {name}: {result}")
         ar_vae_metrics.update(result)
     return ar_vae_metrics
+
+def compute_representations(self, data_loader):
+    latent_codes = []
+    attributes = []
+    for sample_id, batch in tqdm(enumerate(data_loader)):
+        inputs, labels = self.process_batch_data(batch)
+        _, _, _, z_tilde, _ = self.model(inputs)
+        latent_codes.append(z_tilde.cpu().numpy())
+        attributes.append(labels.cpu().numpy())
+        if sample_id == 200:
+            break
+    latent_codes = np.concatenate(latent_codes, 0)
+    attributes = np.concatenate(attributes, 0)
+    attributes, attr_list = extract_relevant_attributes(attributes)
+    return latent_codes, attributes, attr_list
+

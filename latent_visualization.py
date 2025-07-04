@@ -190,11 +190,11 @@ def run():#rank, world_size
     DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
     is_cpu = False if torch.cuda.is_available() else True
     encoder_filepath = os.path.join(
-        os.sep, "net", "tscratch", "people", "plggwiazale", "AR-VAE",
+        os.sep, "home","gwiazale", "AR-VAE",
         "ar_vae_with_ar_vae_metrics_basic_epoch900_encoder.pt"
     )
     decoder_filepath = os.path.join(
-        os.sep, "net", "tscratch", "people", "plggwiazale", "AR-VAE",
+        os.sep, "home","gwiazale", "AR-VAE",
         "ar_vae_with_ar_vae_metrics_basic_epoch900_encoder.pt"
     )
 

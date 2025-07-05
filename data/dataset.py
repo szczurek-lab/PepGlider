@@ -167,6 +167,57 @@ def normalize_attributes(physchem_tensor_original, ):
     # print(physchem_tensor_normalized[:5])
     # print(f"Shape of normalized physchem_tensor: {physchem_tensor_normalized.shape}")
     return physchem_tensor_normalized
+def normalize_dimension_to_0_1(tensor: torch.Tensor, dim: int = -1) -> torch.Tensor:
+    """
+    Normalizuje każdy 'wymiar' (kolumnę/cechę) tensora do zakresu [0, 1].
+
+    Args:
+        tensor (torch.Tensor): Tensor wejściowy, np. o kształcie (batch_size, num_features)
+                               lub (seq_len, batch_size, num_features).
+        dim (int): Wymiar, wzdłuż którego ma nastąpić normalizacja. Domyślnie -1,
+                   co oznacza ostatni wymiar (np. wymiar cech).
+                   Jeśli tensor ma kształt (N, M) i chcesz normalizować każdą kolumnę,
+                   ustaw dim=0. Jeśli chcesz normalizować każdy wiersz, ustaw dim=1.
+
+    Returns:
+        torch.Tensor: Znormalizowany tensor o tym samym kształcie co wejściowy.
+    """
+    if not isinstance(tensor, torch.Tensor):
+        raise TypeError("Wejście musi być tensorem PyTorch.")
+
+    # Sprawdzenie, czy wymiar jest poprawny
+    if dim >= tensor.ndim or dim < -tensor.ndim:
+        raise ValueError(f"Wymiar {dim} jest poza zakresem tensora o {tensor.ndim} wymiarach.")
+
+    # Obliczanie minimum i maksimum wzdłuż określonego wymiaru,
+    # zachowując wymiary (keepdim=True) aby umożliwić broadcastowanie.
+    # Wymiar, który normalizujemy, staje się jednowymiarowy (np. 1).
+
+    # Przykład: Jeśli tensor ma kształt (10, 5) i dim=1 (normalizacja każdego wiersza)
+    # min_vals będzie (10, 1)
+    # max_vals będzie (10, 1)
+
+    # Przykład: Jeśli tensor ma kształt (10, 5) i dim=0 (normalizacja każdej kolumny)
+    # min_vals będzie (1, 5)
+    # max_vals będzie (1, 5)
+
+    min_vals = tensor.min(dim=dim, keepdim=True).values
+    max_vals = tensor.max(dim=dim, keepdim=True).values
+
+    # Uniknięcie dzielenia przez zero w przypadku, gdy max_val == min_val
+    # (tj. wszystkie wartości w danym wymiarze są takie same).
+    # W takim przypadku, wartości powinny stać się 0.
+    range_vals = max_vals - min_vals
+    
+    # Dodanie małej wartości epsilon, aby uniknąć dzielenia przez zero,
+    # gdy wszystkie wartości w danym wymiarze są identyczne.
+    # W PyTorch 2.0 i nowszych, torch.where jest efektywne.
+    range_vals[range_vals == 0] = 1.0 # Jeśli zakres wynosi 0, ustaw go na 1, aby uniknąć NaNów.
+                                      # Wtedy (x - min_x) / 1.0 = 0 dla wszystkich x = min_x.
+
+    normalized_tensor = (tensor - min_vals) / range_vals
+
+    return normalized_tensor
 
 class AMPDataManager:
 

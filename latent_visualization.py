@@ -117,12 +117,17 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim 
         src_decoded = dataset_lib.decoded(src_decoded, "")
         filtered_list = [item for item in src_decoded if item.strip()]
         labels = dataset_lib.calculate_physchem_test(filtered_list)
-        attr_labels_all.append(labels)
+        normalized_physchem_torch = labels.clone()
+        for dim_idx in range(labels.shape[1]):
+           column_to_normalize = labels[:, dim_idx].unsqueeze(1)
+           normalized_column = dataset_lib.normalize_dimension_to_0_1(column_to_normalize, dim=0)
+           normalized_physchem_torch[:, dim_idx] = normalized_column.squeeze(1)
+        attr_labels_all.append(normalized_physchem_torch)
     attr_labels_all = torch.cat(attr_labels_all, 0).cpu().numpy()
     z = z.cpu().numpy()[:num_mini_batches*mini_batch_size, :]
     save_filename = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)),
-        f'latent_surface_{attr_str}.png'
+           os.path.dirname(os.path.realpath(__file__)),
+           f'latent_surface_{attr_str}.png'
     )
     plot_dim(z, attr_labels_all, save_filename, dim1=dim1, dim2=dim2)
 
@@ -248,7 +253,7 @@ def run():#rank, world_size
     ar_vae_metrics.update(m.compute_modularity(latent_codes, attributes))
     ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
     ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
-    interp_dict = ar_vae_metrics['interpretability']
+    interp_dict = ar_vae_metrics['Interpretability']
     attr_dims = [interp_dict[attr][0] for attr in attr_dict.keys()]
     non_attr_dims = [a for a in range(params['latent_dim']) if a not in attr_dims]
     for attr in interp_dict.keys():

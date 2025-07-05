@@ -123,7 +123,7 @@ def run_epoch_iwae(
     ar_vae_metrics = {}
 
     K = iwae_samples
-    C = VOCAB_SIZE + 1
+    C = VOCAB_SIZE
     # dataloader.sampler.set_epoch(epoch)
     for batch, labels, physchem, attributes_input in dataloader: 
         peptides = batch.permute(1, 0).type(LongTensor).to(device) # S x B
@@ -372,7 +372,7 @@ def run():#rank, world_size
         "deeper_eval_every": 20,
         "save_model_every": 100,
         "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
-        "gamma_schedule": (1, 200, 8000)
+        "gamma_schedule": (0.00001, 20, 8000)
     }
     encoder = EncoderRNN(
         params["num_heads"],
@@ -451,7 +451,7 @@ def run():#rank, world_size
         if epoch < 1000:
             gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, gamma_0)
         else:
-            gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * (epoch-1000), gamma_1)
+            gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, gamma_1)
         run_epoch_iwae(
                 mode="train",
                 encoder=encoder,

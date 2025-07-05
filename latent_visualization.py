@@ -202,15 +202,13 @@ def run():#rank, world_size
         encoder.load_state_dict(
             torch.load(
                 encoder_filepath,
-                map_location=lambda storage,
-                loc: storage
+                map_location=DEVICE
             )
         )
         decoder.load_state_dict(
             torch.load(
                 decoder_filepath,
-                map_location=lambda storage,
-                loc: storage
+                map_location=DEVICE
             )
         )
     else:

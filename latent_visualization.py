@@ -20,8 +20,6 @@ import data.dataset as dataset_lib
 from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
 # import json
 import ar_vae_metrics as m
-import modlamp as modlamp
-print(dir(modlamp))
 # import time
 
 def set_seed(seed: int = 42) -> None:

@@ -238,7 +238,7 @@ def run():#rank, world_size
     train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], shuffle=True)
     eval_loader = DataLoader(eval_dataset, batch_size=params["batch_size"], shuffle=True)
 
-    latent_codes, attributes, attr_list = m.compute_representations(eval_loader, encoder, DEVICE)
+    latent_codes, attributes, attr_list = m.compute_representations(eval_loader, encoder, params["reg_dim"], DEVICE)
     interp_metrics = m.compute_interpretability_metric(
         latent_codes, attributes, attr_list
     )

@@ -233,7 +233,7 @@ def gather_metrics(async_results):
         ar_vae_metrics.update(result)
     return ar_vae_metrics
 
-def compute_representations(data_loader, encoder, device):
+def compute_representations(data_loader, encoder, reg_dim, device):
     latent_codes = []
     attributes = []
     sample_id = 0
@@ -248,6 +248,6 @@ def compute_representations(data_loader, encoder, device):
         sample_id +=1
     latent_codes = np.concatenate(latent_codes, 0)
     attributes = np.concatenate(attributes, 0)
-    attributes, attr_list = extract_relevant_attributes(attributes)
+    attributes, attr_list = extract_relevant_attributes(attributes, reg_dim)
     return latent_codes, attributes, attr_list
 

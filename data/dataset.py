@@ -8,7 +8,7 @@ import pandas as pd
 import seaborn as sns
 import torch
 from Bio import SeqIO
-import modlamp
+from modlamp import analysis
 from sklearn.preprocessing import QuantileTransformer
 
 STD_AA = list('ACDEFGHIKLMNPQRSTVWY')
@@ -48,13 +48,13 @@ def calculate_length_test(data:list):
     return lengths
 
 def calculate_charge(data:list):
-    h = modlamp.analysis.GlobalAnalysis(data)
+    h = analysis.GlobalAnalysis(data)
     h.calc_charge()
     # return h.charge
     return list(h.charge)
 
 def calculate_hydrophobicmoment(data:list):
-    h = modlamp.analysis.GlobalAnalysis(data)
+    h = analysis.GlobalAnalysis(data)
     h.calc_uH()
     return list(h.uH)
 
@@ -75,8 +75,8 @@ def calculate_physchem_test(peptides: List[str]) -> torch.Tensor:
 
     # Calculate properties for the entire list of peptides
     # This is more efficient than calling GlobalAnalysis for each peptide
-    print(dir(modlamp))
-    global_analysis_obj = modlamp.analysis.GlobalAnalysis(peptides)
+    # print(dir(modlamp))
+    global_analysis_obj = analysis.GlobalAnalysis(peptides)
 
     # Length
     lengths = calculate_length_test(peptides)

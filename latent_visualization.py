@@ -282,12 +282,45 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim 
            normalized_physchem_torch[:, dim_idx] = normalized_column.squeeze(1)
         attr_labels_all.append(normalized_physchem_torch)
     attr_labels_all = torch.cat(attr_labels_all, 0).cpu().numpy()
-    z = z.cpu().numpy()[:num_mini_batches*mini_batch_size, :]
+        # Przekształć listę wartości na macierz 2D do imshow
+    color_values_2d = attr_labels_all.reshape(50, 50)
+
+    # Normalizacja wartości do zakresu 0-1, jeśli jest to wymagane dla cmap
+    # Matplotlib zazwyczaj normalizuje sam, ale możesz to zrobić ręcznie, jeśli chcesz
+    # np. color_values_2d = (color_values_2d - color_values_2d.min()) / (color_values_2d.max() - color_values_2d.min())
+
+
+    # 4. Wizualizacja mapy cieplnej
+    plt.figure(figsize=(8, 6))
     save_filename = os.path.join(
            os.path.dirname(os.path.realpath(__file__)),
            f'latent_surface_{attr_str}.png'
     )
-    plot_dim(z, attr_labels_all, save_filename, dim1=dim1, dim2=dim2)
+    # Plotting
+    im = plt.imshow(
+        color_values_2d,
+        extent=[x1[0], x1[1], x2[0], x2[1]],
+        origin='lower',
+        cmap='viridis', # Użyj tej samej mapy kolorów co na przykładzie
+        aspect='auto'
+    )
+    
+    plt.xlabel(f'dimension: {dim1}')
+    plt.ylabel(f'dimension: {dim2}')
+    plt.colorbar(im) # Dodaj pasek kolorów, odwołując się do obiektu imshow
+
+    plt.title(f'Latent Space: {attr_str.capitalize()} (Dim {dim1} vs {dim2})')
+    plt.savefig(save_filename, format='png', dpi=300)
+    plt.close()
+
+    # Twoja funkcja konwertująca, jeśli chcesz użyć obrazu w dalszej części
+    img = Image.open(save_filename)
+    img_resized = img.resize((485, 360), Image.Resampling.LANCZOS)
+    img = convert_rgba_to_rgb(np.array(img_resized))
+    return img
+    # z = z.cpu().numpy()[:num_mini_batches*mini_batch_size, :]
+
+    # plot_dim(z, attr_labels_all, save_filename, dim1=dim1, dim2=dim2)
 
 def run():#rank, world_size
     # global DEVICE 
@@ -419,25 +452,25 @@ def run():#rank, world_size
         dim1 = interp_dict[attr][0]
         if attr == 'mean':
             continue
-        # plot_latent_surface(
-        #     decoder,
-        #     attr,
-        #     dim1=dim1,
-        #     dim2=non_attr_dims[-1],
-        #     grid_res=0.05,
-        #     z_dim = params["latent_dim"]
-        # )
-        plot_latent_heatmap(
-            decoder=decoder,
-            filename="latent_heatmap_length_dim3_15.png",
+        plot_latent_surface(
+            decoder,
+            attr,
             dim1=dim1,
             dim2=non_attr_dims[-1],
-            latent_dim=params["latent_dim"], # Z Twoich parametrów
-            grid_size=100, # Większa siatka, gładszy obraz
-            x_range=(-5, 5),
-            y_range=(-5, 5),
-            attribute_to_plot=attr
+            grid_res=0.05,
+            z_dim = params["latent_dim"]
         )
+        # plot_latent_heatmap(
+        #     decoder=decoder,
+        #     filename="latent_heatmap_length_dim3_15.png",
+        #     dim1=dim1,
+        #     dim2=non_attr_dims[-1],
+        #     latent_dim=params["latent_dim"], # Z Twoich parametrów
+        #     grid_size=100, # Większa siatka, gładszy obraz
+        #     x_range=(-5, 5),
+        #     y_range=(-5, 5),
+        #     attribute_to_plot=attr
+        # )
 
 if __name__ == '__main__':
     set_seed()

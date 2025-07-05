@@ -23,7 +23,7 @@ class EncoderRNN(nn.Module):
     ):
         super().__init__()
         # + pad and cls token
-        self.embedding = nn.Embedding(VOCAB_SIZE + 1, latent_dim, padding_idx=PAD_TOKEN)
+        self.embedding = nn.Embedding(VOCAB_SIZE, latent_dim, padding_idx=PAD_TOKEN)
         self.pos_encoder = EmbeddingPositionalEncoding(
             transform=pos_enc_type, num_tokens=SEQ_LEN + 1, embedding_dim=latent_dim
         )
@@ -114,7 +114,7 @@ class DecoderRNN(nn.Module):
                 ]
             )
         )
-        out_dim = VOCAB_SIZE + 1 #if zero_pad_value is None else VOCAB_SIZE
+        out_dim = VOCAB_SIZE #if zero_pad_value is None else VOCAB_SIZE
         self.linear = nn.Linear(latent_dim, out_dim)  # NOTE: 1 dim less
         self.zero_pad_value = zero_pad_value
         self._init_weights() 
@@ -132,7 +132,7 @@ class DecoderRNN(nn.Module):
     def forward(self, src: torch.Tensor) -> torch.Tensor:
         """Return unnormalized values for each token of the sequence.
 
-        (batch_size, latent_dim) -> (seq_len, batch_size, vocab_size + 1)
+        (batch_size, latent_dim) -> (seq_len, batch_size, vocab_size)
         """
         x = self._create_sequence(src)
         x = self.pos_encoder(x)  # S x B x L
@@ -152,7 +152,7 @@ class DecoderRNN(nn.Module):
     
     def generate(self, batch_size, latent_dim):
         input = torch.randn(batch_size, latent_dim).to(DEVICE)
-        #(batch_size, latent_dim) -> (seq_len, batch_size, vocab_size + 1)
+        #(batch_size, latent_dim) -> (seq_len, batch_size, vocab_size)
         return self.forward(input)
 # Container
 # ------------------------------------------------------------------------------

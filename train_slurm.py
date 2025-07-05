@@ -138,7 +138,7 @@ def run_epoch_iwae(
         # autoencoding
         # start_time = time.time()
         mu, std = encoder(peptides) #TODO zmierz czas
-        # print(f'std shape = {std.shape}')
+        print(f'std shape = {std.shape}')
         # end_time = time.time()
         # print(f'encoding time: {end_time-start_time}')
         # print(f'mu = {mu}, std = {std}')
@@ -151,7 +151,7 @@ def run_epoch_iwae(
         reg_losses_per_sample_list  = []
         for _ in range(K):
             z = q_distr.rsample().to(device) # B, L
-            # print(f'z shape = {z.shape}')
+            print(f'z shape = {z.shape}')
             if mode == 'test':
                     # attributes_input_expanded_torch = attributes_input.repeat_interleave(K, dim=0)
                     latent_codes.append(z.reshape(-1, z.shape[1]).cpu().detach().numpy())
@@ -193,7 +193,7 @@ def run_epoch_iwae(
             # reconstruction - cross entropy
             # start_time = time.time()
             sampled_peptide_logits = decoder(z) #TODO zmierz czas
-            # print(f'sampled_peptide_logits shape = {sampled_peptide_logits.shape}')
+            print(f'sampled_peptide_logits shape = {sampled_peptide_logits.shape}')
             # end_time = time.time()
             # print(f'decoding time: {end_time-start_time}')
             sampled_peptide_logits = sampled_peptide_logits.view(S, B, C)

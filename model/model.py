@@ -23,7 +23,7 @@ class EncoderRNN(nn.Module):
     ):
         super().__init__()
         # + pad and cls token
-        self.embedding = nn.Embedding(VOCAB_SIZE, latent_dim, padding_idx=PAD_TOKEN)
+        self.embedding = nn.Embedding(VOCAB_SIZE+1, latent_dim, padding_idx=PAD_TOKEN)
         self.pos_encoder = EmbeddingPositionalEncoding(
             transform=pos_enc_type, num_tokens=SEQ_LEN + 1, embedding_dim=latent_dim
         )

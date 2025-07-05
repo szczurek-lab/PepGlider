@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from sklearn.metrics import mutual_info_score
 from scipy.stats import spearmanr
+import torch
 
 def continuous_mutual_info(mus, ys):
     """Compute continuous mutual information.
@@ -232,14 +233,15 @@ def gather_metrics(async_results):
         ar_vae_metrics.update(result)
     return ar_vae_metrics
 
-def compute_representations(self, data_loader):
+def compute_representations(data_loader, encoder, device):
     latent_codes = []
     attributes = []
-    for sample_id, batch in tqdm(enumerate(data_loader)):
-        inputs, labels = self.process_batch_data(batch)
-        _, _, _, z_tilde, _ = self.model(inputs)
+    for sample_id, batch, labels, physchem, attributes_input in tqdm(enumerate(data_loader)):
+        peptides = batch.permute(1, 0).type(torch.LongTensor).to(device) # S x B
+        mu, std = encoder(peptides) #TODO zmierz czas
+        z_tilde = torch.distributions.Normal(mu, std)
         latent_codes.append(z_tilde.cpu().numpy())
-        attributes.append(labels.cpu().numpy())
+        attributes.append(physchem.cpu().numpy())
         if sample_id == 200:
             break
     latent_codes = np.concatenate(latent_codes, 0)

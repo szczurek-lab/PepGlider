@@ -370,7 +370,7 @@ def run():#rank, world_size
         "task_name": "ar_vae_with_ar_vae_metrics",
         "device": "cuda",
         "deeper_eval_every": 20,
-        "save_model_every": 100,
+        "save_model_every": 1,
         "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
         "gamma_schedule": (0.00001, 20, 8000)
     }

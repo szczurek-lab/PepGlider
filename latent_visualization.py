@@ -21,6 +21,7 @@ from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
 # import json
 import ar_vae_metrics as m
 # import time
+import matplotlib.colors as mcolors
 
 def set_seed(seed: int = 42) -> None:
     """
@@ -52,6 +53,23 @@ def save_model(model: nn.Module, name: str, with_hash: bool = True) -> None:
         model.state_dict(), (MODELS_DIR / model_name).with_suffix(".pt")
     )
 
+# Twoje stałe (upewnij się, że są zaimportowane lub zdefiniowane)
+# from model.constants import SEQ_LEN, VOCAB_SIZE, PAD_TOKEN, CLS_TOKEN
+# Przykładowe wartości - Użyj swoich rzeczywistych!
+SEQ_LEN = 25 # lub 26, jeśli z CLS_TOKEN
+VOCAB_SIZE_AMINO_ACIDS = 20 # Jeśli masz 20 aminokwasów
+PAD_TOKEN = VOCAB_SIZE_AMINO_ACIDS # Np. 20
+# CLS_TOKEN = VOCAB_SIZE_AMINO_ACIDS + 1 # Np. 21
+# TOTAL_VOCAB_SIZE = VOCAB_SIZE_AMINO_ACIDS + 2 # Np. 22
+
+# W Twoim przypadku z checkpointu VOCAB_SIZE + 1 = 112, czyli VOCAB_SIZE = 111.
+# To sugeruje, że masz VOCAB_SIZE_AMINO_ACIDS + inne_specjalne_tokeny = 111.
+# Upewnij się, że masz to poprawnie zmapowane.
+# Przykład:
+# TOTAL_VOCAB_SIZE = 112 # To jest num_embeddings w warstwie liniowej dekodera
+# PAD_TOKEN = ... # Upewnij się, że masz poprawny indeks PAD_TOKEN
+# CLS_TOKEN = ... # Upewnij się, że masz poprawny indeks CLS_TOKEN
+
 def convert_rgba_to_rgb(rgba):
     row, col, ch = rgba.shape
     if rgba.dtype == 'uint8':
@@ -68,6 +86,146 @@ def convert_rgba_to_rgb(rgba):
     rgb[:, :, 2] = b * a + (1.0 - a)
 
     return np.asarray(rgb)
+
+
+# --- NOWA FUNKCJA DLA GŁADKICH WYKRESÓW (MAP CIEPLNYCH) ---
+def plot_latent_heatmap(
+    decoder,
+    filename: str,
+    dim1: int = 0,
+    dim2: int = 1,
+    latent_dim: int = 56,
+    grid_size: int = 50, # Zwiększ grid_size dla gładszych wykresów (np. 50, 100)
+    x_range: tuple = (-5, 5),
+    y_range: tuple = (-5, 5),
+    attribute_to_plot: str = 'length', # 'length', 'charge', 'hydrophobicity_moment'
+    # Jeśli attribute_to_plot wymaga mapowania tokenów na wartości, potrzebujesz słownika
+    # np. token_to_charge_map, token_to_hydrophobicity_map
+    token_attribute_maps: dict = None # Słownik mapowań {token_id: value, ...}
+):
+    """
+    Tworzy gładką mapę cieplną przestrzeni latentnej poprzez dekodowanie punktów
+    z regularnej siatki i wizualizację wybranej cechy zdekodowanego tekstu.
+
+    Args:
+        decoder: Twój model DecoderRNN.
+        filename (str): Nazwa pliku do zapisania wykresu.
+        dim1 (int): Pierwszy wymiar przestrzeni latentnej na osi X.
+        dim2 (int): Drugi wymiar przestrzeni latentnej na osi Y.
+        latent_dim (int): Całkowity wymiar przestrzeni latentnej.
+        grid_size (int): Liczba punktów na osi siatki (np. 50x50 siatka).
+        x_range (tuple): Zakres wartości dla dim1 (min, max).
+        y_range (tuple): Zakres wartości dla dim2 (min, max).
+        attribute_to_plot (str): Jaka cecha zdekodowanej sekwencji ma być wizualizowana
+                                 ('length', 'charge', 'hydrophobicity_moment' itp.).
+        token_attribute_maps (dict, optional): Słownik zawierający mapowania tokenów
+                                               na wartości atrybutów, jeśli potrzebne.
+                                               np. {'charge': {token_id: charge_val, ...}}
+    """
+    decoder.eval()
+    device = next(decoder.parameters()).device
+
+    # 1. Stworzenie siatki w przestrzeni latentnej
+    x_vals = np.linspace(x_range[0], x_range[1], grid_size)
+    y_vals = np.linspace(y_range[0], y_range[1], grid_size)
+
+    # Utworzenie bazowego tensora latentnego z zerami dla całej siatki
+    z_grid = torch.zeros(grid_size * grid_size, latent_dim, device=device)
+
+    # Wypełnienie odpowiednich wymiarów danymi z siatki
+    idx = 0
+    for i, y_val in enumerate(y_vals):
+        for j, x_val in enumerate(x_vals):
+            z_grid[idx, dim1] = x_val
+            z_grid[idx, dim2] = y_val
+            idx += 1
+
+    # 2. Dekodowanie punktów z siatki (partiami, jeśli grid_size*grid_size jest zbyt duże)
+    batch_size_decode = 1024 # Możesz dostosować, aby nie przekraczać pamięci
+    all_decoded_tokens = []
+
+    with torch.no_grad():
+        for i in range(0, z_grid.shape[0], batch_size_decode):
+            z_batch = z_grid[i:i + batch_size_decode]
+            decoded_logits_batch = decoder(z_batch) # (SEQ_LEN, batch_size_decode, VOCAB_SIZE + 1)
+            # Przeniesienie na CPU i konwersja na tokeny
+            decoded_tokens_batch = decoded_logits_batch.argmax(dim=2).cpu().numpy()
+            all_decoded_tokens.append(decoded_tokens_batch)
+    
+    # Połączenie wszystkich zdekodowanych tokenów
+    # Kształt: (SEQ_LEN, grid_size*grid_size)
+    decoded_tokens_np = np.concatenate(all_decoded_tokens, axis=1)
+
+    # 3. Ekstrakcja cechy z zdekodowanego wyjścia
+    color_values_flat = []
+
+    if attribute_to_plot == 'length':
+        for i in range(decoded_tokens_np.shape[1]):
+            # Znajdź indeks pierwszego PAD_TOKEN
+            seq = decoded_tokens_np[:, i]
+            # długość to pierwszy indeks PAD_TOKEN, jeśli nie ma, to pełna długość
+            length = len(seq)
+            if PAD_TOKEN in seq:
+                length = np.where(seq == PAD_TOKEN)[0][0]
+            color_values_flat.append(length)
+
+    elif attribute_to_plot in ['charge', 'hydrophobicity_moment']:
+        if token_attribute_maps is None or attribute_to_plot not in token_attribute_maps:
+            raise ValueError(f"Brak mapowania dla atrybutu '{attribute_to_plot}'. Proszę podać 'token_attribute_maps'.")
+        
+        attr_map = token_attribute_maps[attribute_to_plot]
+        
+        for i in range(decoded_tokens_np.shape[1]):
+            seq = decoded_tokens_np[:, i]
+            # Odrzuć PAD_TOKEN i CLS_TOKEN z sekwencji, jeśli są
+            meaningful_tokens = [
+                token for token in seq 
+                if token != PAD_TOKEN # and token != CLS_TOKEN # Dodaj, jeśli CLS_TOKEN ma być ignorowany
+            ]
+            
+            if len(meaningful_tokens) > 0:
+                # Oblicz średnią wartość atrybutu dla tokenów w sekwencji
+                attr_values = [attr_map.get(t, 0.0) for t in meaningful_tokens] # Użyj .get z domyślną wartością na wypadek braku mapowania
+                color_values_flat.append(np.mean(attr_values))
+            else:
+                color_values_flat.append(0.0) # Domyślna wartość dla pustych sekwencji
+
+    else:
+        raise ValueError(f"Nieznany atrybut do wykreślenia: {attribute_to_plot}")
+
+    # Przekształć listę wartości na macierz 2D do imshow
+    color_values_2d = np.array(color_values_flat).reshape(grid_size, grid_size)
+
+    # Normalizacja wartości do zakresu 0-1, jeśli jest to wymagane dla cmap
+    # Matplotlib zazwyczaj normalizuje sam, ale możesz to zrobić ręcznie, jeśli chcesz
+    # np. color_values_2d = (color_values_2d - color_values_2d.min()) / (color_values_2d.max() - color_values_2d.min())
+
+
+    # 4. Wizualizacja mapy cieplnej
+    plt.figure(figsize=(8, 6))
+    
+    # Plotting
+    im = plt.imshow(
+        color_values_2d,
+        extent=[x_range[0], x_range[1], y_range[0], y_range[1]],
+        origin='lower',
+        cmap='viridis', # Użyj tej samej mapy kolorów co na przykładzie
+        aspect='auto'
+    )
+    
+    plt.xlabel(f'dimension: {dim1}')
+    plt.ylabel(f'dimension: {dim2}')
+    plt.colorbar(im) # Dodaj pasek kolorów, odwołując się do obiektu imshow
+
+    plt.title(f'Latent Space: {attribute_to_plot.capitalize()} (Dim {dim1} vs {dim2})')
+    plt.savefig(filename, format='png', dpi=300)
+    plt.close()
+
+    # Twoja funkcja konwertująca, jeśli chcesz użyć obrazu w dalszej części
+    img = Image.open(filename)
+    img_resized = img.resize((485, 360), Image.Resampling.LANCZOS)
+    img = convert_rgba_to_rgb(np.array(img_resized))
+    return img
 
 def plot_dim(data, target, filename, dim1=0, dim2=1, xlim=None, ylim=None):
     if xlim is not None:
@@ -261,13 +419,24 @@ def run():#rank, world_size
         dim1 = interp_dict[attr][0]
         if attr == 'mean':
             continue
-        plot_latent_surface(
-            decoder,
-            attr,
+        # plot_latent_surface(
+        #     decoder,
+        #     attr,
+        #     dim1=dim1,
+        #     dim2=non_attr_dims[-1],
+        #     grid_res=0.05,
+        #     z_dim = params["latent_dim"]
+        # )
+        plot_latent_heatmap(
+            decoder=decoder,
+            filename="latent_heatmap_length_dim3_15.png",
             dim1=dim1,
             dim2=non_attr_dims[-1],
-            grid_res=0.05,
-            z_dim = params["latent_dim"]
+            latent_dim=params["latent_dim"], # Z Twoich parametrów
+            grid_size=100, # Większa siatka, gładszy obraz
+            x_range=(-5, 5),
+            y_range=(-5, 5),
+            attribute_to_plot=attr
         )
 
 if __name__ == '__main__':

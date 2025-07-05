@@ -75,6 +75,7 @@ def calculate_physchem_test(peptides: List[str]) -> torch.Tensor:
 
     # Calculate properties for the entire list of peptides
     # This is more efficient than calling GlobalAnalysis for each peptide
+    print(dir(modlamp))
     global_analysis_obj = modlamp.analysis.GlobalAnalysis(peptides)
 
     # Length

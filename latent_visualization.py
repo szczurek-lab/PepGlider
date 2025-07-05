@@ -95,13 +95,6 @@ def plot_dim(data, target, filename, dim1=0, dim2=1, xlim=None, ylim=None):
     img = convert_rgba_to_rgb(np.array(img_resized))
     return img
 
-def compute_mnist_morpho_labels(self, outputs, morpho_attr_str=None):
-    a = outputs.detach().cpu().numpy().squeeze(axis=1)
-    labels = measure_batch(a).values
-    if morpho_attr_str is not None:
-        labels = labels[:, self.attr_dict[morpho_attr_str] - 1]
-    return labels
-
 def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim = 56):
     # create the dataspace
     x1 = torch.arange(-5., 5., grid_res)

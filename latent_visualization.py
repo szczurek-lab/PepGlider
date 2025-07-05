@@ -255,20 +255,20 @@ def run():#rank, world_size
     ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
     interp_dict = ar_vae_metrics['Interpretability']
     print(f'interp_dict = {interp_dict}')
-    # attr_dims = [interp_dict[attr][0] for attr in attr_dict.keys()]
-    # non_attr_dims = [a for a in range(params['latent_dim']) if a not in attr_dims]
-    # for attr in interp_dict.keys():
-    #     dim1 = interp_dict[attr][0]
-    #     if attr == 'mean':
-    #         continue
-    # plot_latent_surface(
-    #         decoder,
-    #         attr,
-    #         dim1=dim1,
-    #         dim2=non_attr_dims[-1],
-    #         grid_res=0.05,
-    #         z_dim = params["latent_dim"]
-    #     )
+    attr_dims = [interp_dict[attr][0] for attr in attr_dict.keys()]
+    non_attr_dims = [a for a in range(params['latent_dim']) if a not in attr_dims]
+    for attr in interp_dict.keys():
+        dim1 = interp_dict[attr][0]
+        if attr == 'mean':
+            continue
+        plot_latent_surface(
+            decoder,
+            attr,
+            dim1=dim1,
+            dim2=non_attr_dims[-1],
+            grid_res=0.05,
+            z_dim = params["latent_dim"]
+        )
 
 if __name__ == '__main__':
     set_seed()

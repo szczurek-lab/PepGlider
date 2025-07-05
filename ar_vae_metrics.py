@@ -241,7 +241,7 @@ def compute_representations(data_loader, encoder, device):
         peptides = batch.permute(1, 0).type(torch.LongTensor).to(device) # S x B
         mu, std = encoder(peptides) #TODO zmierz czas
         z_tilde = torch.distributions.Normal(mu, std)
-        latent_codes.append(z_tilde.cpu().numpy())
+        latent_codes.append(z_tilde.rsample().cpu().numpy())
         attributes.append(physchem.cpu().numpy())
         if sample_id == 200:
             break

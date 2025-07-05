@@ -236,7 +236,8 @@ def gather_metrics(async_results):
 def compute_representations(data_loader, encoder, device):
     latent_codes = []
     attributes = []
-    for sample_id, batch, labels, physchem, attributes_input in tqdm(enumerate(data_loader)):
+    sample_id = 0
+    for batch, labels, physchem, attributes_input in data_loader:
         peptides = batch.permute(1, 0).type(torch.LongTensor).to(device) # S x B
         mu, std = encoder(peptides) #TODO zmierz czas
         z_tilde = torch.distributions.Normal(mu, std)
@@ -244,6 +245,7 @@ def compute_representations(data_loader, encoder, device):
         attributes.append(physchem.cpu().numpy())
         if sample_id == 200:
             break
+        sample_id +=1
     latent_codes = np.concatenate(latent_codes, 0)
     attributes = np.concatenate(attributes, 0)
     attributes, attr_list = extract_relevant_attributes(attributes)

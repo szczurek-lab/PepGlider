@@ -20,6 +20,8 @@ import data.dataset as dataset_lib
 from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
 # import json
 import ar_vae_metrics as m
+import modlamp as modlamp
+print(dir(modlamp))
 # import time
 
 def set_seed(seed: int = 42) -> None:
@@ -191,11 +193,11 @@ def run():#rank, world_size
     is_cpu = False if torch.cuda.is_available() else True
     encoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "ar_vae_with_ar_vae_metrics_basic_epoch800_encoder.pt"
+        "ar_vae_with_ar_vae_metrics_basic_epoch20_encoder.pt"
     )
     decoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "ar_vae_with_ar_vae_metrics_basic_epoch800_encoder.pt"
+        "ar_vae_with_ar_vae_metrics_basic_epoch20_decoder.pt"
     )
 
     if is_cpu:

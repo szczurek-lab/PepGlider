@@ -223,7 +223,7 @@ def run_epoch_iwae(
             # end_time = time.time()
             reg_losses_per_sample_list.append(reg_loss)
             # print(f'reg loss time: {end_time-start_time}')
-            iwae_sample_term = cross_entropy + kl_beta * kl_div # (B,)
+            iwae_sample_term = 10*cross_entropy + kl_beta * kl_div # (B,)
             iwae_terms.append(iwae_sample_term) # Dodaj do listy
         iwae_terms_stacked = torch.stack(iwae_terms, dim=0).mean(dim=0)#.reshape(-1)
 
@@ -449,7 +449,7 @@ def run():#rank, world_size
         kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, beta_1)
         gamma_0, gamma_1, t_1 = params["gamma_schedule"]
         if epoch < 1000:
-            gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, gamma_0)
+            gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, 0.0)
         else:
             gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, gamma_1)
         run_epoch_iwae(

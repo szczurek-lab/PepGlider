@@ -191,11 +191,11 @@ def run():#rank, world_size
     is_cpu = False if torch.cuda.is_available() else True
     encoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "ar_vae_with_ar_vae_metrics_basic_epoch900_encoder.pt"
+        "ar_vae_with_ar_vae_metrics_basic_epoch800_encoder.pt"
     )
     decoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "ar_vae_with_ar_vae_metrics_basic_epoch900_encoder.pt"
+        "ar_vae_with_ar_vae_metrics_basic_epoch800_encoder.pt"
     )
 
     if is_cpu:

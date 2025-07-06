@@ -138,7 +138,7 @@ def run_epoch_iwae(
         # autoencoding
         # start_time = time.time()
         mu, std = encoder(peptides) #TODO zmierz czas
-        print(f'std shape = {std.shape}')
+        # print(f'std shape = {std.shape}')
         # end_time = time.time()
         # print(f'encoding time: {end_time-start_time}')
         # print(f'mu = {mu}, std = {std}')
@@ -151,7 +151,7 @@ def run_epoch_iwae(
         reg_losses_per_sample_list  = []
         for _ in range(K):
             z = q_distr.rsample().to(device) # B, L
-            print(f'z shape = {z.shape}')
+            # print(f'z shape = {z.shape}')
             if mode == 'test':
                     # attributes_input_expanded_torch = attributes_input.repeat_interleave(K, dim=0)
                     latent_codes.append(z.reshape(-1, z.shape[1]).cpu().detach().numpy())
@@ -196,12 +196,12 @@ def run_epoch_iwae(
             print(f'sampled_peptide_logits shape = {sampled_peptide_logits.shape}')
             # end_time = time.time()
             # print(f'decoding time: {end_time-start_time}')
-            sampled_peptide_logits = sampled_peptide_logits.view(S, B, C)
+            # sampled_peptide_logits = sampled_peptide_logits.view(S, B, C)
             src = sampled_peptide_logits.permute(1, 2, 0)  # B x C x S
-            # print(f'src shape = {src.shape}')
+            print(f'src shape = {src.shape}')
             # src_decoded = src.reshape(-1, C, S).argmax(dim=1) # K*B x S
             tgt = peptides.permute(1, 0)#.reshape(B, S).repeat(K, 1, 1)  # B x S
-            # print(f'tgt shape = {tgt.shape}')
+            print(f'tgt shape = {tgt.shape}')
             # src_decoded = dataset_lib.decoded(src_decoded, "")
     #        indexes = [index for index, item in enumerate(src_decoded) if item.strip()]
             # K x B
@@ -211,7 +211,7 @@ def run_epoch_iwae(
                 tgt,
             ).sum(dim=1) #TODO zmierz czas
             all_cross_entropies.append(cross_entropy) # Dodaj do listy dla statystyk
-            # print(f'cross_entropy shape = {cross_entropy.shape}')
+            print(f'cross_entropy shape = {cross_entropy.shape}')
             # end_time = time.time()
             # print(f'cross entropy time: {end_time-start_time}')
             reg_loss = 0
@@ -225,38 +225,38 @@ def run_epoch_iwae(
             # print(f'reg loss time: {end_time-start_time}')
             iwae_sample_term = 10*cross_entropy + kl_beta * kl_div # (B,)
             iwae_terms.append(iwae_sample_term) # Dodaj do listy
-        iwae_terms_stacked = torch.stack(iwae_terms, dim=0).mean(dim=0)#.reshape(-1)
+        iwae_terms_stacked = logsumexp(torch.stack(iwae_terms, dim=0), dim=0)#.reshape(-1)
 
         # loss = logsumexp(iwae_terms_stacked, dim=0)
         total_reg_loss = torch.stack(reg_losses_per_sample_list, dim=0).mean(dim=0).sum()#.reshape(-1).sum()
         loss = logsumexp(iwae_terms_stacked, dim=0) + total_reg_loss
-        print(f'loss = {loss}')
+        # print(f'loss = {loss}')
         stacked_kl_divs = torch.stack(all_kl_divs, dim=0).mean(dim=0)
         # print(f'stacked_kl_divs shape = {stacked_kl_divs.shape}') 
         stacked_cross_entropies = torch.stack(all_cross_entropies, dim=0).mean(dim=0)
         # print(f'stacked_cross_entropies shape = {stacked_cross_entropies.shape}')
         # stats
         stat_sum["kl_mean"] += stacked_kl_divs.mean(dim=0).item()
-        stat_sum["kl_best"] += stacked_kl_divs.max(dim=0).values.item()
-        stat_sum["kl_worst"] += stacked_kl_divs.min(dim=0).values.item()
-        stat_sum["ce_mean"] += stacked_cross_entropies.mean(dim=0).item()
-        stat_sum["ce_best"] += stacked_cross_entropies.min(dim=0).values.item()
-        stat_sum["ce_worst"] += stacked_cross_entropies.max(dim=0).values.item()
+        # stat_sum["kl_best"] += stacked_kl_divs.max(dim=0).values.item()
+        # stat_sum["kl_worst"] += stacked_kl_divs.min(dim=0).values.item()
+        stat_sum["ce_sum"] += stacked_cross_entropies.sum().item()
+        # stat_sum["ce_best"] += stacked_cross_entropies.min(dim=0).values.item()
+        # stat_sum["ce_worst"] += stacked_cross_entropies.max(dim=0).values.item()
         # stat_sum["std"] += std.mean(dim=1).sum().item()
         stat_sum["reg_loss"] = total_reg_loss
         stat_sum["total"] += loss.item() * len(batch)   
 
-        print(f'loss from mean = {(iwae_terms_stacked).mean(dim=0)}')
-        print(f'loss_logsumexp = {logsumexp(iwae_terms_stacked, dim=0)}')
-        print(f'loss reg loss = {stat_sum["reg_loss"]}') 
-        print(f'stat_sum = {stat_sum}')
+        # print(f'loss from mean = {(iwae_terms_stacked).mean(dim=0)}')
+        # print(f'loss_logsumexp = {logsumexp(iwae_terms_stacked, dim=0)}')
+        # print(f'loss reg loss = {stat_sum["reg_loss"]}') 
+        # print(f'stat_sum = {stat_sum}')
         if optimizer:
             loss.backward()
             nn.utils.clip_grad_norm_(
                 itertools.chain(encoder.parameters(), decoder.parameters()), max_norm=1.0
             )
             optimizer.step()
-        print(f'last cross_entropy = {cross_entropy}')
+        # print(f'last cross_entropy = {cross_entropy}')
 
         # reporting
         if eval_mode == "deep":
@@ -288,58 +288,58 @@ def run_epoch_iwae(
         # end_time = time.time()
         # print(f'ar-vae metrics counting time: {end_time-start_time}')
 
-    if logger is not None:
-        mn.report_scalars(
-            logger,
-            mode,
-            epoch,
-            scalars=[
-                ("Total Loss", stat_sum["total"] / len_data),
-                    # ("Posterior Standard Deviation [mean]", stat_sum["std"] / len_data),
-                (
-                    "Cross Entropy Loss",
-                    "mean over samples",
-                    stat_sum["ce_mean"] / len_data,
-                ),
-                ("Cross Entropy Loss", "best sample", stat_sum["ce_best"] / len_data),
-                ("Cross Entropy Loss", "worst sample", stat_sum["ce_worst"] / len_data),
-                (
-                    "KL Divergence",
-                    "mean over samples",
-                    stat_sum["kl_mean"] / len_data,
-                ),
-                ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
-                ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
-                ("KL Beta", kl_beta),
-                ("Regularization Loss", stat_sum["reg_loss"]/gamma),
-                ("Regularization Loss with gamma", stat_sum["reg_loss"]),
-            ],
-        )
-        if eval_mode == "deep": 
-            mn.report_sequence_char_test(
-                logger,
-                hue=f"{mode} - mu",
-                epoch=epoch,
-                seq_true=np.concatenate(seq_true, axis=1),
-                model_out=np.concatenate(model_out, axis=1),
-                metrics = None
-            )
-            mn.report_sequence_char_test(
-                logger,
-                hue=f"{mode} - z",
-                epoch=epoch,
-                seq_true=np.concatenate(seq_true, axis=1),
-                model_out=np.concatenate(model_out_sampled, axis=1),
-                metrics = None
-            )
-            mn.report_sequence_char_test(
-                logger,
-                hue=f"{mode} - ar-vae metrics",
-                epoch=epoch,
-                seq_true=np.concatenate(seq_true, axis=1),
-                model_out=None,
-                metrics = ar_vae_metrics
-            )
+    # if logger is not None:
+    #     mn.report_scalars(
+    #         logger,
+    #         mode,
+    #         epoch,
+    #         scalars=[
+    #             ("Total Loss", stat_sum["total"] / len_data),
+    #                 # ("Posterior Standard Deviation [mean]", stat_sum["std"] / len_data),
+    #             (
+    #                 "Cross Entropy Loss",
+    #                 "sum over samples",
+    #                 stat_sum["ce_sum"] / len_data,
+    #             ),
+    #             # ("Cross Entropy Loss", "best sample", stat_sum["ce_best"] / len_data),
+    #             # ("Cross Entropy Loss", "worst sample", stat_sum["ce_worst"] / len_data),
+    #             (
+    #                 "KL Divergence",
+    #                 "mean over samples",
+    #                 stat_sum["kl_mean"] / len_data,
+    #             ),
+    #             # ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
+    #             # ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
+    #             # ("KL Beta", kl_beta),
+    #             ("Regularization Loss", stat_sum["reg_loss"]/gamma),
+    #             # ("Regularization Loss with gamma", stat_sum["reg_loss"]),
+    #         ],
+    #     )
+    #     if eval_mode == "deep": 
+    #         # mn.report_sequence_char_test(
+    #         #     logger,
+    #         #     hue=f"{mode} - mu",
+    #         #     epoch=epoch,
+    #         #     seq_true=np.concatenate(seq_true, axis=1),
+    #         #     model_out=np.concatenate(model_out, axis=1),
+    #         #     metrics = None
+    #         # )
+    #         mn.report_sequence_char_test(
+    #             logger,
+    #             hue=f"{mode} - z",
+    #             epoch=epoch,
+    #             seq_true=np.concatenate(seq_true, axis=1),
+    #             model_out=np.concatenate(model_out_sampled, axis=1),
+    #             metrics = None
+    #         )
+    #         mn.report_sequence_char_test(
+    #             logger,
+    #             hue=f"{mode} - ar-vae metrics",
+    #             epoch=epoch,
+    #             seq_true=np.concatenate(seq_true, axis=1),
+    #             model_out=None,
+    #             metrics = ar_vae_metrics
+    #         )
     return stat_sum["total"] / len_data
 
 def run():#rank, world_size

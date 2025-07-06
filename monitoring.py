@@ -141,7 +141,7 @@ def report_sequence_char_test(
         return
     if metrics is None:
         seq_pred = model_out.argmax(axis=2)
-        print(f'seq_pred shape = {seq_pred.shape}')
+        # print(f'seq_pred shape = {seq_pred.shape}')
         src_pred = dataset_lib.decoded(tensor(seq_pred).permute(1, 0), "")
         filtered_list = [item for item in src_pred if item.strip()]
         if not filtered_list:

@@ -156,7 +156,7 @@ def run_epoch_iwae(
         # stacked_cross_entropies = torch.stack(all_cross_entropies, dim=0).mean(dim=0)
         # stats
         stat_sum["kl_mean"] += stacked_kl_divs.mean(dim=0).item()
-        # stat_sum["ce_sum"] += stacked_cross_entropies.sum().item()
+        stat_sum["ce_sum"] += cross_entropy.mean(dim=0).sum(dim=0).item()
         stat_sum["reg_loss"] = total_reg_loss
         stat_sum["total"] += loss.item() * len(batch)   
 

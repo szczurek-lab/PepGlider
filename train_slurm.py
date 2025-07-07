@@ -141,7 +141,7 @@ def run_epoch_iwae(
         total_reg_loss = torch.stack(reg_losses_per_sample_list, dim=0).mean(dim=0).sum()
         # loss = logsumexp(iwae_terms_stacked, dim=0) + total_reg_loss
         # torch.stack z listą BxSxN_C (sampled_peptide_logits) da KxBxCxS
-        stacked_srcs = torch.stack(all_srcs, dim=0)
+        stacked_srcs = torch.stack(all_srcs, dim=0).permute(0,2,1,3)
         print(f'stacked_srcs shape = {stacked_srcs.shape}')
         stacked_tgts = torch.stack(all_tgts, dim=0)
         print(f'stacked_tgts shape = {stacked_tgts.shape}')

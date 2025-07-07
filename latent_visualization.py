@@ -280,8 +280,8 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim 
            column_to_normalize = labels[:, dim_idx].unsqueeze(1)
            normalized_column = dataset_lib.normalize_dimension_to_0_1(column_to_normalize, dim=0)
            normalized_physchem_torch[:, dim_idx] = normalized_column.squeeze(1)
-        attr_labels_all.append(labels)
-    print(f'example of normalized physchem = {normalized_physchem_torch[0,:]}')
+        attr_labels_all.append(normalized_physchem_torch)
+    print(f'z = {z}')
     attr_labels_all = torch.cat(attr_labels_all, 0).cpu().numpy()
         # Przekształć listę wartości na macierz 2D do imshow
     # color_values_2d = attr_labels_all.reshape(50, 50)

@@ -87,146 +87,6 @@ def convert_rgba_to_rgb(rgba):
 
     return np.asarray(rgb)
 
-
-# --- NOWA FUNKCJA DLA GŁADKICH WYKRESÓW (MAP CIEPLNYCH) ---
-def plot_latent_heatmap(
-    decoder,
-    filename: str,
-    dim1: int = 0,
-    dim2: int = 1,
-    latent_dim: int = 56,
-    grid_size: int = 50, # Zwiększ grid_size dla gładszych wykresów (np. 50, 100)
-    x_range: tuple = (-5, 5),
-    y_range: tuple = (-5, 5),
-    attribute_to_plot: str = 'length', # 'length', 'charge', 'hydrophobicity_moment'
-    # Jeśli attribute_to_plot wymaga mapowania tokenów na wartości, potrzebujesz słownika
-    # np. token_to_charge_map, token_to_hydrophobicity_map
-    token_attribute_maps: dict = None # Słownik mapowań {token_id: value, ...}
-):
-    """
-    Tworzy gładką mapę cieplną przestrzeni latentnej poprzez dekodowanie punktów
-    z regularnej siatki i wizualizację wybranej cechy zdekodowanego tekstu.
-
-    Args:
-        decoder: Twój model DecoderRNN.
-        filename (str): Nazwa pliku do zapisania wykresu.
-        dim1 (int): Pierwszy wymiar przestrzeni latentnej na osi X.
-        dim2 (int): Drugi wymiar przestrzeni latentnej na osi Y.
-        latent_dim (int): Całkowity wymiar przestrzeni latentnej.
-        grid_size (int): Liczba punktów na osi siatki (np. 50x50 siatka).
-        x_range (tuple): Zakres wartości dla dim1 (min, max).
-        y_range (tuple): Zakres wartości dla dim2 (min, max).
-        attribute_to_plot (str): Jaka cecha zdekodowanej sekwencji ma być wizualizowana
-                                 ('length', 'charge', 'hydrophobicity_moment' itp.).
-        token_attribute_maps (dict, optional): Słownik zawierający mapowania tokenów
-                                               na wartości atrybutów, jeśli potrzebne.
-                                               np. {'charge': {token_id: charge_val, ...}}
-    """
-    decoder.eval()
-    device = next(decoder.parameters()).device
-
-    # 1. Stworzenie siatki w przestrzeni latentnej
-    x_vals = np.linspace(x_range[0], x_range[1], grid_size)
-    y_vals = np.linspace(y_range[0], y_range[1], grid_size)
-
-    # Utworzenie bazowego tensora latentnego z zerami dla całej siatki
-    z_grid = torch.zeros(grid_size * grid_size, latent_dim, device=device)
-
-    # Wypełnienie odpowiednich wymiarów danymi z siatki
-    idx = 0
-    for i, y_val in enumerate(y_vals):
-        for j, x_val in enumerate(x_vals):
-            z_grid[idx, dim1] = x_val
-            z_grid[idx, dim2] = y_val
-            idx += 1
-
-    # 2. Dekodowanie punktów z siatki (partiami, jeśli grid_size*grid_size jest zbyt duże)
-    batch_size_decode = 1024 # Możesz dostosować, aby nie przekraczać pamięci
-    all_decoded_tokens = []
-
-    with torch.no_grad():
-        for i in range(0, z_grid.shape[0], batch_size_decode):
-            z_batch = z_grid[i:i + batch_size_decode]
-            decoded_logits_batch = decoder(z_batch) # (SEQ_LEN, batch_size_decode, VOCAB_SIZE + 1)
-            # Przeniesienie na CPU i konwersja na tokeny
-            decoded_tokens_batch = decoded_logits_batch.argmax(dim=2).cpu().numpy()
-            all_decoded_tokens.append(decoded_tokens_batch)
-    
-    # Połączenie wszystkich zdekodowanych tokenów
-    # Kształt: (SEQ_LEN, grid_size*grid_size)
-    decoded_tokens_np = np.concatenate(all_decoded_tokens, axis=1)
-
-    # 3. Ekstrakcja cechy z zdekodowanego wyjścia
-    color_values_flat = []
-
-    if attribute_to_plot == 'length':
-        for i in range(decoded_tokens_np.shape[1]):
-            # Znajdź indeks pierwszego PAD_TOKEN
-            seq = decoded_tokens_np[:, i]
-            # długość to pierwszy indeks PAD_TOKEN, jeśli nie ma, to pełna długość
-            length = len(seq)
-            if PAD_TOKEN in seq:
-                length = np.where(seq == PAD_TOKEN)[0][0]
-            color_values_flat.append(length)
-
-    elif attribute_to_plot in ['charge', 'hydrophobicity_moment']:
-        if token_attribute_maps is None or attribute_to_plot not in token_attribute_maps:
-            raise ValueError(f"Brak mapowania dla atrybutu '{attribute_to_plot}'. Proszę podać 'token_attribute_maps'.")
-        
-        attr_map = token_attribute_maps[attribute_to_plot]
-        
-        for i in range(decoded_tokens_np.shape[1]):
-            seq = decoded_tokens_np[:, i]
-            # Odrzuć PAD_TOKEN i CLS_TOKEN z sekwencji, jeśli są
-            meaningful_tokens = [
-                token for token in seq 
-                if token != PAD_TOKEN # and token != CLS_TOKEN # Dodaj, jeśli CLS_TOKEN ma być ignorowany
-            ]
-            
-            if len(meaningful_tokens) > 0:
-                # Oblicz średnią wartość atrybutu dla tokenów w sekwencji
-                attr_values = [attr_map.get(t, 0.0) for t in meaningful_tokens] # Użyj .get z domyślną wartością na wypadek braku mapowania
-                color_values_flat.append(np.mean(attr_values))
-            else:
-                color_values_flat.append(0.0) # Domyślna wartość dla pustych sekwencji
-
-    else:
-        raise ValueError(f"Nieznany atrybut do wykreślenia: {attribute_to_plot}")
-
-    # Przekształć listę wartości na macierz 2D do imshow
-    color_values_2d = np.array(color_values_flat).reshape(grid_size, grid_size)
-
-    # Normalizacja wartości do zakresu 0-1, jeśli jest to wymagane dla cmap
-    # Matplotlib zazwyczaj normalizuje sam, ale możesz to zrobić ręcznie, jeśli chcesz
-    # np. color_values_2d = (color_values_2d - color_values_2d.min()) / (color_values_2d.max() - color_values_2d.min())
-
-
-    # 4. Wizualizacja mapy cieplnej
-    plt.figure(figsize=(8, 6))
-    
-    # Plotting
-    im = plt.imshow(
-        color_values_2d,
-        extent=[x_range[0], x_range[1], y_range[0], y_range[1]],
-        origin='lower',
-        cmap='viridis', # Użyj tej samej mapy kolorów co na przykładzie
-        aspect='auto'
-    )
-    
-    plt.xlabel(f'dimension: {dim1}')
-    plt.ylabel(f'dimension: {dim2}')
-    plt.colorbar(im) # Dodaj pasek kolorów, odwołując się do obiektu imshow
-
-    plt.title(f'Latent Space: {attribute_to_plot.capitalize()} (Dim {dim1} vs {dim2})')
-    plt.savefig(filename, format='png', dpi=300)
-    plt.close()
-
-    # Twoja funkcja konwertująca, jeśli chcesz użyć obrazu w dalszej części
-    img = Image.open(filename)
-    img_resized = img.resize((485, 360), Image.Resampling.LANCZOS)
-    img = convert_rgba_to_rgb(np.array(img_resized))
-    return img
-
 def plot_dim(data, target, filename, dim1=0, dim2=1, xlim=None, ylim=None):
     if xlim is not None:
         plt.xlim(-xlim, xlim)
@@ -262,72 +122,68 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim 
     z[:, dim1] = z1.contiguous().view(1, -1)
     z[:, dim2] = z2.contiguous().view(1, -1)
     z = Variable(z).cuda()
-
+    filtered_z_points = []
+    filtered_attr_labels = []
     mini_batch_size = 500
     num_mini_batches = num_points // mini_batch_size
     attr_labels_all = []
     for i in tqdm(range(num_mini_batches)):
         z_batch = z[i * mini_batch_size:(i + 1) * mini_batch_size, :]
         outputs = decoder(z_batch)
-        # outputs = outputs.view(25, mini_batch_size, 21)
         src = outputs.permute(1, 2, 0)  # B x C x S
         src_decoded = src.argmax(dim=1) # B x S
-        src_decoded = dataset_lib.decoded(src_decoded, "")
-        filtered_list = [item for item in src_decoded if item.strip()]
-        labels = dataset_lib.calculate_physchem_test(filtered_list)
-        normalized_physchem_torch = labels.clone()
-        for dim_idx in range(labels.shape[1]):
-           column_to_normalize = labels[:, dim_idx].unsqueeze(1)
-           normalized_column = dataset_lib.normalize_dimension_to_0_1(column_to_normalize, dim=0)
-           normalized_physchem_torch[:, dim_idx] = normalized_column.squeeze(1)
-        attr_labels_all.append(normalized_physchem_torch)
-    attr_labels_all = torch.cat(attr_labels_all, 0).cpu().numpy()
-        # Przekształć listę wartości na macierz 2D do imshow
-    # color_values_2d = attr_labels_all.reshape(50, 50)
+        # Listy do przechowywania danych z bieżącej paczki
+        current_batch_filtered_z = []
+        current_batch_filtered_labels = []
 
-    # Normalizacja wartości do zakresu 0-1, jeśli jest to wymagane dla cmap
-    # Matplotlib zazwyczaj normalizuje sam, ale możesz to zrobić ręcznie, jeśli chcesz
-    # np. color_values_2d = (color_values_2d - color_values_2d.min()) / (color_values_2d.max() - color_values_2d.min())
+        # Iterujemy przez każdą próbkę w bieżącej paczce
+        for j in range(mini_batch_size):
+            # Zdekodowana sekwencja dla pojedynczej próbki
+            # Upewnij się, że dataset_lib.decoded wie, jak przetworzyć pojedynczą sekwencję
+            single_src_decoded = dataset_lib.decoded(src_decoded[j:j+1], "") # Przekazujemy mini-batch o rozmiarze 1
+                
+            # Sprawdzamy, czy sekwencja jest pusta po strip()
+            if single_src_decoded and single_src_decoded[0].strip(): # Sprawdza czy lista nie jest pusta i element nie jest pustym stringiem
+                # Obliczamy etykiety tylko dla niepustych sekwencji
+                labels = dataset_lib.calculate_physchem_test(single_src_decoded) # Labels dla pojedynczej sekwencji
+                # normalized_physchem_torch = labels.clone() # Zakładam, że labels to już tensor PyTorch
+                    
+                # # Normalizacja - tylko dla 1 elementu na raz
+                # for dim_idx in range(labels.shape[1]):
+                #     column_to_normalize = labels[:, dim_idx].unsqueeze(1)
+                #     normalized_column = dataset_lib.normalize_dimension_to_0_1(column_to_normalize, dim=0)
+                #     normalized_physchem_torch[:, dim_idx] = normalized_column.squeeze(1)
 
+                current_batch_filtered_z.append(z_batch[j:j+1]) # Dodajemy odpowiadający punkt z
+                current_batch_filtered_labels.append(normalized_physchem_torch) # Dodajemy znormalizowane atrybuty
+            
+        # Po przetworzeniu całej paczki, dołączamy tylko te, które przeszły filtr
+        if current_batch_filtered_z: # Sprawdzamy, czy coś zostało dodane
+            filtered_z_points.append(torch.cat(current_batch_filtered_z, 0))
+            filtered_attr_labels.append(torch.cat(current_batch_filtered_labels, 0))
 
-    # # 4. Wizualizacja mapy cieplnej
-    # plt.figure(figsize=(8, 6))
+    final_z_points = torch.cat(filtered_z_points, 0).cpu().numpy()
+    final_attr_labels = torch.cat(filtered_attr_labels, 0).cpu().numpy()
+    #     src_decoded = dataset_lib.decoded(src_decoded, "")
+    #     filtered_list = [item for item in src_decoded if item.strip()]
+    #     labels = dataset_lib.calculate_physchem_test(filtered_list)
+    #     normalized_physchem_torch = labels.clone()
+    #     for dim_idx in range(labels.shape[1]):
+    #        column_to_normalize = labels[:, dim_idx].unsqueeze(1)
+    #        normalized_column = dataset_lib.normalize_dimension_to_0_1(column_to_normalize, dim=0)
+    #        normalized_physchem_torch[:, dim_idx] = normalized_column.squeeze(1)
+    #     attr_labels_all.append(normalized_physchem_torch)
+    # attr_labels_all = torch.cat(attr_labels_all, 0).cpu().numpy()
     save_filename = os.path.join(
            os.path.dirname(os.path.realpath(__file__)),
            f'latent_surface_{attr_str}.png'
     )
-    # # Plotting
-    # im = plt.imshow(
-    #     color_values_2d,
-    #     extent=[x1[0], x1[1], x2[0], x2[1]],
-    #     origin='lower',
-    #     cmap='viridis', # Użyj tej samej mapy kolorów co na przykładzie
-    #     aspect='auto'
-    # )
-    
-    # plt.xlabel(f'dimension: {dim1}')
-    # plt.ylabel(f'dimension: {dim2}')
-    # plt.colorbar(im) # Dodaj pasek kolorów, odwołując się do obiektu imshow
-
-    # plt.title(f'Latent Space: {attr_str.capitalize()} (Dim {dim1} vs {dim2})')
-    # plt.savefig(save_filename, format='png', dpi=300)
-    # plt.close()
-
-    # # Twoja funkcja konwertująca, jeśli chcesz użyć obrazu w dalszej części
-    # img = Image.open(save_filename)
-    # img_resized = img.resize((485, 360), Image.Resampling.LANCZOS)
-    # img = convert_rgba_to_rgb(np.array(img_resized))
-    # return img
     z = z.cpu().numpy()[:num_mini_batches*mini_batch_size, :]
-    plot_dim(z, attr_labels_all, save_filename, dim1=dim1, dim2=dim2)
+    plot_dim(final_z_points, final_attr_labels, save_filename, dim1=dim1, dim2=dim2)
 
-def run():#rank, world_size
-    # global DEVICE 
-    # DEVICE = 
-    # setup_ddp()#rank, world_size
-    # print(f'rank:{rank}')
+def run():
     global ROOT_DIR 
-    ROOT_DIR = Path(__file__).parent#.parent
+    ROOT_DIR = Path(__file__).parent
     DATA_DIR = ROOT_DIR / "data"
     global MODELS_DIR 
     MODELS_DIR = ROOT_DIR

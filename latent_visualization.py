@@ -275,12 +275,13 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim 
         src_decoded = dataset_lib.decoded(src_decoded, "")
         filtered_list = [item for item in src_decoded if item.strip()]
         labels = dataset_lib.calculate_physchem_test(filtered_list)
-        # normalized_physchem_torch = labels.clone()
-        # for dim_idx in range(labels.shape[1]):
-        #    column_to_normalize = labels[:, dim_idx].unsqueeze(1)
-        #    normalized_column = dataset_lib.normalize_dimension_to_0_1(column_to_normalize, dim=0)
-        #    normalized_physchem_torch[:, dim_idx] = normalized_column.squeeze(1)
+        normalized_physchem_torch = labels.clone()
+        for dim_idx in range(labels.shape[1]):
+           column_to_normalize = labels[:, dim_idx].unsqueeze(1)
+           normalized_column = dataset_lib.normalize_dimension_to_0_1(column_to_normalize, dim=0)
+           normalized_physchem_torch[:, dim_idx] = normalized_column.squeeze(1)
         attr_labels_all.append(labels)
+    print(f'example of normalized physchem = {normalized_physchem_torch[0,:]}')
     attr_labels_all = torch.cat(attr_labels_all, 0).cpu().numpy()
         # Przekształć listę wartości na macierz 2D do imshow
     # color_values_2d = attr_labels_all.reshape(50, 50)
@@ -319,7 +320,7 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim 
     # img = convert_rgba_to_rgb(np.array(img_resized))
     # return img
     z = z.cpu().numpy()[:num_mini_batches*mini_batch_size, :]
-
+    print(f'z = {z}')
     plot_dim(z, attr_labels_all, save_filename, dim1=dim1, dim2=dim2)
 
 def run():#rank, world_size

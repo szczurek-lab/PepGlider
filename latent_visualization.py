@@ -261,7 +261,7 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim 
     z = z.repeat(num_points, 1)
     z[:, dim1] = z1.contiguous().view(1, -1)
     z[:, dim2] = z2.contiguous().view(1, -1)
-    z = Variable(z.long()).cuda()
+    z = Variable(z).cuda()
 
     mini_batch_size = 500
     num_mini_batches = num_points // mini_batch_size
@@ -281,7 +281,6 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim 
            normalized_column = dataset_lib.normalize_dimension_to_0_1(column_to_normalize, dim=0)
            normalized_physchem_torch[:, dim_idx] = normalized_column.squeeze(1)
         attr_labels_all.append(normalized_physchem_torch)
-    print(f'z = {z}')
     attr_labels_all = torch.cat(attr_labels_all, 0).cpu().numpy()
         # Przekształć listę wartości na macierz 2D do imshow
     # color_values_2d = attr_labels_all.reshape(50, 50)
@@ -320,7 +319,6 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim 
     # img = convert_rgba_to_rgb(np.array(img_resized))
     # return img
     z = z.cpu().numpy()[:num_mini_batches*mini_batch_size, :]
-    print(f'z = {z}')
     plot_dim(z, attr_labels_all, save_filename, dim1=dim1, dim2=dim2)
 
 def run():#rank, world_size

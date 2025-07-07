@@ -95,7 +95,7 @@ def run_epoch_iwae(
 
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
-        iwae_terms, all_kl_divs, all_cross_entropies = [], [], []
+        iwae_terms, all_kl_divs, all_srcs, all_tgts = [], [], [], []
         reg_losses_per_sample_list  = []
         for _ in range(K):
             z = q_distr.rsample().to(device) # B, L
@@ -115,16 +115,17 @@ def run_epoch_iwae(
             sampled_peptide_logits = decoder(z)
             print(f'sampled_peptide_logits shape = {sampled_peptide_logits.shape}')
             src = sampled_peptide_logits.permute(1, 2, 0)  # B x C x S
+            all_srcs.append(src)
             print(f'src shape = {src.shape}')
             tgt = peptides.permute(1, 0)
+            all_tgts.append(tgt)
             print(f'tgt shape = {tgt.shape}')
-            # K x B
-            cross_entropy = ce_loss_fun(
-                src,
-                tgt,
-            ).sum(dim=1)
-            all_cross_entropies.append(cross_entropy)
-            print(f'cross_entropy shape = {cross_entropy.shape}')
+            # cross_entropy = ce_loss_fun(
+            #     src,
+            #     tgt,
+            # ).sum(dim=1)
+            # all_cross_entropies.append(cross_entropy)
+            # print(f'cross_entropy shape = {cross_entropy.shape}')
 
             reg_loss = 0
             for dim in reg_dim:
@@ -132,19 +133,30 @@ def run_epoch_iwae(
                 z.reshape(-1,z.shape[1]), physchem_torch[:, dim], dim, gamma, device #gamma i delta z papera
             )
             reg_losses_per_sample_list.append(reg_loss)
-            iwae_sample_term = cross_entropy + kl_beta * kl_div # (B,)
-            iwae_terms.append(iwae_sample_term)
+            # iwae_sample_term = cross_entropy + kl_beta * kl_div # (B,)
+            # iwae_terms.append(iwae_sample_term)
 
-        iwae_terms_stacked = logsumexp(torch.stack(iwae_terms, dim=0), dim=0)#K reduction
-        print(f'iwae_terms_stacked shape = {iwae_terms_stacked.shape}')
+        # iwae_terms_stacked = logsumexp(torch.stack(iwae_terms, dim=0), dim=0)#K reduction
+        # print(f'iwae_terms_stacked shape = {iwae_terms_stacked.shape}')
         total_reg_loss = torch.stack(reg_losses_per_sample_list, dim=0).mean(dim=0).sum()
-        loss = logsumexp(iwae_terms_stacked, dim=0) + total_reg_loss
-
-        stacked_kl_divs = torch.stack(all_kl_divs, dim=0).mean(dim=0)
-        stacked_cross_entropies = torch.stack(all_cross_entropies, dim=0).mean(dim=0)
+        # loss = logsumexp(iwae_terms_stacked, dim=0) + total_reg_loss
+        # torch.stack z listą BxSxN_C (sampled_peptide_logits) da KxBxCxS
+        stacked_srcs = torch.stack(all_srcs, dim=0)
+        print(f'stacked_srcs shape = {stacked_srcs.shape}')
+        stacked_tgts = torch.stack(all_tgts, dim=0)
+        print(f'stacked_tgts shape = {stacked_tgts.shape}')
+        cross_entropy = ce_loss_fun(
+                src,
+                tgt,
+        ).sum(dim=2)
+        print(f'cross_entropy shape = {cross_entropy.shape}')
+        stacked_kl_divs = torch.stack(all_kl_divs, dim=0)#.mean(dim=0)
+        loss = logsumexp(cross_entropy + kl_beta * stacked_kl_divs, dim=0).mean(dim=0) + total_reg_loss
+        stacked_kl_divs = stacked_kl_divs.mean(dim=0)
+        # stacked_cross_entropies = torch.stack(all_cross_entropies, dim=0).mean(dim=0)
         # stats
         stat_sum["kl_mean"] += stacked_kl_divs.mean(dim=0).item()
-        stat_sum["ce_sum"] += stacked_cross_entropies.sum().item()
+        # stat_sum["ce_sum"] += stacked_cross_entropies.sum().item()
         stat_sum["reg_loss"] = total_reg_loss
         stat_sum["total"] += loss.item() * len(batch)   
 

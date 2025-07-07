@@ -155,7 +155,7 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim 
                 #     normalized_physchem_torch[:, dim_idx] = normalized_column.squeeze(1)
 
                 current_batch_filtered_z.append(z_batch[j:j+1]) # Dodajemy odpowiadający punkt z
-                current_batch_filtered_labels.append(normalized_physchem_torch) # Dodajemy znormalizowane atrybuty
+                current_batch_filtered_labels.append(labels) # Dodajemy znormalizowane atrybuty
             
         # Po przetworzeniu całej paczki, dołączamy tylko te, które przeszły filtr
         if current_batch_filtered_z: # Sprawdzamy, czy coś zostało dodane

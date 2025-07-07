@@ -269,58 +269,58 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim 
     for i in tqdm(range(num_mini_batches)):
         z_batch = z[i * mini_batch_size:(i + 1) * mini_batch_size, :]
         outputs = decoder(z_batch)
-        outputs = outputs.view(25, mini_batch_size, 21)
+        # outputs = outputs.view(25, mini_batch_size, 21)
         src = outputs.permute(1, 2, 0)  # B x C x S
         src_decoded = src.argmax(dim=1) # B x S
         src_decoded = dataset_lib.decoded(src_decoded, "")
         filtered_list = [item for item in src_decoded if item.strip()]
         labels = dataset_lib.calculate_physchem_test(filtered_list)
-        normalized_physchem_torch = labels.clone()
-        for dim_idx in range(labels.shape[1]):
-           column_to_normalize = labels[:, dim_idx].unsqueeze(1)
-           normalized_column = dataset_lib.normalize_dimension_to_0_1(column_to_normalize, dim=0)
-           normalized_physchem_torch[:, dim_idx] = normalized_column.squeeze(1)
-        attr_labels_all.append(normalized_physchem_torch)
+        # normalized_physchem_torch = labels.clone()
+        # for dim_idx in range(labels.shape[1]):
+        #    column_to_normalize = labels[:, dim_idx].unsqueeze(1)
+        #    normalized_column = dataset_lib.normalize_dimension_to_0_1(column_to_normalize, dim=0)
+        #    normalized_physchem_torch[:, dim_idx] = normalized_column.squeeze(1)
+        attr_labels_all.append(labels)
     attr_labels_all = torch.cat(attr_labels_all, 0).cpu().numpy()
         # Przekształć listę wartości na macierz 2D do imshow
-    color_values_2d = attr_labels_all.reshape(50, 50)
+    # color_values_2d = attr_labels_all.reshape(50, 50)
 
     # Normalizacja wartości do zakresu 0-1, jeśli jest to wymagane dla cmap
     # Matplotlib zazwyczaj normalizuje sam, ale możesz to zrobić ręcznie, jeśli chcesz
     # np. color_values_2d = (color_values_2d - color_values_2d.min()) / (color_values_2d.max() - color_values_2d.min())
 
 
-    # 4. Wizualizacja mapy cieplnej
-    plt.figure(figsize=(8, 6))
+    # # 4. Wizualizacja mapy cieplnej
+    # plt.figure(figsize=(8, 6))
     save_filename = os.path.join(
            os.path.dirname(os.path.realpath(__file__)),
            f'latent_surface_{attr_str}.png'
     )
-    # Plotting
-    im = plt.imshow(
-        color_values_2d,
-        extent=[x1[0], x1[1], x2[0], x2[1]],
-        origin='lower',
-        cmap='viridis', # Użyj tej samej mapy kolorów co na przykładzie
-        aspect='auto'
-    )
+    # # Plotting
+    # im = plt.imshow(
+    #     color_values_2d,
+    #     extent=[x1[0], x1[1], x2[0], x2[1]],
+    #     origin='lower',
+    #     cmap='viridis', # Użyj tej samej mapy kolorów co na przykładzie
+    #     aspect='auto'
+    # )
     
-    plt.xlabel(f'dimension: {dim1}')
-    plt.ylabel(f'dimension: {dim2}')
-    plt.colorbar(im) # Dodaj pasek kolorów, odwołując się do obiektu imshow
+    # plt.xlabel(f'dimension: {dim1}')
+    # plt.ylabel(f'dimension: {dim2}')
+    # plt.colorbar(im) # Dodaj pasek kolorów, odwołując się do obiektu imshow
 
-    plt.title(f'Latent Space: {attr_str.capitalize()} (Dim {dim1} vs {dim2})')
-    plt.savefig(save_filename, format='png', dpi=300)
-    plt.close()
+    # plt.title(f'Latent Space: {attr_str.capitalize()} (Dim {dim1} vs {dim2})')
+    # plt.savefig(save_filename, format='png', dpi=300)
+    # plt.close()
 
-    # Twoja funkcja konwertująca, jeśli chcesz użyć obrazu w dalszej części
-    img = Image.open(save_filename)
-    img_resized = img.resize((485, 360), Image.Resampling.LANCZOS)
-    img = convert_rgba_to_rgb(np.array(img_resized))
-    return img
-    # z = z.cpu().numpy()[:num_mini_batches*mini_batch_size, :]
+    # # Twoja funkcja konwertująca, jeśli chcesz użyć obrazu w dalszej części
+    # img = Image.open(save_filename)
+    # img_resized = img.resize((485, 360), Image.Resampling.LANCZOS)
+    # img = convert_rgba_to_rgb(np.array(img_resized))
+    # return img
+    z = z.cpu().numpy()[:num_mini_batches*mini_batch_size, :]
 
-    # plot_dim(z, attr_labels_all, save_filename, dim1=dim1, dim2=dim2)
+    plot_dim(z, attr_labels_all, save_filename, dim1=dim1, dim2=dim2)
 
 def run():#rank, world_size
     # global DEVICE 
@@ -418,14 +418,7 @@ def run():#rank, world_size
         max_len=MAX_LENGTH)
 
     amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
-    attributes = dataset_lib.normalize_attributes(attributes_input)
-
-    optimizer = Adam(
-        itertools.chain(encoder.parameters(), decoder.parameters()),
-        lr=params["lr"],
-        betas=(0.9, 0.999),
-    )
-    
+    attributes = dataset_lib.normalize_attributes(attributes_input)    
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
     train_size = int(0.8 * len(dataset))
     eval_size = len(dataset) - train_size

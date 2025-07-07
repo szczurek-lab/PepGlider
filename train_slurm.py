@@ -146,9 +146,9 @@ def run_epoch_iwae(
         stacked_tgts = torch.stack(all_tgts, dim=0)
         print(f'stacked_tgts shape = {stacked_tgts.shape}')
         cross_entropy = ce_loss_fun(
-                src,
-                tgt,
-        )#.sum(dim=2)
+                stacked_srcs,
+                stacked_tgts,
+        ).sum(dim=2)
         print(f'cross_entropy shape = {cross_entropy.shape}')
         stacked_kl_divs = torch.stack(all_kl_divs, dim=0)#.mean(dim=0)
         loss = logsumexp(cross_entropy + kl_beta * stacked_kl_divs, dim=0).mean(dim=0) + total_reg_loss

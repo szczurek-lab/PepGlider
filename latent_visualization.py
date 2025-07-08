@@ -164,6 +164,8 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim 
 
     final_z_points = torch.cat(filtered_z_points, 0).cpu().numpy()
     final_attr_labels = torch.cat(filtered_attr_labels, 0).cpu().numpy()
+    print(f'final_z_points shape = {final_z_points.shape}')
+    print(f'final_attr_labels shape = {final_attr_labels.shape}')
     #     src_decoded = dataset_lib.decoded(src_decoded, "")
     #     filtered_list = [item for item in src_decoded if item.strip()]
     #     labels = dataset_lib.calculate_physchem_test(filtered_list)

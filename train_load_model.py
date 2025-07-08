@@ -45,7 +45,7 @@ def save_model(model: nn.Module, name: str, with_hash: bool = True) -> None:
     else:
         model_name = name
     save(
-        model.state_dict(), (MODELS_DIR / model_name).with_suffix(".pt")
+        model.state_dict(), (MODELS_DIR / "first_working_models" / model_name).with_suffix(".pt")
     )
 
 def run_epoch_iwae(
@@ -325,11 +325,11 @@ def run():
     is_cpu = False if torch.cuda.is_available() else True
     encoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "ar_vae_with_ar_vae_metrics_basic_epoch20_encoder.pt"
+        "first_working_models","ar-vae_with_1_dim_ar-vae-v4_epoch1080_encoder.pt"
     )
     decoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "ar_vae_with_ar_vae_metrics_basic_epoch20_decoder.pt"
+        "first_working_models","ar-vae_with_1_dim_ar-vae-v4_epoch1080_decoder.pt"
     )
 
     if is_cpu:

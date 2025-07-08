@@ -181,7 +181,7 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim 
            f'latent_surface_{attr_str}.png'
     )
     z = z.cpu().numpy()[:num_mini_batches*mini_batch_size, :]
-    plot_dim(final_z_points, final_attr_labels, save_filename, dim1=dim1, dim2=dim2)
+    plot_dim(final_z_points, final_attr_labels[:, dim1], save_filename, dim1=dim1, dim2=dim2)
 
 def run():
     global ROOT_DIR 

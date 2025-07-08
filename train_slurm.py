@@ -60,6 +60,7 @@ def run_epoch_iwae(
     optimizer: Optional[optim.Optimizer],
     eval_mode: Literal["fast", "deep"],
     iwae_samples: int,
+    ar_vae_flg,
     reg_dim,
     gamma
 ):
@@ -126,19 +127,20 @@ def run_epoch_iwae(
             # ).sum(dim=1)
             # all_cross_entropies.append(cross_entropy)
             # print(f'cross_entropy shape = {cross_entropy.shape}')
-
-            reg_loss = 0
-            for dim in reg_dim:
-                reg_loss += r.compute_reg_loss(
-                z.reshape(-1,z.shape[1]), physchem_torch[:, dim], dim, gamma, device #gamma i delta z papera
-            )
-            reg_losses_per_sample_list.append(reg_loss)
+            if ar_vae_flg:
+                reg_loss = 0
+                for dim in reg_dim:
+                    reg_loss += r.compute_reg_loss(
+                    z.reshape(-1,z.shape[1]), physchem_torch[:, dim], dim, gamma, device #gamma i delta z papera
+                )
+                reg_losses_per_sample_list.append(reg_loss)
             # iwae_sample_term = cross_entropy + kl_beta * kl_div # (B,)
             # iwae_terms.append(iwae_sample_term)
 
         # iwae_terms_stacked = logsumexp(torch.stack(iwae_terms, dim=0), dim=0)#K reduction
         # print(f'iwae_terms_stacked shape = {iwae_terms_stacked.shape}')
-        total_reg_loss = torch.stack(reg_losses_per_sample_list, dim=0).mean(dim=0).sum()
+        if ar_vae_flg:
+            total_reg_loss = torch.stack(reg_losses_per_sample_list, dim=0).mean(dim=0).sum()
         # loss = logsumexp(iwae_terms_stacked, dim=0) + total_reg_loss
         # torch.stack z listą BxSxN_C (sampled_peptide_logits) da KxBxCxS
         stacked_srcs = torch.stack(all_srcs, dim=0).permute(0,2,1,3)
@@ -151,14 +153,18 @@ def run_epoch_iwae(
         ).sum(dim=2)
         # print(f'cross_entropy shape = {cross_entropy.shape}')
         stacked_kl_divs = torch.stack(all_kl_divs, dim=0)#.mean(dim=0)
-        loss = logsumexp(cross_entropy + kl_beta * stacked_kl_divs, dim=0).mean(dim=0) + total_reg_loss
+        if ar_vae_flg:
+            loss = logsumexp(cross_entropy + kl_beta * stacked_kl_divs, dim=0).mean(dim=0) + total_reg_loss
+        else:
+            loss = logsumexp(cross_entropy + kl_beta * stacked_kl_divs, dim=0).mean(dim=0)
         stacked_kl_divs = stacked_kl_divs.mean(dim=0)
         # stacked_cross_entropies = torch.stack(all_cross_entropies, dim=0).mean(dim=0)
         # stats
         stat_sum["kl_mean"] += stacked_kl_divs.mean(dim=0).item()
         stat_sum["ce_sum"] += cross_entropy.mean(dim=0).sum(dim=0).item()
-        stat_sum["reg_loss"] = total_reg_loss
-        print(f'total_reg_loss_with_gamma = {total_reg_loss}')
+        if ar_vae_flg:
+            stat_sum["reg_loss"] = total_reg_loss
+            print(f'total_reg_loss_with_gamma = {total_reg_loss}')
         stat_sum["total"] += loss.item() * len(batch)   
 
         if optimizer:
@@ -213,8 +219,9 @@ def run_epoch_iwae(
                 # ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
                 # ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
                 # ("KL Beta", kl_beta),
-                ("Regularization Loss", stat_sum["reg_loss"]/gamma),
-                # ("Regularization Loss with gamma", stat_sum["reg_loss"]),
+                if ar_vae_flg:
+                    ("Regularization Loss", stat_sum["reg_loss"]/gamma),
+                    # ("Regularization Loss with gamma", stat_sum["reg_loss"]),
             ],
         )
         if eval_mode == "deep": 
@@ -269,6 +276,7 @@ def run():
         "device": "cuda",
         "deeper_eval_every": 20,
         "save_model_every": 20,
+        "ar_vae_flg": False,
         "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
         "gamma_schedule": (0.00001, 20, 8000)
     }
@@ -343,6 +351,7 @@ def run():
                 kl_beta=kl_beta,
                 eval_mode=eval_mode,
                 iwae_samples=params["iwae_samples"],
+                ar_vae_flg=params["ar_vae_flg"],
                 reg_dim=params["reg_dim"],
                 gamma = gamma
         )
@@ -359,6 +368,7 @@ def run():
                     kl_beta=kl_beta,
                     eval_mode=eval_mode,
                     iwae_samples=params["iwae_samples"],
+                    ar_vae_flg=params["ar_vae_flg"],
                     reg_dim=params["reg_dim"],
                     gamma=gamma
             )

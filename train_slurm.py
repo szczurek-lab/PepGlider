@@ -113,13 +113,13 @@ def run_epoch_iwae(
 
             # reconstruction - cross entropy
             sampled_peptide_logits = decoder(z)
-            print(f'sampled_peptide_logits shape = {sampled_peptide_logits.shape}')
+            # print(f'sampled_peptide_logits shape = {sampled_peptide_logits.shape}')
             src = sampled_peptide_logits.permute(1, 2, 0)  # B x C x S
             all_srcs.append(src)
-            print(f'src shape = {src.shape}')
+            # print(f'src shape = {src.shape}')
             tgt = peptides.permute(1, 0)
             all_tgts.append(tgt)
-            print(f'tgt shape = {tgt.shape}')
+            # print(f'tgt shape = {tgt.shape}')
             # cross_entropy = ce_loss_fun(
             #     src,
             #     tgt,
@@ -142,14 +142,14 @@ def run_epoch_iwae(
         # loss = logsumexp(iwae_terms_stacked, dim=0) + total_reg_loss
         # torch.stack z listą BxSxN_C (sampled_peptide_logits) da KxBxCxS
         stacked_srcs = torch.stack(all_srcs, dim=0).permute(0,2,1,3)
-        print(f'stacked_srcs shape = {stacked_srcs.shape}')
+        # print(f'stacked_srcs shape = {stacked_srcs.shape}')
         stacked_tgts = torch.stack(all_tgts, dim=0)
-        print(f'stacked_tgts shape = {stacked_tgts.shape}')
+        # print(f'stacked_tgts shape = {stacked_tgts.shape}')
         cross_entropy = ce_loss_fun(
                 stacked_srcs,
                 stacked_tgts,
         ).sum(dim=2)
-        print(f'cross_entropy shape = {cross_entropy.shape}')
+        # print(f'cross_entropy shape = {cross_entropy.shape}')
         stacked_kl_divs = torch.stack(all_kl_divs, dim=0)#.mean(dim=0)
         loss = logsumexp(cross_entropy + kl_beta * stacked_kl_divs, dim=0).mean(dim=0) + total_reg_loss
         stacked_kl_divs = stacked_kl_divs.mean(dim=0)
@@ -158,6 +158,7 @@ def run_epoch_iwae(
         stat_sum["kl_mean"] += stacked_kl_divs.mean(dim=0).item()
         stat_sum["ce_sum"] += cross_entropy.mean(dim=0).sum(dim=0).item()
         stat_sum["reg_loss"] = total_reg_loss
+        print(f'total_reg_loss_with_gamma = {total_reg_loss}')
         stat_sum["total"] += loss.item() * len(batch)   
 
         if optimizer:

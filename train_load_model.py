@@ -324,11 +324,11 @@ def run():
     DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
     is_cpu = False if torch.cuda.is_available() else True
     encoder_filepath = os.path.join(
-        os.sep, "home","gwiazale", "AR-VAE",
+        os.sep, "net","tscratch","people","plggwiazale", "AR-VAE",
         "first_working_models","ar-vae_with_1_dim_ar-vae-v4_epoch1080_encoder.pt"
     )
     decoder_filepath = os.path.join(
-        os.sep, "home","gwiazale", "AR-VAE",
+        os.sep, "net","tscratch","people","plggwiazale", "AR-VAE",
         "first_working_models","ar-vae_with_1_dim_ar-vae-v4_epoch1080_decoder.pt"
     )
 

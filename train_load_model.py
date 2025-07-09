@@ -291,9 +291,9 @@ def run():
         "dropout": 0.1,
         "batch_size": 512,
         "lr": 0.001,
-        "kl_beta_schedule": (0.001296, 0.01, 6920),
+        "kl_beta_schedule": (0.000985, 0.01, 7180),
         "train_size": None,
-        "epochs": 8920,
+        "epochs": 9180,
         "iwae_samples": 10,
         "model_name": os.getenv("CLEARML_PROJECT_NAME", 'ar-vae-v4'),
         "use_clearml": True,
@@ -301,9 +301,9 @@ def run():
         "device": "cuda",
         "deeper_eval_every": 20,
         "save_model_every": 20,
-        "ar_vae_flg": True,
+        "ar_vae_flg": False,
         "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
-        "gamma_schedule": (2.699902, 20, 6920)
+        "gamma_schedule": (2.049928, 20, 7180)
     }
     encoder = EncoderRNN(
         params["num_heads"],
@@ -325,11 +325,11 @@ def run():
     is_cpu = False if torch.cuda.is_available() else True
     encoder_filepath = os.path.join(
         os.sep, "net","tscratch","people","plggwiazale", "AR-VAE",
-        "first_working_models","ar-vae_with_1_dim_ar-vae-v4_epoch1080_encoder.pt"
+        "vanilla_iwae_ar-vae-v4_epoch820_encoder.pt"
     )
     decoder_filepath = os.path.join(
         os.sep, "net","tscratch","people","plggwiazale", "AR-VAE",
-        "first_working_models","ar-vae_with_1_dim_ar-vae-v4_epoch1080_decoder.pt"
+        "vanilla_iwae_ar-vae-v4_epoch820_decoder.pt"
     )
 
     if is_cpu:

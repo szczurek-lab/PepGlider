@@ -1,27 +1,18 @@
 import torch
 import os
-from torch import optim, nn, logsumexp, cuda, save, isinf, backends, manual_seed, LongTensor, zeros_like, ones_like, isnan, tensor, cat
-from torch.distributions import Normal
+from torch import nn, cuda, backends, manual_seed, tensor
 from torch.utils.data import TensorDataset, DataLoader, random_split
-torch.autograd.set_detect_anomaly(True)
 from torch.autograd import Variable
 from model.model import EncoderRNN, DecoderRNN
-# import pandas as pd
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
-from typing import Optional, Literal
-from torch.optim import Adam
-import itertools
 import random
 from pathlib import Path
 from tqdm import tqdm
 import data.dataset as dataset_lib
-from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
-# import json
+from model.constants import MIN_LENGTH, MAX_LENGTH
 import ar_vae_metrics as m
-# import time
-import matplotlib.colors as mcolors
 
 def set_seed(seed: int = 42) -> None:
     """
@@ -42,33 +33,6 @@ def set_seed(seed: int = 42) -> None:
 
 def get_model_arch_hash(model: nn.Module) -> int:
     return hash(";".join(sorted([str(v.shape) for v in model.state_dict().values()])))
-
-def save_model(model: nn.Module, name: str, with_hash: bool = True) -> None:
-    if with_hash:
-        short_hash = str(get_model_arch_hash(model)).removeprefix("-")[:5]
-        model_name = f"{short_hash}_{name}"
-    else:
-        model_name = name
-    save(
-        model.state_dict(), (MODELS_DIR / model_name).with_suffix(".pt")
-    )
-
-# Twoje stałe (upewnij się, że są zaimportowane lub zdefiniowane)
-# from model.constants import SEQ_LEN, VOCAB_SIZE, PAD_TOKEN, CLS_TOKEN
-# Przykładowe wartości - Użyj swoich rzeczywistych!
-SEQ_LEN = 25 # lub 26, jeśli z CLS_TOKEN
-VOCAB_SIZE_AMINO_ACIDS = 20 # Jeśli masz 20 aminokwasów
-PAD_TOKEN = VOCAB_SIZE_AMINO_ACIDS # Np. 20
-# CLS_TOKEN = VOCAB_SIZE_AMINO_ACIDS + 1 # Np. 21
-# TOTAL_VOCAB_SIZE = VOCAB_SIZE_AMINO_ACIDS + 2 # Np. 22
-
-# W Twoim przypadku z checkpointu VOCAB_SIZE + 1 = 112, czyli VOCAB_SIZE = 111.
-# To sugeruje, że masz VOCAB_SIZE_AMINO_ACIDS + inne_specjalne_tokeny = 111.
-# Upewnij się, że masz to poprawnie zmapowane.
-# Przykład:
-# TOTAL_VOCAB_SIZE = 112 # To jest num_embeddings w warstwie liniowej dekodera
-# PAD_TOKEN = ... # Upewnij się, że masz poprawny indeks PAD_TOKEN
-# CLS_TOKEN = ... # Upewnij się, że masz poprawny indeks CLS_TOKEN
 
 def convert_rgba_to_rgb(rgba):
     row, col, ch = rgba.shape
@@ -112,7 +76,6 @@ def plot_dim(data, target, filename, dim1=0, dim2=1, xlim=None, ylim=None):
     return img
 
 def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim = 56):
-    # create the dataspace
     x1 = torch.arange(-5., 5., grid_res)
     x2 = torch.arange(-5., 5., grid_res)
     z1, z2 = torch.meshgrid([x1, x2])
@@ -132,50 +95,23 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim 
         outputs = decoder(z_batch)
         src = outputs.permute(1, 2, 0)  # B x C x S
         src_decoded = src.argmax(dim=1) # B x S
-        # Listy do przechowywania danych z bieżącej paczki
         current_batch_filtered_z = []
         current_batch_filtered_labels = []
 
-        # Iterujemy przez każdą próbkę w bieżącej paczce
         for j in range(mini_batch_size):
-            # Zdekodowana sekwencja dla pojedynczej próbki
-            # Upewnij się, że dataset_lib.decoded wie, jak przetworzyć pojedynczą sekwencję
-            single_src_decoded = dataset_lib.decoded(src_decoded[j:j+1], "") # Przekazujemy mini-batch o rozmiarze 1
+            single_src_decoded = dataset_lib.decoded(src_decoded[j:j+1], "") 
                 
-            # Sprawdzamy, czy sekwencja jest pusta po strip()
-            if single_src_decoded and single_src_decoded[0].strip(): # Sprawdza czy lista nie jest pusta i element nie jest pustym stringiem
-                # Obliczamy etykiety tylko dla niepustych sekwencji
-                labels = dataset_lib.calculate_physchem_test(single_src_decoded) # Labels dla pojedynczej sekwencji
-                # normalized_physchem_torch = labels.clone() # Zakładam, że labels to już tensor PyTorch
-                    
-                # # Normalizacja - tylko dla 1 elementu na raz
-                # for dim_idx in range(labels.shape[1]):
-                #     column_to_normalize = labels[:, dim_idx].unsqueeze(1)
-                #     normalized_column = dataset_lib.normalize_dimension_to_0_1(column_to_normalize, dim=0)
-                #     normalized_physchem_torch[:, dim_idx] = normalized_column.squeeze(1)
-
-                current_batch_filtered_z.append(z_batch[j:j+1]) # Dodajemy odpowiadający punkt z
-                current_batch_filtered_labels.append(labels) # Dodajemy znormalizowane atrybuty
+            if single_src_decoded and single_src_decoded[0].strip(): 
+                labels = dataset_lib.calculate_physchem_test(single_src_decoded)
+                current_batch_filtered_z.append(z_batch[j:j+1])
+                current_batch_filtered_labels.append(labels) 
             
-        # Po przetworzeniu całej paczki, dołączamy tylko te, które przeszły filtr
-        if current_batch_filtered_z: # Sprawdzamy, czy coś zostało dodane
+        if current_batch_filtered_z: 
             filtered_z_points.append(torch.cat(current_batch_filtered_z, 0))
             filtered_attr_labels.append(torch.cat(current_batch_filtered_labels, 0))
 
     final_z_points = torch.cat(filtered_z_points, 0).cpu().numpy()
     final_attr_labels = torch.cat(filtered_attr_labels, 0).cpu().numpy()
-    # print(f'final_z_points shape = {final_z_points.shape}')
-    # print(f'final_attr_labels shape = {final_attr_labels.shape}')
-    #     src_decoded = dataset_lib.decoded(src_decoded, "")
-    #     filtered_list = [item for item in src_decoded if item.strip()]
-    #     labels = dataset_lib.calculate_physchem_test(filtered_list)
-    #     normalized_physchem_torch = labels.clone()
-    #     for dim_idx in range(labels.shape[1]):
-    #        column_to_normalize = labels[:, dim_idx].unsqueeze(1)
-    #        normalized_column = dataset_lib.normalize_dimension_to_0_1(column_to_normalize, dim=0)
-    #        normalized_physchem_torch[:, dim_idx] = normalized_column.squeeze(1)
-    #     attr_labels_all.append(normalized_physchem_torch)
-    # attr_labels_all = torch.cat(attr_labels_all, 0).cpu().numpy()
     save_filename = os.path.join(
            os.path.dirname(os.path.realpath(__file__)),
            f'latent_surface_{attr_str}.png'
@@ -237,11 +173,11 @@ def run():
     is_cpu = False if torch.cuda.is_available() else True
     encoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "first_working_models","ar_vae_continue_training_ar-vae-v4_epoch940_encoder.pt"
+        "first_working_models","iwae_continue_training_ar-vae-v4_epoch880_decoder.pt"
     )
     decoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "first_working_models","ar_vae_continue_training_ar-vae-v4_epoch940_decoder.pt"
+        "first_working_models","iwae_continue_training_ar-vae-v4_epoch880_decoder.pt"
     )
 
     if is_cpu:
@@ -260,13 +196,8 @@ def run():
     else:
         encoder.load_state_dict(torch.load(encoder_filepath))
         decoder.load_state_dict(torch.load(decoder_filepath))
-    # device_first = device(f"cuda:{int(os.environ["LOCAL_RANK"])}")
     encoder = encoder.to(DEVICE)
     decoder = decoder.to(DEVICE)
-    # encoder.to(device_first)
-    # decoder.to(device_first)
-    # encoder= DDP(encoder, device_ids=[int(os.environ["LOCAL_RANK"])])
-    # decoder= DDP(decoder, device_ids=[int(os.environ["LOCAL_RANK"])])
 
     data_manager = dataset_lib.AMPDataManager(
         DATA_DIR / 'unlabelled_positive.csv',
@@ -310,17 +241,6 @@ def run():
             grid_res=0.05,
             z_dim = params["latent_dim"]
         )
-        # plot_latent_heatmap(
-        #     decoder=decoder,
-        #     filename="latent_heatmap_length_dim3_15.png",
-        #     dim1=dim1,
-        #     dim2=non_attr_dims[-1],
-        #     latent_dim=params["latent_dim"], # Z Twoich parametrów
-        #     grid_size=100, # Większa siatka, gładszy obraz
-        #     x_range=(-5, 5),
-        #     y_range=(-5, 5),
-        #     attribute_to_plot=attr
-        # )
 
 if __name__ == '__main__':
     set_seed()

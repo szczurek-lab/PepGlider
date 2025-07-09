@@ -116,7 +116,7 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=[1], grid_res=0.05, z_di
         final_attr_labels = torch.cat(filtered_attr_labels, 0).cpu().numpy()
         save_filename = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
-            f'latent_surface_{attr_str}_{dim}dim.png'
+            f'latent_surface_{attr_str}_2010epoch_{dim}dim.png'
         )
         z = z.cpu().numpy()[:num_mini_batches*mini_batch_size, :]
         plot_dim(final_z_points, final_attr_labels[:, dim1], save_filename, dim1=dim1, dim2=dim)
@@ -136,9 +136,7 @@ def run():
         "dropout": 0.1,
         "batch_size": 512,
         "lr": 0.001,
-        "kl_beta_schedule": (0.000985, 0.01, 7180),
         "train_size": None,
-        "epochs": 9180,
         "iwae_samples": 10,
         "model_name": os.getenv("CLEARML_PROJECT_NAME", 'ar-vae-v4'),
         "use_clearml": True,
@@ -148,7 +146,6 @@ def run():
         "save_model_every": 20,
         "ar_vae_flg": False,
         "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
-        "gamma_schedule": (2.049928, 20, 7180)
     }
     encoder = EncoderRNN(
         params["num_heads"],
@@ -176,11 +173,11 @@ def run():
     is_cpu = False if torch.cuda.is_available() else True
     encoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "first_working_models","iwae_continue_training_ar-vae-v4_epoch880_encoder.pt"
+        "first_working_models","ar_vae_continue_training_ar-vae-v4_epoch940_encoder.pt "
     )
     decoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "first_working_models","iwae_continue_training_ar-vae-v4_epoch880_decoder.pt"
+        "first_working_models","ar_vae_continue_training_ar-vae-v4_epoch940_decoder.pt "
     )
 
     if is_cpu:
@@ -209,6 +206,23 @@ def run():
         max_len=MAX_LENGTH)
 
     amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
+
+    plt.figure(figsize=(10, 8))
+    plt.scatter(
+        x=attributes_input[:, 1],
+        y=attributes_input[:, 2],
+        s=10,
+        alpha=0.6
+    )
+    plt.xlabel(f'Charge')
+    plt.ylabel(f'Hydrophobicity moment')
+    plt.title(f'Charge - Hydrophobicity correlation')
+
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.tight_layout()
+
+    plt.savefig('Charge - Hydrophobicity correlation.png')
+
     attributes = dataset_lib.normalize_attributes(attributes_input)    
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
     train_size = int(0.8 * len(dataset))

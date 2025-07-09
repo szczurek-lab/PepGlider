@@ -83,6 +83,7 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=[1], grid_res=0.05, z_di
     z = torch.randn(1, z_dim)
     z = z.repeat(num_points, 1)
     for dim in dim2:
+        print(f'd = {dim}')
         z[:, dim1] = z1.contiguous().view(1, -1)
         z[:, dim] = z2.contiguous().view(1, -1)
         z = Variable(z).cuda()

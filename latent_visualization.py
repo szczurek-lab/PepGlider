@@ -232,7 +232,8 @@ def run():
     attr_dims = [interp_dict[attr][0] for attr in attr_dict.keys()]
     non_attr_dims = [a for a in range(params['latent_dim']) if a not in attr_dims]
     for attr in attr_dict.keys():
-        dim1 = attr_dict[attr][0]
+        print(attr)
+        dim1 = attr_dict[attr]
         print(f'dim1 = {dim1}')
         if attr == 'mean':
             continue

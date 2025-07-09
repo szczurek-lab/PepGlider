@@ -117,6 +117,7 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=1, grid_res=0.05, z_dim 
            f'latent_surface_{attr_str}.png'
     )
     z = z.cpu().numpy()[:num_mini_batches*mini_batch_size, :]
+    print(f'dim1 = {dim1}')
     plot_dim(final_z_points, final_attr_labels[:, dim1], save_filename, dim1=dim1, dim2=dim2)
 
 def run():
@@ -227,11 +228,12 @@ def run():
     ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
     ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
     interp_dict = ar_vae_metrics['Interpretability']
-    print(f'interp_dict = {interp_dict}')
+    # print(f'interp_dict = {interp_dict}')
     attr_dims = [interp_dict[attr][0] for attr in attr_dict.keys()]
     non_attr_dims = [a for a in range(params['latent_dim']) if a not in attr_dims]
     for attr in interp_dict.keys():
         dim1 = interp_dict[attr][0]
+        print(f'dim1 = {dim1}')
         if attr == 'mean':
             continue
         plot_latent_surface(

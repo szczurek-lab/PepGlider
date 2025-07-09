@@ -237,11 +237,11 @@ def run():
     is_cpu = False if torch.cuda.is_available() else True
     encoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "first_working_models","ar-vae_with_1_dim_ar-vae-v4_epoch1080_encoder.pt"
+        "first_working_models","ar_vae_continue_training_ar-vae-v4_epoch940_encoder.pt"
     )
     decoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "first_working_models","ar-vae_with_1_dim_ar-vae-v4_epoch1080_decoder.pt"
+        "first_working_models","ar_vae_continue_training_ar-vae-v4_epoch940_decoder.pt"
     )
 
     if is_cpu:

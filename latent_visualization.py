@@ -80,12 +80,12 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=[1], grid_res=0.05, z_di
     x2 = torch.arange(-5., 5., grid_res)
     z1, z2 = torch.meshgrid([x1, x2])
     num_points = z1.size(0) * z1.size(1)
-    z = torch.randn(1, z_dim)
-    z = z.repeat(num_points, 1)
     for dim in dim2:
-        print(f'd = {dim}')
+        z = torch.randn(1, z_dim)
+        z = z.repeat(num_points, 1)
         z[:, dim1] = z1.contiguous().view(1, -1)
         z[:, dim] = z2.contiguous().view(1, -1)
+#        print(f'z = {z}')
         z = Variable(z).cuda()
         filtered_z_points = []
         filtered_attr_labels = []
@@ -229,7 +229,7 @@ def run():
     ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
     ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
     interp_dict = ar_vae_metrics['Interpretability']
-    attr_dims = [interp_dict[attr][0] for attr in attr_dict.keys()]
+    attr_dims = [attr_dict[attr] for attr in attr_dict.keys()]
     non_attr_dims = [a for a in range(params['latent_dim']) if a not in attr_dims]
     for attr in attr_dict.keys():
         dim1 = attr_dict[attr]

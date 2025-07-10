@@ -118,7 +118,7 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=[1], grid_res=0.05, z_di
             final_attr_labels = torch.cat(filtered_attr_labels, 0).cpu().numpy()
             save_filename = os.path.join(
                 os.path.dirname(os.path.realpath(__file__)),
-                f'latent_surface_{attr_str}_2010epoch_{dim}dim.png'
+                f'latent_surface_{attr_str}_{dim}dim.png'
             )
             z = z.cpu().numpy()[:num_mini_batches*mini_batch_size, :]
             plot_dim(final_z_points, final_attr_labels[:, dim1], save_filename, dim1=dim1, dim2=dim)
@@ -175,11 +175,11 @@ def run():
     is_cpu = False if torch.cuda.is_available() else True
     encoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "first_working_models","ar_vae_continue_training_ar-vae-v4_epoch940_encoder.pt"
+        "first_working_models","iwae_continue_training_ar-vae-v4_epoch880_encoder.pt"
     )
     decoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "first_working_models","ar_vae_continue_training_ar-vae-v4_epoch940_decoder.pt"
+        "first_working_models","iwae_continue_training_ar-vae-v4_epoch880_decoder.pt"
     )
 
     if is_cpu:
@@ -237,7 +237,7 @@ def run():
 
     # plt.show()
     plt.savefig('Charge - Hydrophobicity correlation.png')
-
+    plt.close()
     attributes = dataset_lib.normalize_attributes(attributes_input)    
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
     train_size = int(0.8 * len(dataset))

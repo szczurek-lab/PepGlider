@@ -329,32 +329,32 @@ def run():
         params["layer_norm"],
     )
     DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
-    # is_cpu = False if torch.cuda.is_available() else True
-    # encoder_filepath = os.path.join(
-    #     os.sep, "net","tscratch","people","plggwiazale", "AR-VAE",
-    #     "vanilla_iwae_ar-vae-v4_epoch820_encoder.pt"
-    # )
-    # decoder_filepath = os.path.join(
-    #     os.sep, "net","tscratch","people","plggwiazale", "AR-VAE",
-    #     "vanilla_iwae_ar-vae-v4_epoch820_decoder.pt"
-    # )
+    is_cpu = False if torch.cuda.is_available() else True
+    encoder_filepath = os.path.join(
+        os.sep, "home","gwiazale","AR-VAE",
+        "first_working_models","ar_vae_continue_training_ar-vae-v4_epoch940_encoder.pt"
+    )
+    decoder_filepath = os.path.join(
+        os.sep, "home","gwiazale","AR-VAE",
+        "first_working_models","ar_vae_continue_training_ar-vae-v4_epoch940_decoder.pt"
+    )
 
-    # if is_cpu:
-    #     encoder.load_state_dict(
-    #         torch.load(
-    #             encoder_filepath,
-    #             map_location=DEVICE
-    #         )
-    #     )
-    #     decoder.load_state_dict(
-    #         torch.load(
-    #             decoder_filepath,
-    #             map_location=DEVICE
-    #         )
-    #     )
-    # else:
-    #     encoder.load_state_dict(torch.load(encoder_filepath))
-    #     decoder.load_state_dict(torch.load(decoder_filepath))
+    if is_cpu:
+        encoder.load_state_dict(
+            torch.load(
+                encoder_filepath,
+                map_location=DEVICE
+            )
+        )
+        decoder.load_state_dict(
+            torch.load(
+                decoder_filepath,
+                map_location=DEVICE
+            )
+        )
+    else:
+        encoder.load_state_dict(torch.load(encoder_filepath))
+        decoder.load_state_dict(torch.load(decoder_filepath))
 
     encoder = encoder.to(DEVICE)
     decoder = decoder.to(DEVICE)

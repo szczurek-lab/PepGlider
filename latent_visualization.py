@@ -13,6 +13,7 @@ from tqdm import tqdm
 import data.dataset as dataset_lib
 from model.constants import MIN_LENGTH, MAX_LENGTH
 import ar_vae_metrics as m
+from scipy import stats
 
 def set_seed(seed: int = 42) -> None:
     """
@@ -173,11 +174,11 @@ def run():
     is_cpu = False if torch.cuda.is_available() else True
     encoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "first_working_models","ar_vae_continue_training_ar-vae-v4_epoch940_encoder.pt"
+        "first_working_models","iwae_continue_training_ar-vae-v4_epoch880_encoder.pt"
     )
     decoder_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
-        "first_working_models","ar_vae_continue_training_ar-vae-v4_epoch940_decoder.pt"
+        "first_working_models","iwae_continue_training_ar-vae-v4_epoch880_decoder.pt"
     )
 
     if is_cpu:
@@ -220,8 +221,21 @@ def run():
 
     plt.grid(True, linestyle='--', alpha=0.7)
     plt.tight_layout()
+    spearman_corr, p_value = stats.spearmanr(attributes_input[:,1], attributes_input[:,2])
+    if not np.isnan(spearman_corr):
+        plt.text(
+            0.05, # Pozycja X (lewa strona)
+            0.95, # Pozycja Y (góra)
+            f'Spearman correlation coefficient: {spearman_corr:.4f}',
+            transform=plt.gca().transAxes,
+            fontsize=12,
+            verticalalignment='top',
+            horizontalalignment='left',
+            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=0.8, alpha=0.8)
+        )
 
-    plt.savefig('Charge - Hydrophobicity correlation.png')
+    plt.show()
+    # plt.savefig('Charge - Hydrophobicity correlation.png')
 
     attributes = dataset_lib.normalize_attributes(attributes_input)    
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
@@ -247,7 +261,7 @@ def run():
     non_attr_dims = [a for a in range(params['latent_dim']) if a not in attr_dims]
     for attr in attr_dict.keys():
         dim1 = attr_dict[attr]
-        if attr == 'mean':
+        if attr == 'mean' or attr == 'Length' or attr == 'Charge':
             continue
         plot_latent_surface(
             decoder,

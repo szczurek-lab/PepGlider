@@ -64,10 +64,10 @@ decoder = DecoderRNN(
 ).eval()
 
 def load_model(model: nn.Module, name: str) -> None:
-    state_dict = load(MODELS_DIR / name)
+    state_dict = load(MODELS_DIR / "first_working_models"/ name)
     model.load_state_dict(state_dict)
 
-MODEL_NAME = "iwae_progressive_beta_v7_looking_for_a_problem_basic_epoch9900_"
+MODEL_NAME = "ar_vae_continue_training_ar-vae-v4_epoch940_"
 load_model(
     encoder.to(params["device"]),
     f"{MODEL_NAME}encoder.pt",

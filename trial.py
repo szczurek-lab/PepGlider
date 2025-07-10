@@ -203,59 +203,59 @@ def run_epoch_iwae(
         ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
         ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
 
-    if logger is not None:
-        if ar_vae_flg:
-            mn.report_scalars(
-                logger,
-                mode,
-                epoch,
-                scalars=[
-                    ("Total Loss", stat_sum["total"] / len_data),
-                        # ("Posterior Standard Deviation [mean]", stat_sum["std"] / len_data),
-                    (
-                        "Cross Entropy Loss",
-                        "sum over samples",
-                        stat_sum["ce_sum"] / len_data,
-                    ),
-                    # ("Cross Entropy Loss", "best sample", stat_sum["ce_best"] / len_data),
-                    # ("Cross Entropy Loss", "worst sample", stat_sum["ce_worst"] / len_data),
-                    (
-                        "KL Divergence",
-                        "mean over samples",
-                        stat_sum["kl_mean"] / len_data,
-                    ),
-                    # ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
-                    # ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
-                    # ("KL Beta", kl_beta),
-                    ("Regularization Loss", stat_sum["reg_loss"]/gamma),
-                    # ("Regularization Loss with gamma", stat_sum["reg_loss"]),
-                ],
-            )
-        else:
-            mn.report_scalars(
-                logger,
-                mode,
-                epoch,
-                scalars=[
-                    ("Total Loss", stat_sum["total"] / len_data),
-                        # ("Posterior Standard Deviation [mean]", stat_sum["std"] / len_data),
-                    (
-                        "Cross Entropy Loss",
-                        "sum over samples",
-                        stat_sum["ce_sum"] / len_data,
-                    ),
-                    # ("Cross Entropy Loss", "best sample", stat_sum["ce_best"] / len_data),
-                    # ("Cross Entropy Loss", "worst sample", stat_sum["ce_worst"] / len_data),
-                    (
-                        "KL Divergence",
-                        "mean over samples",
-                        stat_sum["kl_mean"] / len_data,
-                    ),
-                    # ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
-                    # ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
-                    # ("KL Beta", kl_beta),
-                ],
-            )
+    # if logger is not None:
+    #     if ar_vae_flg:
+    #         mn.report_scalars(
+    #             logger,
+    #             mode,
+    #             epoch,
+    #             scalars=[
+    #                 ("Total Loss", stat_sum["total"] / len_data),
+    #                     # ("Posterior Standard Deviation [mean]", stat_sum["std"] / len_data),
+    #                 (
+    #                     "Cross Entropy Loss",
+    #                     "sum over samples",
+    #                     stat_sum["ce_sum"] / len_data,
+    #                 ),
+    #                 # ("Cross Entropy Loss", "best sample", stat_sum["ce_best"] / len_data),
+    #                 # ("Cross Entropy Loss", "worst sample", stat_sum["ce_worst"] / len_data),
+    #                 (
+    #                     "KL Divergence",
+    #                     "mean over samples",
+    #                     stat_sum["kl_mean"] / len_data,
+    #                 ),
+    #                 # ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
+    #                 # ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
+    #                 # ("KL Beta", kl_beta),
+    #                 ("Regularization Loss", stat_sum["reg_loss"]/gamma),
+    #                 # ("Regularization Loss with gamma", stat_sum["reg_loss"]),
+    #             ],
+    #         )
+    #     else:
+    #         mn.report_scalars(
+    #             logger,
+    #             mode,
+    #             epoch,
+    #             scalars=[
+    #                 ("Total Loss", stat_sum["total"] / len_data),
+    #                     # ("Posterior Standard Deviation [mean]", stat_sum["std"] / len_data),
+    #                 (
+    #                     "Cross Entropy Loss",
+    #                     "sum over samples",
+    #                     stat_sum["ce_sum"] / len_data,
+    #                 ),
+    #                 # ("Cross Entropy Loss", "best sample", stat_sum["ce_best"] / len_data),
+    #                 # ("Cross Entropy Loss", "worst sample", stat_sum["ce_worst"] / len_data),
+    #                 (
+    #                     "KL Divergence",
+    #                     "mean over samples",
+    #                     stat_sum["kl_mean"] / len_data,
+    #                 ),
+    #                 # ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
+    #                 # ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
+    #                 # ("KL Beta", kl_beta),
+    #             ],
+    #         )
         # if eval_mode == "deep": 
         #     # mn.report_sequence_char_test(
         #     #     logger,
@@ -329,32 +329,32 @@ def run():
         params["layer_norm"],
     )
     DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
-    is_cpu = False if torch.cuda.is_available() else True
-    encoder_filepath = os.path.join(
-        os.sep, "net","tscratch","people","plggwiazale", "AR-VAE",
-        "vanilla_iwae_ar-vae-v4_epoch820_encoder.pt"
-    )
-    decoder_filepath = os.path.join(
-        os.sep, "net","tscratch","people","plggwiazale", "AR-VAE",
-        "vanilla_iwae_ar-vae-v4_epoch820_decoder.pt"
-    )
+    # is_cpu = False if torch.cuda.is_available() else True
+    # encoder_filepath = os.path.join(
+    #     os.sep, "net","tscratch","people","plggwiazale", "AR-VAE",
+    #     "vanilla_iwae_ar-vae-v4_epoch820_encoder.pt"
+    # )
+    # decoder_filepath = os.path.join(
+    #     os.sep, "net","tscratch","people","plggwiazale", "AR-VAE",
+    #     "vanilla_iwae_ar-vae-v4_epoch820_decoder.pt"
+    # )
 
-    if is_cpu:
-        encoder.load_state_dict(
-            torch.load(
-                encoder_filepath,
-                map_location=DEVICE
-            )
-        )
-        decoder.load_state_dict(
-            torch.load(
-                decoder_filepath,
-                map_location=DEVICE
-            )
-        )
-    else:
-        encoder.load_state_dict(torch.load(encoder_filepath))
-        decoder.load_state_dict(torch.load(decoder_filepath))
+    # if is_cpu:
+    #     encoder.load_state_dict(
+    #         torch.load(
+    #             encoder_filepath,
+    #             map_location=DEVICE
+    #         )
+    #     )
+    #     decoder.load_state_dict(
+    #         torch.load(
+    #             decoder_filepath,
+    #             map_location=DEVICE
+    #         )
+    #     )
+    # else:
+    #     encoder.load_state_dict(torch.load(encoder_filepath))
+    #     decoder.load_state_dict(torch.load(decoder_filepath))
 
     encoder = encoder.to(DEVICE)
     decoder = decoder.to(DEVICE)

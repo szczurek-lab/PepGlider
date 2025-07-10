@@ -82,45 +82,46 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=[1], grid_res=0.05, z_di
     z1, z2 = torch.meshgrid([x1, x2])
     num_points = z1.size(0) * z1.size(1)
     for dim in dim2:
-        z = torch.randn(1, z_dim)
-        z = z.repeat(num_points, 1)
-        z[:, dim1] = z1.contiguous().view(1, -1)
-        z[:, dim] = z2.contiguous().view(1, -1)
-#        print(f'z = {z}')
-        z = Variable(z).cuda()
-        filtered_z_points = []
-        filtered_attr_labels = []
-        mini_batch_size = 500
-        num_mini_batches = num_points // mini_batch_size
-        attr_labels_all = []
-        for i in tqdm(range(num_mini_batches)):
-            z_batch = z[i * mini_batch_size:(i + 1) * mini_batch_size, :]
-            outputs = decoder(z_batch)
-            src = outputs.permute(1, 2, 0)  # B x C x S
-            src_decoded = src.argmax(dim=1) # B x S
-            current_batch_filtered_z = []
-            current_batch_filtered_labels = []
+        if dim == 3:
+            z = torch.randn(1, z_dim)
+            z = z.repeat(num_points, 1)
+            z[:, dim1] = z1.contiguous().view(1, -1)
+            z[:, dim] = z2.contiguous().view(1, -1)
+    #        print(f'z = {z}')
+            z = Variable(z).cuda()
+            filtered_z_points = []
+            filtered_attr_labels = []
+            mini_batch_size = 500
+            num_mini_batches = num_points // mini_batch_size
+            attr_labels_all = []
+            for i in tqdm(range(num_mini_batches)):
+                z_batch = z[i * mini_batch_size:(i + 1) * mini_batch_size, :]
+                outputs = decoder(z_batch)
+                src = outputs.permute(1, 2, 0)  # B x C x S
+                src_decoded = src.argmax(dim=1) # B x S
+                current_batch_filtered_z = []
+                current_batch_filtered_labels = []
 
-            for j in range(mini_batch_size):
-                single_src_decoded = dataset_lib.decoded(src_decoded[j:j+1], "") 
+                for j in range(mini_batch_size):
+                    single_src_decoded = dataset_lib.decoded(src_decoded[j:j+1], "") 
+                        
+                    if single_src_decoded and single_src_decoded[0].strip(): 
+                        labels = dataset_lib.calculate_physchem_test(single_src_decoded)
+                        current_batch_filtered_z.append(z_batch[j:j+1])
+                        current_batch_filtered_labels.append(labels) 
                     
-                if single_src_decoded and single_src_decoded[0].strip(): 
-                    labels = dataset_lib.calculate_physchem_test(single_src_decoded)
-                    current_batch_filtered_z.append(z_batch[j:j+1])
-                    current_batch_filtered_labels.append(labels) 
-                
-            if current_batch_filtered_z: 
-                filtered_z_points.append(torch.cat(current_batch_filtered_z, 0))
-                filtered_attr_labels.append(torch.cat(current_batch_filtered_labels, 0))
+                if current_batch_filtered_z: 
+                    filtered_z_points.append(torch.cat(current_batch_filtered_z, 0))
+                    filtered_attr_labels.append(torch.cat(current_batch_filtered_labels, 0))
 
-        final_z_points = torch.cat(filtered_z_points, 0).cpu().numpy()
-        final_attr_labels = torch.cat(filtered_attr_labels, 0).cpu().numpy()
-        save_filename = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)),
-            f'latent_surface_{attr_str}_2010epoch_{dim}dim.png'
-        )
-        z = z.cpu().numpy()[:num_mini_batches*mini_batch_size, :]
-        plot_dim(final_z_points, final_attr_labels[:, dim1], save_filename, dim1=dim1, dim2=dim)
+            final_z_points = torch.cat(filtered_z_points, 0).cpu().numpy()
+            final_attr_labels = torch.cat(filtered_attr_labels, 0).cpu().numpy()
+            save_filename = os.path.join(
+                os.path.dirname(os.path.realpath(__file__)),
+                f'latent_surface_{attr_str}_{dim}dim.png'
+            )
+            z = z.cpu().numpy()[:num_mini_batches*mini_batch_size, :]
+            plot_dim(final_z_points, final_attr_labels[:, dim1], save_filename, dim1=dim1, dim2=dim)
 
 def run():
     global ROOT_DIR 
@@ -234,8 +235,8 @@ def run():
             bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=0.8, alpha=0.8)
         )
 
-    plt.show()
-    # plt.savefig('Charge - Hydrophobicity correlation.png')
+    # plt.show()
+    plt.savefig('Charge - Hydrophobicity correlation.png')
 
     attributes = dataset_lib.normalize_attributes(attributes_input)    
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
@@ -261,7 +262,7 @@ def run():
     non_attr_dims = [a for a in range(params['latent_dim']) if a not in attr_dims]
     for attr in attr_dict.keys():
         dim1 = attr_dict[attr]
-        if attr == 'mean' or attr == 'Length' or attr == 'Charge':
+        if attr == 'mean' or attr == 'Charge' or attr == 'Hydrophobicity moment':
             continue
         plot_latent_surface(
             decoder,

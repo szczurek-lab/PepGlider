@@ -117,7 +117,7 @@ def plot_latent_surface(decoder, attr_str, dim1=0, dim2=[1], grid_res=0.05, z_di
         final_attr_labels = torch.cat(filtered_attr_labels, 0).cpu().numpy()
         save_filename = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
-            f'latent_surface_{attr_str}_2010epoch_{dim}dim.png'
+            f'latent_surface_{attr_str}_{dim}dim.png'
         )
         z = z.cpu().numpy()[:num_mini_batches*mini_batch_size, :]
         plot_dim(final_z_points, final_attr_labels[:, dim1], save_filename, dim1=dim1, dim2=dim)

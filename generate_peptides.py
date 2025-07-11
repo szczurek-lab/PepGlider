@@ -10,10 +10,7 @@ DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu
 import pandas as pd
 import numpy as np
 from  torch import tensor, long
-from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
-# from latent_geometry.mapping import TorchModelMapping
-from typing import Optional, Literal, List, Tuple, Union
+
 from torch.optim import Adam
 import csv
 import random
@@ -76,29 +73,56 @@ load_model(
     decoder.to(params["device"]),
     f"{MODEL_NAME}decoder.pt",
 )
-
-# decoder_mapping_argmax = TorchModelMapping(
-#     decoder,
-#     in_shape=(-1, params["latent_dim"]),
-#     out_shape=(SEQ_LEN, -1),
-#     batch_size=params["batch_size"],
-#     call_fn=decoder.decode,
-# )
-
-# encoder_mapping = TorchModelMapping(
-#     encoder,
-#     in_shape=(SEQ_LEN, -1),
-#     out_shape=(-1, params["latent_dim"]),
-#     call_fn=encoder.encode,
-#     batch_size=params["batch_size"],
-# )
 DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
 
 decoder = decoder.to(DEVICE)
-seq = decoder.generate(1000, params['latent_dim'])
+# seq = decoder.generate(1000, params['latent_dim'])
+seq = decoder.generate_from(1000, params["latent_dim"], 0, 3, 2)
 generated_sequences = dataset.decoded(dataset.from_one_hot(transpose(seq,0,1)), "0")
 
-with open("sequences.csv", "w", newline="") as file:
+with open("sequences_dim0_2.csv", "w", newline="") as file:
+    writer = csv.writer(file)
+    for seq in generated_sequences:
+        writer.writerow([seq])
+
+seq = decoder.generate_from(1000, params["latent_dim"], 1, 3, 2)
+generated_sequences = dataset.decoded(dataset.from_one_hot(transpose(seq,0,1)), "0")
+
+with open("sequences_dim1_2.csv", "w", newline="") as file:
+    writer = csv.writer(file)
+    for seq in generated_sequences:
+        writer.writerow([seq])
+
+
+seq = decoder.generate_from(1000, params["latent_dim"], 2, 3, 2)
+generated_sequences = dataset.decoded(dataset.from_one_hot(transpose(seq,0,1)), "0")
+
+with open("sequences_dim2_2.csv", "w", newline="") as file:
+    writer = csv.writer(file)
+    for seq in generated_sequences:
+        writer.writerow([seq])
+
+seq = decoder.generate_from(1000, params["latent_dim"], 0, 3, -2)
+generated_sequences = dataset.decoded(dataset.from_one_hot(transpose(seq,0,1)), "0")
+
+with open("sequences_dim0_-2.csv", "w", newline="") as file:
+    writer = csv.writer(file)
+    for seq in generated_sequences:
+        writer.writerow([seq])
+
+seq = decoder.generate_from(1000, params["latent_dim"], 1, 3, -2)
+generated_sequences = dataset.decoded(dataset.from_one_hot(transpose(seq,0,1)), "0")
+
+with open("sequences_dim1_-2.csv", "w", newline="") as file:
+    writer = csv.writer(file)
+    for seq in generated_sequences:
+        writer.writerow([seq])
+
+
+seq = decoder.generate_from(1000, params["latent_dim"], 2, 3, -2)
+generated_sequences = dataset.decoded(dataset.from_one_hot(transpose(seq,0,1)), "0")
+
+with open("sequences_dim2_-2.csv", "w", newline="") as file:
     writer = csv.writer(file)
     for seq in generated_sequences:
         writer.writerow([seq])

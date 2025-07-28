@@ -73,7 +73,7 @@ load_model(
     decoder.to(params["device"]),
     f"{MODEL_NAME}decoder.pt",
 )
-DEVICE = device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
+DEVICE = device('cpu')
 
 decoder = decoder.to(DEVICE)
 # seq = decoder.generate(1000, params['latent_dim'])

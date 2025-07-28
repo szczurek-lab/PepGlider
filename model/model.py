@@ -7,7 +7,7 @@ from torch.nn import functional as F
 from model.constants import CLS_TOKEN, PAD_TOKEN, SEQ_LEN, VOCAB_SIZE
 from model.layer import EmbeddingPositionalEncoding, TransformerLayer
 
-DEVICE = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
+DEVICE = torch.device('cpu')
 
 class EncoderRNN(nn.Module):
     _EPS = 1e-5

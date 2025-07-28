@@ -149,7 +149,7 @@ def run():
         "ar_vae_flg": False,
         "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
     }
-    encoder = EncoderRNN(
+    encoder_iwae = EncoderRNN(
         params["num_heads"],
         params["num_layers"],
         params["latent_dim"],
@@ -157,7 +157,7 @@ def run():
         params["dropout"],
         params["layer_norm"],
     )
-    decoder = DecoderRNN(
+    decoder_iwae = DecoderRNN(
         params["num_heads"],
         params["num_layers"],
         params["latent_dim"],
@@ -165,7 +165,22 @@ def run():
         params["dropout"],
         params["layer_norm"],
     )
-
+    encoder_arvae = EncoderRNN(
+        params["num_heads"],
+        params["num_layers"],
+        params["latent_dim"],
+        params["encoding"],
+        params["dropout"],
+        params["layer_norm"],
+    )
+    decoder_arvae = DecoderRNN(
+        params["num_heads"],
+        params["num_layers"],
+        params["latent_dim"],
+        params["encoding"],
+        params["dropout"],
+        params["layer_norm"],
+    )
     attr_dict = {
         'Length': 0, 
         'Charge': 1, 
@@ -173,34 +188,57 @@ def run():
     }
     DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
     is_cpu = False if torch.cuda.is_available() else True
-    encoder_filepath = os.path.join(
+    encoder_iwae_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
         "first_working_models","iwae_continue_training_ar-vae-v4_epoch880_encoder.pt"
     )
-    decoder_filepath = os.path.join(
+    decoder_iwae_filepath = os.path.join(
         os.sep, "home","gwiazale", "AR-VAE",
         "first_working_models","iwae_continue_training_ar-vae-v4_epoch880_decoder.pt"
     )
-
+    encoder_arvae_filepath = os.path.join(
+        os.sep, "home","gwiazale", "AR-VAE",
+        "first_working_models","ar_vae_continue_training_ar-vae-v4_epoch940_encoder.pt"
+    )
+    decoder_arvae_filepath = os.path.join(
+        os.sep, "home","gwiazale", "AR-VAE",
+        "first_working_models","ar_vae_continue_training_ar-vae-v4_epoch940_decoder.pt"
+    )
     if is_cpu:
-        encoder.load_state_dict(
+        encoder_iwae.load_state_dict(
             torch.load(
-                encoder_filepath,
+                encoder_iwae_filepath,
                 map_location=DEVICE
             )
         )
-        decoder.load_state_dict(
+        decoder_iwae.load_state_dict(
             torch.load(
-                decoder_filepath,
+                decoder_iwae_filepath,
+                map_location=DEVICE
+            )
+        )
+        encoder_arvae.load_state_dict(
+            torch.load(
+                encoder_arvae_filepath,
+                map_location=DEVICE
+            )
+        )
+        decoder_arvae.load_state_dict(
+            torch.load(
+                decoder_iwae_filepath,
                 map_location=DEVICE
             )
         )
     else:
-        encoder.load_state_dict(torch.load(encoder_filepath))
-        decoder.load_state_dict(torch.load(decoder_filepath))
-    encoder = encoder.to(DEVICE)
-    decoder = decoder.to(DEVICE)
-
+        encoder_iwae.load_state_dict(torch.load(encoder_iwae_filepath))
+        decoder_iwae.load_state_dict(torch.load(decoder_iwae_filepath))
+        encoder_arvae.load_state_dict(torch.load(encoder_arvae_filepath))
+        decoder_arvae.load_state_dict(torch.load(decoder_arvae_filepath))
+    encoder_iwae = encoder_iwae.to(DEVICE)
+    decoder_iwae = decoder_iwae.to(DEVICE)
+    encoder_arvae = encoder_arvae.to(DEVICE)
+    decoder_arvae = decoder_arvae.to(DEVICE)
+    
     data_manager = dataset_lib.AMPDataManager(
         DATA_DIR / 'unlabelled_positive.csv',
         DATA_DIR / 'unlabelled_negative.csv',

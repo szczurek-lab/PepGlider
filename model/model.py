@@ -6,8 +6,9 @@ from torch.nn import functional as F
 
 from model.constants import CLS_TOKEN, PAD_TOKEN, SEQ_LEN, VOCAB_SIZE
 from model.layer import EmbeddingPositionalEncoding, TransformerLayer
+from torch import nn, cuda, backends, manual_seed, tensor
 
-DEVICE = torch.device('cpu')
+DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
 
 class EncoderRNN(nn.Module):
     _EPS = 1e-5
@@ -155,100 +156,24 @@ class DecoderRNN(nn.Module):
         #(batch_size, latent_dim) -> (seq_len, batch_size, vocab_size)
         return self.forward(input)
     
-    def generate_from(self, batch_size, latent_dim, dim1, dim2, shift_value):
+    def generate_from(self, batch_size, latent_dim, dim1, shift_value):
         # shift_value = 2.0 # Wartość przesunięcia (średnia będzie 2)
         std_dev = 1.0     # Odchylenie standardowe (jak w standardowym rozkładzie normalnym)
-        x1 = (torch.randn(200) * std_dev + shift_value).to(DEVICE)
-        x2 = (torch.randn(200) * std_dev + shift_value).to(DEVICE)
-        z1, z2 = torch.meshgrid([x1, x2], indexing='ij')
-        num_points = z1.size(0) * z1.size(1) 
+        # x1 = (torch.randn(200) * std_dev + shift_value).to(DEVICE)
+        # x2 = (torch.randn(200) * std_dev + shift_value).to(DEVICE)
+        # z1, z2 = torch.meshgrid([x1, x2], indexing='ij')
+        # num_points = z1.size(0) * z1.size(1) 
+        # mod_dim = torch.randn(batch_size, 1) + shift_value
 
-        print(f"Kształt z1 po meshgrid (przed view): {z1.shape}")
-        print(f"Kształt z2 po meshgrid (przed view): {z2.shape}")
-        print(f"Przykładowa średnia z1: {z1.mean().item():.2f}")
-        print(f"Przykładowa średnia z2: {z2.mean().item():.2f}")
-        z = torch.randn(1, latent_dim).to(DEVICE) # Generowanie losowego wektora z
-        z = z.repeat(num_points, 1).to(DEVICE) # Powielenie go do rozmiaru num_points x z_dim
-        z[:, dim1] = z1.to(DEVICE).contiguous().view(-1) # Spłaszcz z1 do 1D i przypisz do kolumny d
-        z[:, dim2] = z2.to(DEVICE).contiguous().view(-1)
+        # print(f"Kształt z1 po meshgrid (przed view): {z1.shape}")
+        # print(f"Kształt z2 po meshgrid (przed view): {z2.shape}")
+        # print(f"Przykładowa średnia z1: {z1.mean().item():.2f}")
+        # print(f"Przykładowa średnia z2: {z2.mean().item():.2f}")
+        z = torch.randn(batch_size, latent_dim).to(DEVICE) # Generowanie losowego wektora z
+        z[:, dim1] = (z[:, dim1] + shift_value).to(DEVICE)
+        # z = z.repeat(num_points, 1).to(DEVICE) # Powielenie go do rozmiaru num_points x z_dim
+        # z[:, dim1] = z1.to(DEVICE).contiguous().view(-1) # Spłaszcz z1 do 1D i przypisz do kolumny d
+        # z[:, dim2] = z2.to(DEVICE).contiguous().view(-1)
         #(batch_size, latent_dim) -> (seq_len, batch_size, vocab_size)
         return self.forward(z)
     
-# Container
-# ------------------------------------------------------------------------------
-
-# class VAE(L.LightningModule):
-#     def __init__(self, encoder, decoder, n_steps=None):
-#         super(VAE, self).__init__()
-#         self.encoder = encoder
-#         self.decoder = decoder
-#         self.automatic_optimization = False
-#         self.register_buffer('steps_seen', torch.tensor(0, dtype=torch.long))
-#         self.register_buffer('kld_max', torch.tensor(1.0, dtype=torch.float))
-#         self.register_buffer('kld_weight', torch.tensor(0.0, dtype=torch.float))
-#         if n_steps is not None:
-#             self.register_buffer('kld_inc', torch.tensor((self.kld_max - self.kld_weight) / (n_steps // 2), dtype=torch.float))
-#         else:
-#             self.register_buffer('kld_inc', torch.tensor(0, dtype=torch.float))
-#     # def loss_function(self, x_hat, x, mean, log_var):
-#     #     reproduction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction='sum')
-#     #     KLD = - 0.5 * torch.sum(1+ log_var - mean.pow(2) - log_var.exp())
-#     #     return reproduction_loss + KLD, reproduction_loss, KLD
-    
-#     def training_step(self, batch, batch_idx):
-#         # training_step defines the train loop.
-#         # it is independent of forward
-#         # temperature=1.0
-#         x, y = batch
-#         # print(x.shape)
-#         #shape to encoder - 32x25
-#         var = x.long()
-#         m, l, z = self.encoder(var, DEVICE)
-#         # print(m)
-#         # print(l)
-#         prior_distr = torch.distributions.Normal(torch.zeros_like(m), torch.ones_like(abs(l)))
-#         q_distr = torch.distributions.Normal(m, abs(l+1e-6))
-#         z_norm = q_distr.rsample()
-#         # z_norm = torch.tensor(z_norm).to(DEVICE)
-#         #print(z.shape)
-#         #(32,100)
-#         output, logits = self.decoder(z_norm)
-#         #print(output.shape)
-#         #(25,32)
-#         #print(logits.shape)
-#         #(25,32,21)
-#         S, B, C = logits.shape
-#         input_reshaped = logits.permute(1, 0, 2).reshape(B * S, C)
-#         target_reshaped = var.reshape(B * S)
-#         amino_acc, empty_acc = compare_tensors(var.t(), output)
-#         loss_function = nn.CrossEntropyLoss()
-#         # KLD = - 0.5 * torch.sum(1+ l - m.pow(2) - l.exp())
-#         kl_loss = nn.KLDivLoss(reduction="batchmean", log_target = True)
-#         input = F.log_softmax(z, dim=1)
-#         target = F.log_softmax(z_norm, dim=1)
-#         KLD = kl_loss(input, target)
-#         # Kullback Leibler divergence
-#         log_qzx = q_distr.log_prob(z_norm).sum(dim=1)
-#         log_pz = prior_distr.log_prob(z_norm).sum(dim=1)
-
-#         # KLD = (log_qzx - log_pz).sum()
-#         # (wyjscie encoder, wyjscie po normal distribution)
-#         reproduction_loss = loss_function(input_reshaped,
-#             target_reshaped)
-#         loss = reproduction_loss + KLD
-#         # Logging to TensorBoard (if installed) by default
-#         self.log("train_loss", loss)
-#         self.log("amino_acc", amino_acc)
-#         self.log("empty_acc", empty_acc)
-#         self.log("reproduction_loss", reproduction_loss)
-#         self.log("KLD", KLD)
-#         return loss
-
-#     def configure_optimizers(self):
-#         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-#         scheduler = StepLRScheduler(optimizer, decay_t = 15, decay_rate=0.5)
-#         return [optimizer], [{"scheduler": scheduler, "interval": "epoch"}]
-
-
-#     def lr_scheduler_step(self, scheduler, metric):
-#         scheduler.step(epoch=self.current_epoch)

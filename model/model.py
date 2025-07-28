@@ -6,8 +6,9 @@ from torch.nn import functional as F
 
 from model.constants import CLS_TOKEN, PAD_TOKEN, SEQ_LEN, VOCAB_SIZE
 from model.layer import EmbeddingPositionalEncoding, TransformerLayer
+from torch import nn, cuda, backends, manual_seed, tensor
 
-DEVICE = torch.device(f'cuda:{torch.cuda.current_device()}' if torch.cuda.is_available() else 'cpu')
+DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
 
 class EncoderRNN(nn.Module):
     _EPS = 1e-5
@@ -155,22 +156,24 @@ class DecoderRNN(nn.Module):
         #(batch_size, latent_dim) -> (seq_len, batch_size, vocab_size)
         return self.forward(input)
     
-    def generate_from(self, batch_size, latent_dim, dim1, dim2, shift_value):
+    def generate_from(self, batch_size, latent_dim, dim1, shift_value):
         # shift_value = 2.0 # Wartość przesunięcia (średnia będzie 2)
         std_dev = 1.0     # Odchylenie standardowe (jak w standardowym rozkładzie normalnym)
-        x1 = (torch.randn(200) * std_dev + shift_value).to(DEVICE)
-        x2 = (torch.randn(200) * std_dev + shift_value).to(DEVICE)
-        z1, z2 = torch.meshgrid([x1, x2], indexing='ij')
-        num_points = z1.size(0) * z1.size(1) 
+        # x1 = (torch.randn(200) * std_dev + shift_value).to(DEVICE)
+        # x2 = (torch.randn(200) * std_dev + shift_value).to(DEVICE)
+        # z1, z2 = torch.meshgrid([x1, x2], indexing='ij')
+        # num_points = z1.size(0) * z1.size(1) 
+        # mod_dim = torch.randn(batch_size, 1) + shift_value
 
-        print(f"Kształt z1 po meshgrid (przed view): {z1.shape}")
-        print(f"Kształt z2 po meshgrid (przed view): {z2.shape}")
-        print(f"Przykładowa średnia z1: {z1.mean().item():.2f}")
-        print(f"Przykładowa średnia z2: {z2.mean().item():.2f}")
-        z = torch.randn(1, latent_dim).to(DEVICE) # Generowanie losowego wektora z
-        z = z.repeat(num_points, 1).to(DEVICE) # Powielenie go do rozmiaru num_points x z_dim
-        z[:, dim1] = z1.to(DEVICE).contiguous().view(-1) # Spłaszcz z1 do 1D i przypisz do kolumny d
-        z[:, dim2] = z2.to(DEVICE).contiguous().view(-1)
+        # print(f"Kształt z1 po meshgrid (przed view): {z1.shape}")
+        # print(f"Kształt z2 po meshgrid (przed view): {z2.shape}")
+        # print(f"Przykładowa średnia z1: {z1.mean().item():.2f}")
+        # print(f"Przykładowa średnia z2: {z2.mean().item():.2f}")
+        z = torch.randn(batch_size, latent_dim).to(DEVICE) # Generowanie losowego wektora z
+        z[:, dim1] = (z[:, dim1] + shift_value).to(DEVICE)
+        # z = z.repeat(num_points, 1).to(DEVICE) # Powielenie go do rozmiaru num_points x z_dim
+        # z[:, dim1] = z1.to(DEVICE).contiguous().view(-1) # Spłaszcz z1 do 1D i przypisz do kolumny d
+        # z[:, dim2] = z2.to(DEVICE).contiguous().view(-1)
         #(batch_size, latent_dim) -> (seq_len, batch_size, vocab_size)
         return self.forward(z)
     

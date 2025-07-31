@@ -266,7 +266,7 @@ def run():
         "epochs": 10000,
         "iwae_samples": 10,
         "model_name": os.getenv("CLEARML_PROJECT_NAME", 'ar-vae-v4'),
-        "use_clearml": True,
+        "use_clearml": False,
         "task_name": os.getenv("CLEARML_TASK_NAME", "ar-vae 3 dims"),
         "device": "cuda",
         "deeper_eval_every": 20,

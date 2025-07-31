@@ -154,7 +154,9 @@ def report_sequence_char_test(
         return
     seq_pred = model_out.argmax(axis=2)
     src_pred = dataset_lib.decoded(tensor(seq_pred).permute(1, 0), "")
+    print(len(src_pred))
     filtered_list = [item for item in src_pred if item.strip()]
+    indexes = [index for index, item in enumerate(src_pred) if item.strip()]
     if not filtered_list:
         print('All predicted sequences are empty')
     else:
@@ -240,7 +242,7 @@ def report_sequence_char_test(
                         )
         metrics_list = []
     else:
-        metrics_list = [pred_len_acc, pred_len_mae, on_predicted_acc, amino_acc, empty_acc, mean_absolute_error(physchem_original, physchem_decoded.iloc[:,1]), mean_absolute_error(physchem_original, physchem_decoded.iloc[:,2]), mean_absolute_error(physchem_original, physchem_decoded.iloc[:,0])]
+        metrics_list = [pred_len_acc, pred_len_mae, on_predicted_acc, amino_acc, empty_acc, mean_absolute_error(physchem_original[indexes,:], physchem_decoded.iloc[:,1]), mean_absolute_error(physchem_original[indexes,:], physchem_decoded.iloc[:,2]), mean_absolute_error(physchem_original[indexes,:], physchem_decoded.iloc[:,0])]
         for attr in metrics.keys():
                 for subattr in metrics[attr].keys():
                         metrics_list = metrics_list + metrics[attr][subattr][1]

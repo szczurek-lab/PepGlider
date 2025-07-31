@@ -18,6 +18,8 @@ from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
 import ar_vae_metrics as m
 import monitoring as mn
 import regularization as r
+import datetime
+import csv
 
 def set_seed(seed: int = 42) -> None:
     """
@@ -57,6 +59,8 @@ def run_epoch_iwae(
     epoch: int,
     kl_beta: float,
     logger: Optional[clearml.Logger],
+    train_log_file: str,
+    eval_log_file: str,
     optimizer: Optional[optim.Optimizer],
     eval_mode: Literal["fast", "deep"],
     iwae_samples: int,
@@ -121,12 +125,6 @@ def run_epoch_iwae(
             tgt = peptides.permute(1, 0)
             all_tgts.append(tgt)
             # print(f'tgt shape = {tgt.shape}')
-            # cross_entropy = ce_loss_fun(
-            #     src,
-            #     tgt,
-            # ).sum(dim=1)
-            # all_cross_entropies.append(cross_entropy)
-            # print(f'cross_entropy shape = {cross_entropy.shape}')
             if ar_vae_flg:
                 reg_loss = 0
                 for dim in reg_dim:
@@ -134,19 +132,11 @@ def run_epoch_iwae(
                     z.reshape(-1,z.shape[1]), physchem_torch[:, dim], dim, gamma, device #gamma i delta z papera
                 )
                 reg_losses_per_sample_list.append(reg_loss)
-            # iwae_sample_term = cross_entropy + kl_beta * kl_div # (B,)
-            # iwae_terms.append(iwae_sample_term)
 
-        # iwae_terms_stacked = logsumexp(torch.stack(iwae_terms, dim=0), dim=0)#K reduction
-        # print(f'iwae_terms_stacked shape = {iwae_terms_stacked.shape}')
         if ar_vae_flg:
             total_reg_loss = torch.stack(reg_losses_per_sample_list, dim=0).mean(dim=0).sum()
-        # loss = logsumexp(iwae_terms_stacked, dim=0) + total_reg_loss
-        # torch.stack z listą BxSxN_C (sampled_peptide_logits) da KxBxCxS
         stacked_srcs = torch.stack(all_srcs, dim=0).permute(0,2,1,3)
-        # print(f'stacked_srcs shape = {stacked_srcs.shape}')
         stacked_tgts = torch.stack(all_tgts, dim=0)
-        # print(f'stacked_tgts shape = {stacked_tgts.shape}')
         cross_entropy = ce_loss_fun(
                 stacked_srcs,
                 stacked_tgts,
@@ -177,7 +167,6 @@ def run_epoch_iwae(
         # reporting
         if eval_mode == "deep":
             seq_true.append(peptides.cpu().detach().numpy())
-            # model_out.append(decoder(mu).cpu().detach().numpy())
             model_out_sampled.append(
                 sampled_peptide_logits.cpu().detach().numpy()
             )
@@ -186,15 +175,12 @@ def run_epoch_iwae(
         latent_codes = np.concatenate(latent_codes, 0)
         attributes = cat(attributes, dim=0).numpy()
         attributes, attr_list = m.extract_relevant_attributes(attributes, reg_dim)
-        interp_metrics = m.compute_interpretability_metric(
-            latent_codes, attributes, attr_list
-        )
         ar_vae_metrics = {}
-        ar_vae_metrics["Interpretability"] = interp_metrics
-        ar_vae_metrics.update(m.compute_correlation_score(latent_codes, attributes))
-        ar_vae_metrics.update(m.compute_modularity(latent_codes, attributes))
-        ar_vae_metrics.update(m.compute_mig(latent_codes, attributes))
-        ar_vae_metrics.update(m.compute_sap_score(latent_codes, attributes))
+        ar_vae_metrics["Interpretability"] = m.compute_interpretability_metric(latent_codes, attributes, attr_list)
+        ar_vae_metrics["Corr_score"] = m.compute_correlation_score(latent_codes, attributes, attr_list)
+        ar_vae_metrics["Modularity"] = m.compute_modularity(latent_codes, attributes, attr_list)
+        ar_vae_metrics["MIG"] = m.compute_mig(latent_codes, attributes,attr_list)
+        ar_vae_metrics["SAP_score"] = m.compute_sap_score(latent_codes, attributes, attr_list)
 
     if logger is not None:
         if ar_vae_flg:
@@ -204,24 +190,17 @@ def run_epoch_iwae(
                 epoch,
                 scalars=[
                     ("Total Loss", stat_sum["total"] / len_data),
-                        # ("Posterior Standard Deviation [mean]", stat_sum["std"] / len_data),
                     (
                         "Cross Entropy Loss",
                         "sum over samples",
                         stat_sum["ce_sum"] / len_data,
                     ),
-                    # ("Cross Entropy Loss", "best sample", stat_sum["ce_best"] / len_data),
-                    # ("Cross Entropy Loss", "worst sample", stat_sum["ce_worst"] / len_data),
                     (
                         "KL Divergence",
                         "mean over samples",
                         stat_sum["kl_mean"] / len_data,
                     ),
-                    # ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
-                    # ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
-                    # ("KL Beta", kl_beta),
                     ("Regularization Loss", stat_sum["reg_loss"]/gamma),
-                    # ("Regularization Loss with gamma", stat_sum["reg_loss"]),
                 ],
             )
         else:
@@ -231,49 +210,40 @@ def run_epoch_iwae(
                 epoch,
                 scalars=[
                     ("Total Loss", stat_sum["total"] / len_data),
-                        # ("Posterior Standard Deviation [mean]", stat_sum["std"] / len_data),
                     (
                         "Cross Entropy Loss",
                         "sum over samples",
                         stat_sum["ce_sum"] / len_data,
                     ),
-                    # ("Cross Entropy Loss", "best sample", stat_sum["ce_best"] / len_data),
-                    # ("Cross Entropy Loss", "worst sample", stat_sum["ce_worst"] / len_data),
                     (
                         "KL Divergence",
                         "mean over samples",
                         stat_sum["kl_mean"] / len_data,
                     ),
-                    # ("KL Divergence", "best sample", stat_sum["kl_best"] / len_data),
-                    # ("KL Divergence", "worst sample", stat_sum["kl_worst"] / len_data),
-                    # ("KL Beta", kl_beta),
                 ],
             )
-        if eval_mode == "deep": 
-            # mn.report_sequence_char_test(
-            #     logger,
-            #     hue=f"{mode} - mu",
-            #     epoch=epoch,
-            #     seq_true=np.concatenate(seq_true, axis=1),
-            #     model_out=np.concatenate(model_out, axis=1),
-            #     metrics = None
-            # )
-            mn.report_sequence_char_test(
+    if eval_mode == "deep": 
+        metrics_list = mn.report_sequence_char_test(
                 logger,
                 hue=f"{mode} - z",
                 epoch=epoch,
                 seq_true=np.concatenate(seq_true, axis=1),
                 model_out=np.concatenate(model_out_sampled, axis=1),
-                metrics = None
+                metrics = ar_vae_metrics,
+                physchem_original = physchem.cpu().detach().numpy()
             )
-            mn.report_sequence_char_test(
-                logger,
-                hue=f"{mode} - ar-vae metrics",
-                epoch=epoch,
-                seq_true=np.concatenate(seq_true, axis=1),
-                model_out=None,
-                metrics = ar_vae_metrics
-            )
+    else:
+        with open(train_log_file, 'a', newline='') as csvfile:
+            data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, stat_sum["reg_loss"]/gamma] if ar_vae_flg else [stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(data_row)
+        if eval_mode == "deep":
+            with open(eval_log_file, 'a', newline='') as csvfile:
+                data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, stat_sum["reg_loss"]/gamma] if ar_vae_flg else [stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
+                data_row = data_row + metrics_list
+                csv_writer = csv.writer(csvfile)
+                csv_writer.writerow(data_row)
+
     return stat_sum["total"] / len_data
 
 def run():
@@ -345,8 +315,39 @@ def run():
         )
         task.set_parameters(params)
         logger = task.logger
+        train_log_file = None
+        eval_log_file = None
     else:
         logger = None
+        train_log_file = f'training_log_{datetime.datetime.now()}.csv'
+        with open(train_log_file, 'a', newline='') as csvfile:
+            header = ["Total Loss", "Cross Entropy Loss","KL Div","Reg Loss"] if params["ar_vae_flg"] else ["Total Loss", "Cross Entropy Loss","KL Div"]
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(header)
+        eval_log_file = f'validation_log_{datetime.datetime.now()}.csv'
+        with open(eval_log_file, 'a', newline='') as csvfile:
+            if params["ar_vae_flg"]:
+                header = ["Mode", "Total Loss", "Cross Entropy Loss","KL Div","Reg Loss", 
+                          "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
+                          "MAE length", "MAE charge", "MAE hydrophobicity moment", 
+                          "Interpretability - length", "Interpretability - charge", "Interpretability - hydrophobicity moment",
+                          "Corr_score - length", "Corr_score - charge", "Corr_score - hydrophobicity moment",
+                          "Modularity - length", "Modularity - charge", "Modularity - hydrophobicity moment",
+                          "MIG - length", "MIG - charge", "MIG - hydrophobicity moment",
+                          "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity moment"
+                          ] 
+            else:
+                header = ["Mode", "Total Loss", "Cross Entropy Loss","KL Div",
+                          "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
+                          "MAE length", "MAE charge", "MAE hydrophobicity moment", 
+                          "Interpretability - length", "Interpretability - charge", "Interpretability - hydrophobicity moment",
+                          "Corr_score - length", "Corr_score - charge", "Corr_score - hydrophobicity moment",
+                          "Modularity - length", "Modularity - charge", "Modularity - hydrophobicity moment",
+                          "MIG - length", "MIG - charge", "MIG - hydrophobicity moment",
+                          "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity moment"
+                          ] 
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(header)
 
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
     train_size = int(0.8 * len(dataset))
@@ -371,6 +372,8 @@ def run():
                 dataloader=train_loader,
                 device=DEVICE,
                 logger=logger,
+                train_log_file = train_log_file,
+                eval_log_file = eval_log_file,
                 epoch=epoch,
                 optimizer=optimizer,
                 kl_beta=kl_beta,
@@ -388,6 +391,8 @@ def run():
                     dataloader=eval_loader,
                     device=DEVICE,
                     logger=logger,
+                    train_log_file = train_log_file,
+                    eval_log_file = eval_log_file,
                     epoch=epoch,
                     optimizer=None,
                     kl_beta=kl_beta,

@@ -56,7 +56,7 @@ def compute_interpretability_metric(latent_codes, attributes, attr_list):
     return interpretability_metrics
 
 
-def compute_mig(latent_codes, attributes):
+def compute_mig(latent_codes, attributes, attr_list):
     """
     Computes the mutual information gap (MIG) metric
     Args:
@@ -64,16 +64,18 @@ def compute_mig(latent_codes, attributes):
         attributes: np.array num_points x num_attributes
     """
     score_dict = {}
+    score_dict["mig"] = {}
     m = continuous_mutual_info(latent_codes, attributes)
     entropy = continuous_entropy(attributes)
     sorted_m = np.sort(m, axis=0)[::-1]
-    score_dict["mig"] = np.mean(
-        np.divide(sorted_m[0, :] - sorted_m[1, :], entropy[:])
-    )
+    mig_scores = np.divide(sorted_m[0, :] - sorted_m[1, :], entropy[:])
+    for i, attr_name in tqdm(enumerate(attr_list)):
+        score_dict['mig'][attr_name] = mig_scores[i]
+    score_dict['mig']['mean'] = np.mean(mig_scores)
     return score_dict
 
 
-def compute_modularity(latent_codes, attributes):
+def compute_modularity(latent_codes, attributes, attr_list):
     """
     Computes the modularity metric
     Args:
@@ -82,7 +84,11 @@ def compute_modularity(latent_codes, attributes):
     """
     scores = {}
     mi = continuous_mutual_info(latent_codes, attributes)
-    scores["modularity_score"] = _modularity(mi)
+    scores["modularity_score"] = {}
+    for i, attr_name in tqdm(enumerate(attr_list)):
+        modularity = _modularity(mi[:, i].reshape(-1, 56))
+        scores['modularity_score'][attr_name] = modularity.item()
+    scores['modularity_score']['mean'] = np.mean(_modularity(mi))
     return scores
 
 
@@ -100,10 +106,10 @@ def _modularity(mutual_information):
     modularity_score = 1. - delta
     index = (max_squared_mi == 0.)
     modularity_score[index] = 0.
-    return np.mean(modularity_score)
+    # return np.mean(modularity_score)
+    return modularity_score
 
-
-def compute_correlation_score(latent_codes, attributes):
+def compute_correlation_score(latent_codes, attributes, attr_list):
     """
     Computes the correlation score
     Args:
@@ -112,8 +118,11 @@ def compute_correlation_score(latent_codes, attributes):
     """
     corr_matrix = _compute_correlation_matrix(latent_codes, attributes)
     scores = {
-        "Corr_score": np.mean(np.max(corr_matrix, axis=0))
+        "Corr_score": {}
     }
+    for i, attr_name in tqdm(enumerate(attr_list)):
+        scores['corr_score'][attr_name] = np.max(corr_matrix, axis=0)[i]
+    scores['corr_score']['mean'] = np.mean(np.max(corr_matrix, axis=0))
     return scores
 
 
@@ -137,9 +146,9 @@ def _compute_correlation_matrix(mus, ys):
 
 def _compute_avg_diff_top_two(matrix):
     sorted_matrix = np.sort(matrix, axis=0)
-    return np.mean(sorted_matrix[-1, :] - sorted_matrix[-2, :])
+    return sorted_matrix[-1, :] - sorted_matrix[-2, :]
 
-def compute_sap_score(latent_codes, attributes):
+def compute_sap_score(latent_codes, attributes, attr_list):
     """
     Computes the separated attribute predictability (SAP) score
     Args:
@@ -150,10 +159,13 @@ def compute_sap_score(latent_codes, attributes):
     # Score matrix should have shape [num_codes, num_attributes].
     assert score_matrix.shape[0] == latent_codes.shape[1]
     assert score_matrix.shape[1] == attributes.shape[1]
-
+    sap_scores = _compute_avg_diff_top_two(score_matrix)
     scores = {
-        "SAP_score": _compute_avg_diff_top_two(score_matrix)
+        "SAP_score": {}
     }
+    for i, attr_name in tqdm(enumerate(attr_list)):
+        scores['SAP_score'][attr_name] = sap_scores[i]
+    scores['SAP_score']['mean'] = np.mean(sap_scores)    
     return scores
 
 
@@ -180,58 +192,58 @@ def _compute_score_matrix(mus, ys):
     return score_matrix
 
 def extract_relevant_attributes(labels, reg_dim): 
-    attr_list = ['Length', 'Charge', 'Hydrophobicity moment']
+    attr_list = ['Length', 'Charge', 'Hydrophobic moment']
     attr_labels = labels[:, reg_dim]
     return attr_labels, attr_list #kiedys do zmiany na bardziej uniwersalne
 
-def calculate_metric(metric_name, latent_codes, attributes, *args):
-    """Oblicza daną metrykę i zwraca ją w formie słownika."""
-    if metric_name == "interpretability":
-        result = compute_interpretability_metric(latent_codes, attributes, *args)
-        return {"Interpretability": result}
-    elif metric_name == "correlation":
-        result = compute_correlation_score(latent_codes, attributes)
-        return result
-    elif metric_name == "modularity":
-        result = compute_modularity(latent_codes, attributes)
-        return result
-    elif metric_name == "mig":
-        result = compute_mig(latent_codes, attributes)
-        return result
-    elif metric_name == "sap_score":
-        result = compute_sap_score(latent_codes, attributes)
-        return result
-    else:
-        return {}
+# def calculate_metric(metric_name, latent_codes, attributes, *args):
+#     """Oblicza daną metrykę i zwraca ją w formie słownika."""
+#     if metric_name == "interpretability":
+#         result = compute_interpretability_metric(latent_codes, attributes, *args)
+#         return {"Interpretability": result}
+#     elif metric_name == "correlation":
+#         result = compute_correlation_score(latent_codes, attributes)
+#         return result
+#     elif metric_name == "modularity":
+#         result = compute_modularity(latent_codes, attributes)
+#         return result
+#     elif metric_name == "mig":
+#         result = compute_mig(latent_codes, attributes)
+#         return result
+#     elif metric_name == "sap_score":
+#         result = compute_sap_score(latent_codes, attributes)
+#         return result
+#     else:
+#         return {}
 
-def calculate_metric_async(pool, name, latent_codes, attributes, *args):
-    """Asynchronicznie oblicza pojedynczą metrykę."""
-    return pool.apply_async(calculate_metric, (name, latent_codes, attributes, *args))
+# def calculate_metric_async(pool, name, latent_codes, attributes, *args):
+#     """Asynchronicznie oblicza pojedynczą metrykę."""
+#     return pool.apply_async(calculate_metric, (name, latent_codes, attributes, *args))
 
-def compute_all_metrics_async(pool, latent_codes, attributes, attr_list):
-    """Wysyła zadania obliczenia wszystkich metryk AR-VAE do puli procesów asynchronicznie."""
-    metrics_to_calculate = [
-        ("interpretability", latent_codes, attributes, attr_list),
-        ("correlation", latent_codes, attributes),
-        ("modularity", latent_codes, attributes),
-        ("mig", latent_codes, attributes),
-        ("sap_score", latent_codes, attributes),
-    ]
+# def compute_all_metrics_async(pool, latent_codes, attributes, attr_list):
+#     """Wysyła zadania obliczenia wszystkich metryk AR-VAE do puli procesów asynchronicznie."""
+#     metrics_to_calculate = [
+#         ("interpretability", latent_codes, attributes, attr_list),
+#         ("correlation", latent_codes, attributes),
+#         ("modularity", latent_codes, attributes),
+#         ("mig", latent_codes, attributes),
+#         ("sap_score", latent_codes, attributes),
+#     ]
 
-    async_results = {}
-    for name, lc, attr, *args in metrics_to_calculate:
-        async_results[name] = calculate_metric_async(pool, name, lc, attr, *args)
+#     async_results = {}
+#     for name, lc, attr, *args in metrics_to_calculate:
+#         async_results[name] = calculate_metric_async(pool, name, lc, attr, *args)
 
-    return async_results
+#     return async_results
 
-def gather_metrics(async_results):
-    """Zbiera wyniki obliczonych asynchronicznie metryk."""
-    ar_vae_metrics = {}
-    for name, async_result in async_results.items():
-        result = async_result.get()
-        #print(f"Przetworzono wynik dla {name}: {result}")
-        ar_vae_metrics.update(result)
-    return ar_vae_metrics
+# def gather_metrics(async_results):
+#     """Zbiera wyniki obliczonych asynchronicznie metryk."""
+#     ar_vae_metrics = {}
+#     for name, async_result in async_results.items():
+#         result = async_result.get()
+#         #print(f"Przetworzono wynik dla {name}: {result}")
+#         ar_vae_metrics.update(result)
+#     return ar_vae_metrics
 
 def compute_representations(data_loader, encoder, reg_dim, device):
     latent_codes = []

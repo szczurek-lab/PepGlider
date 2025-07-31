@@ -5,6 +5,7 @@ from  torch import tensor, distributed
 import data.dataset as dataset_lib
 import data.data_describe as d
 from sklearn.metrics import mean_absolute_error
+from math import inf
 
 def is_main_process():
     return not distributed.is_available() or not distributed.is_initialized() or distributed.get_rank() == 0
@@ -154,7 +155,6 @@ def report_sequence_char_test(
         return
     seq_pred = model_out.argmax(axis=2)
     src_pred = dataset_lib.decoded(tensor(seq_pred).permute(1, 0), "")
-    print(len(src_pred))
     filtered_list = [item for item in src_pred if item.strip()]
     indexes = [index for index, item in enumerate(src_pred) if item.strip()]
     if not filtered_list:
@@ -242,7 +242,10 @@ def report_sequence_char_test(
                         )
         metrics_list = []
     else:
-        metrics_list = [pred_len_acc, pred_len_mae, on_predicted_acc, amino_acc, empty_acc, mean_absolute_error(physchem_original[indexes,1], physchem_decoded.iloc[:,1]), mean_absolute_error(physchem_original[indexes,2], physchem_decoded.iloc[:,2]), mean_absolute_error(physchem_original[indexes,0], physchem_decoded.iloc[:,0])]
+        if not filtered_list:
+            metrics_list = [pred_len_acc, pred_len_mae, on_predicted_acc, amino_acc, empty_acc, inf, inf, inf]
+        else:
+            metrics_list = [pred_len_acc, pred_len_mae, on_predicted_acc, amino_acc, empty_acc, mean_absolute_error(physchem_original[indexes,1], physchem_decoded.iloc[:,1]), mean_absolute_error(physchem_original[indexes,2], physchem_decoded.iloc[:,2]), mean_absolute_error(physchem_original[indexes,0], physchem_decoded.iloc[:,0])]
         for attr in metrics.keys():
                 for subattr in metrics[attr].keys():
                         metrics_list = metrics_list + metrics[attr][subattr][1]

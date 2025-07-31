@@ -81,7 +81,7 @@ def run_epoch_iwae(
         "total": 0.0,
         "reg_loss": 0.0
     }
-    seq_true, model_out, model_out_sampled = [], [], []
+    seq_true, all_physchem, model_out_sampled = [], [], []
     len_data = len(dataloader.dataset)
     latent_codes = []
     attributes = []
@@ -170,6 +170,8 @@ def run_epoch_iwae(
             model_out_sampled.append(
                 sampled_peptide_logits.cpu().detach().numpy()
             )
+            all_physchem.append(physchem.cpu().detach().numpy())
+
 
     if mode == 'test':
         latent_codes = np.concatenate(latent_codes, 0)
@@ -230,7 +232,7 @@ def run_epoch_iwae(
                 seq_true=np.concatenate(seq_true, axis=1),
                 model_out=np.concatenate(model_out_sampled, axis=1),
                 metrics = ar_vae_metrics,
-                physchem_original = physchem.cpu().detach().numpy()
+                physchem_original = np.concatenate(all_physchem, axis=1)
             )
     else:
         with open(train_log_file, 'a', newline='') as csvfile:

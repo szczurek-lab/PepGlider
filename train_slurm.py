@@ -271,7 +271,7 @@ def run():
         "device": "cuda",
         "deeper_eval_every": 20,
         "save_model_every": 20,
-        "ar_vae_flg": False,
+        "ar_vae_flg": True,
         "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
         "gamma_schedule": (0.00001, 20, 8000)
     }

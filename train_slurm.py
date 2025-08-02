@@ -183,7 +183,7 @@ def run_epoch_iwae(
         ar_vae_metrics["Modularity"] = m.compute_modularity(latent_codes, attributes, attr_list)
         ar_vae_metrics["MIG"] = m.compute_mig(latent_codes, attributes,attr_list)
         ar_vae_metrics["SAP_score"] = m.compute_sap_score(latent_codes, attributes, attr_list)
-
+        print(ar_vae_metrics)
     if eval_mode == "deep": 
         metrics_list = mn.report_sequence_char_test(
                 logger,
@@ -237,12 +237,12 @@ def run_epoch_iwae(
             )
     else:
         with open(train_log_file, 'a', newline='') as csvfile:
-            data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, stat_sum["reg_loss"]/gamma] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
+            data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, stat_sum["reg_loss"].item()/gamma] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(data_row)
         if eval_mode == "deep":
             with open(eval_log_file, 'a', newline='') as csvfile:
-                data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, stat_sum["reg_loss"]/gamma] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
+                data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, stat_sum["reg_loss"].item()/gamma] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
                 data_row = data_row + metrics_list
                 csv_writer = csv.writer(csvfile)
                 csv_writer.writerow(data_row)

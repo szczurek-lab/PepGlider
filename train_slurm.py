@@ -184,6 +184,17 @@ def run_epoch_iwae(
         ar_vae_metrics["MIG"] = m.compute_mig(latent_codes, attributes,attr_list)
         ar_vae_metrics["SAP_score"] = m.compute_sap_score(latent_codes, attributes, attr_list)
 
+    if eval_mode == "deep": 
+        metrics_list = mn.report_sequence_char_test(
+                logger,
+                hue=f"{mode} - z",
+                epoch=epoch,
+                seq_true=np.concatenate(seq_true, axis=1),
+                model_out=np.concatenate(model_out_sampled, axis=1),
+                metrics = ar_vae_metrics,
+                physchem_original = np.concatenate(all_physchem, axis=0)
+            )
+
     if logger is not None:
         if ar_vae_flg:
             mn.report_scalars(
@@ -224,16 +235,6 @@ def run_epoch_iwae(
                     ),
                 ],
             )
-    if eval_mode == "deep": 
-        metrics_list = mn.report_sequence_char_test(
-                logger,
-                hue=f"{mode} - z",
-                epoch=epoch,
-                seq_true=np.concatenate(seq_true, axis=1),
-                model_out=np.concatenate(model_out_sampled, axis=1),
-                metrics = ar_vae_metrics,
-                physchem_original = np.concatenate(all_physchem, axis=0)
-            )
     else:
         with open(train_log_file, 'a', newline='') as csvfile:
             data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, stat_sum["reg_loss"]/gamma] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
@@ -272,7 +273,7 @@ def run():
         "task_name": os.getenv("CLEARML_TASK_NAME", "ar-vae 3 dims"),
         "device": "cuda",
         "deeper_eval_every": 20,
-        "save_model_every": 20,
+        "save_model_every": 100,
         "ar_vae_flg": True,
         "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
         "gamma_schedule": (0.00001, 20, 8000)
@@ -364,7 +365,7 @@ def run():
         kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, beta_1)
         gamma_0, gamma_1, t_1 = params["gamma_schedule"]
         if epoch < 1000:
-            gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, gamma_0)
+            gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, 0)
         else:
             gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, gamma_1)
         run_epoch_iwae(

@@ -64,14 +64,13 @@ def compute_mig(latent_codes, attributes, attr_list):
         attributes: np.array num_points x num_attributes
     """
     score_dict = {}
-    score_dict["MIG"] = {}
     m = continuous_mutual_info(latent_codes, attributes)
     entropy = continuous_entropy(attributes)
     sorted_m = np.sort(m, axis=0)[::-1]
     mig_scores = np.divide(sorted_m[0, :] - sorted_m[1, :], entropy[:])
     for i, attr_name in tqdm(enumerate(attr_list)):
-        score_dict['MIG'][attr_name] = mig_scores[i]
-    score_dict['MIG']['mean'] = np.mean(mig_scores)
+        score_dict[attr_name] = mig_scores[i]
+    score_dict['mean'] = np.mean(mig_scores)
     return score_dict
 
 
@@ -84,11 +83,10 @@ def compute_modularity(latent_codes, attributes, attr_list):
     """
     scores = {}
     mi = continuous_mutual_info(latent_codes, attributes)
-    scores["Modularity"] = {}
     for i, attr_name in tqdm(enumerate(attr_list)):
         modularity = _modularity(mi[:, i].reshape(-1, 56))
-        scores['Modularity'][attr_name] = modularity.item()
-    scores['Modularity']['mean'] = np.mean(_modularity(mi))
+        scores[attr_name] = modularity.item()
+    scores['mean'] = np.mean(_modularity(mi))
     return scores
 
 
@@ -117,12 +115,10 @@ def compute_correlation_score(latent_codes, attributes, attr_list):
         attributes: np.array num_points x num_attributes
     """
     corr_matrix = _compute_correlation_matrix(latent_codes, attributes)
-    scores = {
-        "Corr_score": {}
-    }
+    scores = {}
     for i, attr_name in tqdm(enumerate(attr_list)):
-        scores['Corr_score'][attr_name] = np.max(corr_matrix, axis=0)[i]
-    scores['Corr_score']['mean'] = np.mean(np.max(corr_matrix, axis=0))
+        scores[attr_name] = np.max(corr_matrix, axis=0)[i]
+    scores['mean'] = np.mean(np.max(corr_matrix, axis=0))
     return scores
 
 
@@ -160,12 +156,10 @@ def compute_sap_score(latent_codes, attributes, attr_list):
     assert score_matrix.shape[0] == latent_codes.shape[1]
     assert score_matrix.shape[1] == attributes.shape[1]
     sap_scores = _compute_avg_diff_top_two(score_matrix)
-    scores = {
-        "SAP_score": {}
-    }
+    scores = {}
     for i, attr_name in tqdm(enumerate(attr_list)):
-        scores['SAP_score'][attr_name] = sap_scores[i]
-    scores['SAP_score']['mean'] = np.mean(sap_scores)    
+        scores[attr_name] = sap_scores[i]
+    scores['mean'] = np.mean(sap_scores)    
     return scores
 
 

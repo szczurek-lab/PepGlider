@@ -237,12 +237,18 @@ def run_epoch_iwae(
             )
     else:
         with open(train_log_file, 'a', newline='') as csvfile:
-            data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, stat_sum["reg_loss"].item()/gamma] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
+            if gamma == 0:
+                data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, None] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
+            else: 
+                data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, stat_sum["reg_loss"].item()/gamma] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(data_row)
         if eval_mode == "deep":
             with open(eval_log_file, 'a', newline='') as csvfile:
-                data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, stat_sum["reg_loss"].item()/gamma] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
+                if gamma == 0:
+                    data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, None] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
+                else: 
+                    data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, stat_sum["reg_loss"].item()/gamma] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
                 data_row = data_row + metrics_list
                 csv_writer = csv.writer(csvfile)
                 csv_writer.writerow(data_row)

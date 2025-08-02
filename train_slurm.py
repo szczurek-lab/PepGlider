@@ -101,7 +101,7 @@ def run_epoch_iwae(
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
         iwae_terms, all_kl_divs, all_srcs, all_tgts = [], [], [], []
-        reg_losses_per_sample_list  = []
+        reg_losses_per_sample_list, reg_losses_with_gamma_per_sample_list  = [], []
         for _ in range(K):
             z = q_distr.rsample().to(device) # B, L
             if mode == 'test':
@@ -127,13 +127,18 @@ def run_epoch_iwae(
             # print(f'tgt shape = {tgt.shape}')
             if ar_vae_flg:
                 reg_loss = 0
+                reg_loss_with_gamma = 0
                 for dim in reg_dim:
-                    reg_loss += r.compute_reg_loss(
+                    reg_loss_with_gamma_partly, reg_loss_partly = r.compute_reg_loss(
                     z.reshape(-1,z.shape[1]), physchem_torch[:, dim], dim, gamma, device #gamma i delta z papera
-                )
+                    )
+                    reg_loss_with_gamma += reg_loss_with_gamma_partly
+                    reg_loss += reg_loss_partly
                 reg_losses_per_sample_list.append(reg_loss)
+                reg_losses_with_gamma_per_sample_list.append(reg_loss_with_gamma)
 
         if ar_vae_flg:
+            total_reg_loss_with_gamma = torch.stack(reg_losses_with_gamma_per_sample_list, dim=0).mean(dim=0).sum()
             total_reg_loss = torch.stack(reg_losses_per_sample_list, dim=0).mean(dim=0).sum()
         stacked_srcs = torch.stack(all_srcs, dim=0).permute(0,2,1,3)
         stacked_tgts = torch.stack(all_tgts, dim=0)
@@ -144,7 +149,7 @@ def run_epoch_iwae(
         # print(f'cross_entropy shape = {cross_entropy.shape}')
         stacked_kl_divs = torch.stack(all_kl_divs, dim=0)#.mean(dim=0)
         if ar_vae_flg:
-            loss = logsumexp(cross_entropy + kl_beta * stacked_kl_divs, dim=0).mean(dim=0) + total_reg_loss
+            loss = logsumexp(cross_entropy + kl_beta * stacked_kl_divs, dim=0).mean(dim=0) + total_reg_loss_with_gamma
         else:
             loss = logsumexp(cross_entropy + kl_beta * stacked_kl_divs, dim=0).mean(dim=0)
         stacked_kl_divs = stacked_kl_divs.mean(dim=0)
@@ -154,7 +159,7 @@ def run_epoch_iwae(
         stat_sum["ce_sum"] += cross_entropy.mean(dim=0).sum(dim=0).item()
         if ar_vae_flg:
             stat_sum["reg_loss"] = total_reg_loss
-            print(f'total_reg_loss_with_gamma = {total_reg_loss}')
+            print(f'total_reg_loss_with_gamma = {total_reg_loss_with_gamma}')
         stat_sum["total"] += loss.item() * len(batch)   
 
         if optimizer:
@@ -213,7 +218,7 @@ def run_epoch_iwae(
                         "mean over samples",
                         stat_sum["kl_mean"] / len_data,
                     ),
-                    ("Regularization Loss", stat_sum["reg_loss"]/gamma),
+                    ("Regularization Loss", stat_sum["reg_loss"]),
                 ],
             )
         else:
@@ -237,18 +242,12 @@ def run_epoch_iwae(
             )
     else:
         with open(train_log_file, 'a', newline='') as csvfile:
-            if gamma == 0:
-                data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, None] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
-            else: 
-                data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, stat_sum["reg_loss"].item()/gamma] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
+            data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, stat_sum["reg_loss"].item()] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(data_row)
         if eval_mode == "deep":
             with open(eval_log_file, 'a', newline='') as csvfile:
-                if gamma == 0:
-                    data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, None] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
-                else: 
-                    data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, stat_sum["reg_loss"].item()/gamma] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
+                data_row = [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data, stat_sum["reg_loss"].item()] if ar_vae_flg else [mode, stat_sum["total"] / len_data, stat_sum["ce_sum"] / len_data, stat_sum["kl_mean"] / len_data]
                 data_row = data_row + metrics_list
                 csv_writer = csv.writer(csvfile)
                 csv_writer.writerow(data_row)

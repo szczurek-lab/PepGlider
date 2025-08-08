@@ -291,7 +291,7 @@ def run():
         "ar_vae_flg": True,
         "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
         "gamma_schedule": (0.00001, 20, 8000),
-        "factor": 1
+        "factor": 0.1
     }
     encoder = EncoderRNN(
         params["num_heads"],
@@ -339,7 +339,7 @@ def run():
         logger = None
         train_log_file = f'training_log_{datetime.datetime.now()}.csv'.replace(' ', '_')
         with open(train_log_file, 'a', newline='') as csvfile:
-            header = ["Mode", "Total Loss", "Cross Entropy Loss","KL Div","Reg Loss"] if params["ar_vae_flg"] else ["Mode", "Total Loss", "Cross Entropy Loss","KL Div"]
+            header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma"] if params["ar_vae_flg"] else ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss", "KL Div", "KL Div * Beta"]
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(header)
         eval_log_file = f'validation_log_{datetime.datetime.now()}.csv'.replace(' ', '_')

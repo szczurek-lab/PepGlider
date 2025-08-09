@@ -253,11 +253,11 @@ def run_epoch_iwae(
                                                                          stat_sum["ce_sum"] / len_data, 
                                                                          stat_sum["kl_mean"] / len_data,
                                                                          kl_beta * stat_sum["kl_mean"] / len_data]
-        with open(train_log_file, 'a', newline='') as csvfile:
+        with open(ROOT_DIR / train_log_file, 'a', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(data_row)
         if eval_mode == "deep":
-            with open(eval_log_file, 'a', newline='') as csvfile:
+            with open(ROOT_DIR / eval_log_file, 'a', newline='') as csvfile:
                 data_row = data_row + metrics_list
                 csv_writer = csv.writer(csvfile)
                 csv_writer.writerow(data_row)
@@ -269,7 +269,7 @@ def run():
     ROOT_DIR = Path(__file__).parent
     DATA_DIR = ROOT_DIR / "data"
     global MODELS_DIR 
-    MODELS_DIR = ROOT_DIR
+    MODELS_DIR = ROOT_DIR / "first_working_models"
     params = {
         "num_heads": 4,
         "num_layers": 6,
@@ -340,12 +340,12 @@ def run():
     else:
         logger = None
         train_log_file = f'training_log_{datetime.datetime.now()}.csv'.replace(' ', '_')
-        with open(train_log_file, 'a', newline='') as csvfile:
+        with open(ROOT_DIR / train_log_file, 'a', newline='') as csvfile:
             header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma"] if params["ar_vae_flg"] else ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss", "KL Div", "KL Div * Beta"]
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(header)
         eval_log_file = f'validation_log_{datetime.datetime.now()}.csv'.replace(' ', '_')
-        with open(eval_log_file, 'a', newline='') as csvfile:
+        with open(ROOT_DIR / eval_log_file, 'a', newline='') as csvfile:
             if params["ar_vae_flg"]:
                 header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", 
                           "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 

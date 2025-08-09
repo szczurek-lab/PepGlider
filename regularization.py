@@ -1,13 +1,13 @@
 from  torch import tensor, nn, tanh, sign
 
-def compute_reg_loss(z, labels, reg_dim, gamma, device, factor=1.0):
+def compute_reg_loss(z, labels, reg_dim, gamma, gamma_multiplier, device, factor=1.0):
     """
     Computes the regularization loss
     """
     x = z[:, reg_dim]
     # print(f'z in reg loss shape = {x.shape}')
     reg_loss = reg_loss_sign(x, labels, device = device, factor=factor)
-    return gamma * reg_loss, reg_loss
+    return (gamma*gamma_multiplier) * reg_loss, reg_loss
 
 def reg_loss_sign(latent_code, attribute, device, factor=1.0):
     """

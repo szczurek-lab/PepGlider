@@ -67,6 +67,7 @@ def run_epoch_iwae(
     ar_vae_flg,
     reg_dim,
     gamma,
+    gamma_multiplier,
     factor
 ):
     print(f'Epoch {epoch}')
@@ -131,7 +132,7 @@ def run_epoch_iwae(
                 reg_loss_with_gamma = 0
                 for dim in reg_dim:
                     reg_loss_with_gamma_partly, reg_loss_partly = r.compute_reg_loss(
-                    z.reshape(-1,z.shape[1]), physchem_torch[:, dim], dim, gamma, device, factor #gamma i delta z papera
+                    z.reshape(-1,z.shape[1]), physchem_torch[:, dim], dim, gamma, gamma_multiplier[dim], device, factor #gamma i delta z papera
                     )
                     reg_loss_with_gamma += reg_loss_with_gamma_partly
                     reg_loss += reg_loss_partly
@@ -291,7 +292,8 @@ def run():
         "ar_vae_flg": True,
         "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
         "gamma_schedule": (0.00001, 20, 8000),
-        "factor": 0.1
+        "gamma_multiplier": [1,1,10],
+        "factor": 1
     }
     encoder = EncoderRNN(
         params["num_heads"],
@@ -400,6 +402,7 @@ def run():
                 ar_vae_flg=params["ar_vae_flg"],
                 reg_dim=params["reg_dim"],
                 gamma = gamma,
+                gamma_multiplier = params['gamma_multiplier'],
                 factor = params["factor"]
         )
         if eval_mode == "deep":
@@ -420,6 +423,7 @@ def run():
                     ar_vae_flg=params["ar_vae_flg"],
                     reg_dim=params["reg_dim"],
                     gamma=gamma,
+                    gamma_multiplier = params['gamma_multiplier'],
                     factor = params["factor"]
             )
 

@@ -316,11 +316,11 @@ def run():
     is_cpu = False if torch.cuda.is_available() else True
     encoder_filepath = os.path.join(
         os.sep, "net","tscratch","people","plggwiazale", "AR-VAE",
-        "hyperparams_tuning_factor_0.1_ar-vae_epoch900_encoder.pt "
+        "hyperparams_tuning_factor_0.1_ar-vae_epoch900_encoder.pt"
     )
     decoder_filepath = os.path.join(
         os.sep, "net","tscratch","people","plggwiazale", "AR-VAE",
-        "hyperparams_tuning_factor_0.1_ar-vae_epoch900_decoder.pt "
+        "hyperparams_tuning_factor_0.1_ar-vae_epoch900_decoder.pt"
     )
 
     if is_cpu:
@@ -422,6 +422,8 @@ def run():
                 dataloader=train_loader,
                 device=DEVICE,
                 logger=logger,
+                train_log_file = train_log_file,
+                eval_log_file = eval_log_file,
                 epoch=epoch,
                 optimizer=optimizer,
                 kl_beta=kl_beta,
@@ -431,7 +433,7 @@ def run():
                 reg_dim=params["reg_dim"],
                 gamma = gamma,
                 gamma_multiplier = params['gamma_multiplier'],
-                factor = delta
+                factor = params["factor"]
         )
         if eval_mode == "deep":
             loss = run_epoch_iwae(
@@ -441,6 +443,8 @@ def run():
                     dataloader=eval_loader,
                     device=DEVICE,
                     logger=logger,
+                    train_log_file = train_log_file,
+                    eval_log_file = eval_log_file,
                     epoch=epoch,
                     optimizer=None,
                     kl_beta=kl_beta,
@@ -450,7 +454,7 @@ def run():
                     reg_dim=params["reg_dim"],
                     gamma=gamma,
                     gamma_multiplier = params['gamma_multiplier'],
-                    factor = delta
+                    factor = params["factor"]
             )
 
             if epoch > 0 and epoch % params["save_model_every"] == 0:

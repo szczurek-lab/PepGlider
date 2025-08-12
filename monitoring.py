@@ -47,8 +47,20 @@ def report_sequence_char(
     else:
         physchem_decoded_async = d.calculate_physchem(pool, filtered_list)
         physchem_decoded = d.gather_physchem_results(physchem_decoded_async)
-    len_true = seq_true.argmin(axis=0)
-    len_pred = seq_pred.argmin(axis=0)
+    # Use a mask to find where the values are zero
+    zero_mask_true = seq_true == 0
+    zero_mask_pred = seq_pred == 0
+
+    # Find the index of the first zero for each row
+    len_true = np.argmin(zero_mask_true, axis=0)
+    len_pred = np.argmin(zero_mask_pred, axis=0)
+
+    # Handle sequences without a zero by checking if the row contains any zeros.
+    # If not, the length is the full size of the row.
+    len_true[~np.any(zero_mask_true, axis=0)] = seq_true.shape[0]
+    len_pred[~np.any(zero_mask_pred, axis=0)] = seq_pred.shape[0]
+    # len_true = seq_true.argmin(axis=0)
+    # len_pred = seq_pred.argmin(axis=0)
 
     pred_len_acc = (len_true == len_pred).mean()
     pred_len_mae = np.abs(len_true - len_pred).mean()
@@ -161,8 +173,20 @@ def report_sequence_char_test(
         print('All predicted sequences are empty')
     else:
         physchem_decoded = dataset_lib.calculate_physchem_test(filtered_list)
-    len_true = seq_true.argmin(axis=0)
-    len_pred = seq_pred.argmin(axis=0)
+    # Use a mask to find where the values are zero
+    zero_mask_true = seq_true == 0
+    zero_mask_pred = seq_pred == 0
+
+    # Find the index of the first zero for each row
+    len_true = np.argmin(zero_mask_true, axis=0)
+    len_pred = np.argmin(zero_mask_pred, axis=0)
+
+    # Handle sequences without a zero by checking if the row contains any zeros.
+    # If not, the length is the full size of the row.
+    len_true[~np.any(zero_mask_true, axis=0)] = seq_true.shape[0]
+    len_pred[~np.any(zero_mask_pred, axis=0)] = seq_pred.shape[0]
+    # len_true = seq_true.argmin(axis=0)
+    # len_pred = seq_pred.argmin(axis=0)
 
     pred_len_acc = (len_true == len_pred).mean()
     pred_len_mae = np.abs(len_true - len_pred).mean()
@@ -217,9 +241,9 @@ def report_sequence_char_test(
             title="Empty Token Accuracy", series=hue, value=empty_acc, iteration=epoch
         )
         if filtered_list:
-            mae_length = mean_absolute_error(physchem_original[:,0], physchem_decoded[:,0])
-            mae_charge = mean_absolute_error(physchem_original[:,1], physchem_decoded[:,1])
-            mae_hm = mean_absolute_error(physchem_original[:,2], physchem_decoded[:,2])
+            mae_length = mean_absolute_error(physchem_original[indexes,0], physchem_decoded[indexes,0])
+            mae_charge = mean_absolute_error(physchem_original[indexes,1], physchem_decoded[indexes,1])
+            mae_hm = mean_absolute_error(physchem_original[indexes,2], physchem_decoded[indexes,2])
             logger.report_scalar(
                 title="MAE between original length metric vs. decoded",
                 series=hue,
@@ -250,7 +274,7 @@ def report_sequence_char_test(
         else:
 #            print(f'physchem_original shape = {physchem_original.shape}')
 #            print(f'physchem_decoded shape = {physchem_decoded.shape}')
-            metrics_list = [pred_len_acc, pred_len_mae, on_predicted_acc, amino_acc, empty_acc, mean_absolute_error(physchem_original[:,0], physchem_decoded[:,0]), mean_absolute_error(physchem_original[:,1], physchem_decoded[:,1]), mean_absolute_error(physchem_original[:,2], physchem_decoded[:,2])]
+            metrics_list = [pred_len_acc, pred_len_mae, on_predicted_acc, amino_acc, empty_acc, mean_absolute_error(physchem_original[indexes,0], physchem_decoded[indexes,0]), mean_absolute_error(physchem_original[indexes,1], physchem_decoded[indexes,1]), mean_absolute_error(physchem_original[indexes,2], physchem_decoded[indexes,2])]
         for attr in metrics.keys():
                 for subattr in metrics[attr].keys():
                     if attr == 'Interpretability':

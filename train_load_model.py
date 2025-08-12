@@ -161,7 +161,7 @@ def run_epoch_iwae(
         stat_sum["ce_sum"] += cross_entropy.mean(dim=0).sum(dim=0).item()
         if ar_vae_flg:
             stat_sum["reg_loss"] = total_reg_loss
-            print(f'total_reg_loss_with_gamma = {total_reg_loss}')
+            stat_sum["reg_loss_gamma"] = total_reg_loss_with_gamma
             # print(f'total_reg_loss_with_gamma = {total_reg_loss_with_gamma}')
         stat_sum["total"] += loss.item() * len(batch)   
 
@@ -280,20 +280,20 @@ def run():
         "dropout": 0.1,
         "batch_size": 512,
         "lr": 0.001,
-        "kl_beta_schedule": (0.000001, 0.01, 8000),
+        "kl_beta_schedule": (0.0011251, 0.01, 8000),
         "train_size": None,
-        "epochs": 9180,
+        "epochs": 9100,
         "iwae_samples": 10,
         "model_name": os.getenv("CLEARML_PROJECT_NAME", 'ar-vae-v4'),
         "use_clearml": False,
         "task_name": os.getenv("CLEARML_TASK_NAME", "ar-vae 3 dims"),
         "device": "cuda",
         "deeper_eval_every": 20,
-        "save_model_every": 20,
-        "ar_vae_flg": False,
+        "save_model_every": 100,
+        "ar_vae_flg": True,
         "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
-        "gamma_schedule": (0.00001, 20, 8000),
-        "gamma_multiplier": [1,1,10],
+        "gamma_schedule": (2.2500082, 20, 8000),
+        "gamma_multiplier": [1,1,1],
         "factor_schedule": (0.1,10,8000)
     }
     encoder = EncoderRNN(
@@ -414,7 +414,7 @@ def run():
         else:
             gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, gamma_1)
         delta_0, delta_1, t_1  = params['factor_schedule']
-        delta = max(min(delta_0 + (delta_1 - delta_0) / t_1 * epoch, delta_1), delta_0)
+        delta = min(max(delta_0 + (delta_1 - delta_0) / t_1 * epoch, delta_1), delta_0)
         run_epoch_iwae(
                 mode="train",
                 encoder=encoder,

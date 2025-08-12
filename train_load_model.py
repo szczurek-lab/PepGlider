@@ -433,7 +433,7 @@ def run():
                 reg_dim=params["reg_dim"],
                 gamma = gamma,
                 gamma_multiplier = params['gamma_multiplier'],
-                factor = params["factor"]
+                factor = delta
         )
         if eval_mode == "deep":
             loss = run_epoch_iwae(
@@ -454,7 +454,7 @@ def run():
                     reg_dim=params["reg_dim"],
                     gamma=gamma,
                     gamma_multiplier = params['gamma_multiplier'],
-                    factor = params["factor"]
+                    factor = delta
             )
 
             if epoch > 0 and epoch % params["save_model_every"] == 0:

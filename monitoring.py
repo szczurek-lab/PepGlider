@@ -106,19 +106,19 @@ def report_sequence_char(
             logger.report_scalar(
                 title="MAE between original length metric vs. decoded",
                 series=hue,
-                value=mean_absolute_error(physchem_original, physchem_decoded[1]),
+                value=mean_absolute_error(physchem_original, physchem_decoded[0]),
                 iteration=epoch
             )
             logger.report_scalar(
                 title="MAE between original charge metric vs. decoded",
                 series=hue,
-                value=mean_absolute_error(physchem_original, physchem_decoded[2]),
+                value=mean_absolute_error(physchem_original, physchem_decoded[1]),
                 iteration=epoch
             )
             logger.report_scalar(
                 title="MAE between original hydrophobicity moment metric vs. decoded",
                 series=hue,
-                value=mean_absolute_error(physchem_original, physchem_decoded[0]),
+                value=mean_absolute_error(physchem_original, physchem_decoded[2]),
                 iteration=epoch
             )
         for attr in metrics.keys():
@@ -133,7 +133,7 @@ def report_sequence_char(
                     )
         metrics_list = []
     else:
-        metrics_list = [pred_len_acc, pred_len_mae, on_predicted_acc, amino_acc, empty_acc, mean_absolute_error(physchem_original, physchem_decoded[1]), mean_absolute_error(physchem_original, physchem_decoded[2]), mean_absolute_error(physchem_original, physchem_decoded[0])]
+        metrics_list = [pred_len_acc, pred_len_mae, on_predicted_acc, amino_acc, empty_acc, mean_absolute_error(physchem_original, physchem_decoded[0]), mean_absolute_error(physchem_original, physchem_decoded[1]), mean_absolute_error(physchem_original, physchem_decoded[2])]
         for attr in metrics.keys():
                 if attr == 'Interpretability':
                     for subattr in metrics[attr].keys():
@@ -217,22 +217,25 @@ def report_sequence_char_test(
             title="Empty Token Accuracy", series=hue, value=empty_acc, iteration=epoch
         )
         if filtered_list:
+            mae_length = mean_absolute_error(physchem_original[0], physchem_decoded[0])
+            mae_charge = mean_absolute_error(physchem_original[1], physchem_decoded[1])
+            mae_hm = mean_absolute_error(physchem_original[2], physchem_decoded[2])
             logger.report_scalar(
                 title="MAE between original length metric vs. decoded",
                 series=hue,
-                value=mean_absolute_error(physchem_original, physchem_decoded[1]),
+                value=mean_absolute_error(physchem_original, physchem_decoded[0]),
                 iteration=epoch
             )
             logger.report_scalar(
                 title="MAE between original charge metric vs. decoded",
                 series=hue,
-                value=mean_absolute_error(physchem_original, physchem_decoded[2]),
+                value=mean_absolute_error(physchem_original, physchem_decoded[1]),
                 iteration=epoch
             )
             logger.report_scalar(
                 title="MAE between original hydrophobicity moment metric vs. decoded",
                 series=hue,
-                value=mean_absolute_error(physchem_original, physchem_decoded[0]),
+                value=mean_absolute_error(physchem_original, physchem_decoded[2]),
                 iteration=epoch
             )
         for attr in metrics.keys():
@@ -245,7 +248,7 @@ def report_sequence_char_test(
         if not filtered_list:
             metrics_list = [pred_len_acc, pred_len_mae, on_predicted_acc, amino_acc, empty_acc, inf, inf, inf]
         else:
-            metrics_list = [pred_len_acc, pred_len_mae, on_predicted_acc, amino_acc, empty_acc, mean_absolute_error(physchem_original[indexes,1], physchem_decoded.iloc[:,1]), mean_absolute_error(physchem_original[indexes,2], physchem_decoded.iloc[:,2]), mean_absolute_error(physchem_original[indexes,0], physchem_decoded.iloc[:,0])]
+            metrics_list = [pred_len_acc, pred_len_mae, on_predicted_acc, amino_acc, empty_acc, mean_absolute_error(physchem_original[0], physchem_decoded[0]), mean_absolute_error(physchem_original[1], physchem_decoded[1]), mean_absolute_error(physchem_original[2], physchem_decoded[2])]
         for attr in metrics.keys():
                 for subattr in metrics[attr].keys():
                     if attr == 'Interpretability':

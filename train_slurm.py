@@ -249,7 +249,8 @@ def run_epoch_iwae(
                         stat_sum["kl_mean"] / len_data, 
                         kl_beta * stat_sum["kl_mean"] / len_data,
                         stat_sum["reg_loss"].item(),
-                        stat_sum["reg_loss_gamma"].item()] if ar_vae_flg else [mode, epoch, stat_sum["total"] / len_data, 
+                        stat_sum["reg_loss_gamma"].item(),
+                        factor] if ar_vae_flg else [mode, epoch, stat_sum["total"] / len_data, 
                                                                          stat_sum["ce_sum"] / len_data, 
                                                                          stat_sum["kl_mean"] / len_data,
                                                                          kl_beta * stat_sum["kl_mean"] / len_data]
@@ -292,8 +293,8 @@ def run():
         "ar_vae_flg": True,
         "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
         "gamma_schedule": (0.00001, 20, 8000),
-        "gamma_multiplier": [1,1,10],
-        "factor": 1
+        "gamma_multiplier": [1,1,1],
+        "factor_schedule": (0.1,10,8000)
     }
     encoder = EncoderRNN(
         params["num_heads"],
@@ -341,13 +342,13 @@ def run():
         logger = None
         train_log_file = f'training_log_{datetime.datetime.now()}.csv'.replace(' ', '_')
         with open(ROOT_DIR / train_log_file, 'a', newline='') as csvfile:
-            header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma"] if params["ar_vae_flg"] else ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss", "KL Div", "KL Div * Beta"]
+            header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta",] if params["ar_vae_flg"] else ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss", "KL Div", "KL Div * Beta"]
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(header)
         eval_log_file = f'validation_log_{datetime.datetime.now()}.csv'.replace(' ', '_')
         with open(ROOT_DIR / eval_log_file, 'a', newline='') as csvfile:
             if params["ar_vae_flg"]:
-                header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", 
+                header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta", 
                           "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
                           "MAE length", "MAE charge", "MAE hydrophobicity moment", 
                           "Interpretability - length", "Interpretability - charge", "Interpretability - hydrophobicity moment",
@@ -385,6 +386,8 @@ def run():
             gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, 0.0)
         else:
             gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, gamma_1)
+        delta_0, delta_1, t_1  = params['factor_schedule']
+        delta = min(max(delta_0 + (delta_1 - delta_0) / t_1 * epoch, delta_1), delta_0)
         run_epoch_iwae(
                 mode="train",
                 encoder=encoder,
@@ -403,7 +406,7 @@ def run():
                 reg_dim=params["reg_dim"],
                 gamma = gamma,
                 gamma_multiplier = params['gamma_multiplier'],
-                factor = params["factor"]
+                factor = delta
         )
         if eval_mode == "deep":
             loss = run_epoch_iwae(
@@ -424,7 +427,7 @@ def run():
                     reg_dim=params["reg_dim"],
                     gamma=gamma,
                     gamma_multiplier = params['gamma_multiplier'],
-                    factor = params["factor"]
+                    factor = delta
             )
 
             if epoch > 0 and epoch % params["save_model_every"] == 0:

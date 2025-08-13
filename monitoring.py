@@ -176,7 +176,8 @@ def report_sequence_char_test(
     # Use a mask to find where the values are zero
     zero_mask_true = seq_true == 0
     zero_mask_pred = seq_pred == 0
-
+    print(f'seq_pred shape = {seq_pred.shape}')
+    print(f'seq_true shape = {seq_true.shape}')
     # Find the index of the first zero for each row
     len_true = np.argmin(seq_true, axis=0)
     len_pred = np.argmin(seq_pred, axis=0)

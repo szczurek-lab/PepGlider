@@ -387,7 +387,7 @@ def run():
         else:
             gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, gamma_1)
         delta_0, delta_1, t_1  = params['factor_schedule']
-        delta = min(max(delta_0 + (delta_1 - delta_0) / t_1 * epoch, delta_1), delta_0)
+        delta = min(max(delta_0 + (delta_1 - delta_0) / t_1 * epoch, delta_0), delta_1)
         run_epoch_iwae(
                 mode="train",
                 encoder=encoder,

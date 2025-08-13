@@ -178,8 +178,8 @@ def report_sequence_char_test(
     zero_mask_pred = seq_pred == 0
 
     # Find the index of the first zero for each row
-    len_true = np.argmin(zero_mask_true, axis=0)
-    len_pred = np.argmin(zero_mask_pred, axis=0)
+    len_true = np.argmin(seq_true, axis=0)
+    len_pred = np.argmin(seq_pred, axis=0)
 
     # Handle sequences without a zero by checking if the row contains any zeros.
     # If not, the length is the full size of the row.

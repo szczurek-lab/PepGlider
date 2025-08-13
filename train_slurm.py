@@ -178,7 +178,7 @@ def run_epoch_iwae(
             model_out_sampled.append(
                 sampled_peptide_logits.cpu().detach().numpy()
             )
-            all_physchem.append(physchem.cpu().detach().numpy())
+            all_physchem.append(attributes_input.cpu().detach().numpy())
 
 
     if mode == 'test':

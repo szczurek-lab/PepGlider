@@ -340,12 +340,12 @@ def run():
         eval_log_file = None
     else:
         logger = None
-        train_log_file = f'training_log_{datetime.datetime.now()}.csv'.replace(' ', '_')
+        train_log_file = f'training_log_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.csv'.replace(' ', '_')
         with open(ROOT_DIR / train_log_file, 'a', newline='') as csvfile:
             header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta",] if params["ar_vae_flg"] else ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss", "KL Div", "KL Div * Beta"]
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(header)
-        eval_log_file = f'validation_log_{datetime.datetime.now()}.csv'.replace(' ', '_')
+        eval_log_file = f'validation_log_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.csv'.replace(' ', '_')
         with open(ROOT_DIR / eval_log_file, 'a', newline='') as csvfile:
             if params["ar_vae_flg"]:
                 header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta", 

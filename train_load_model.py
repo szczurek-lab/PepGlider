@@ -270,7 +270,7 @@ def run():
     ROOT_DIR = Path(__file__).parent
     DATA_DIR = ROOT_DIR / "data"
     global MODELS_DIR 
-    MODELS_DIR = ROOT_DIR
+    MODELS_DIR = ROOT_DIR / "first_working_models"
     params = {
         "num_heads": 4,
         "num_layers": 6,
@@ -280,7 +280,7 @@ def run():
         "dropout": 0.1,
         "batch_size": 512,
         "lr": 0.001,
-        "kl_beta_schedule": (0.0011251, 0.01, 8000),
+        "kl_beta_schedule": (0.000001, 0.01, 8000),
         "train_size": None,
         "epochs": 9100,
         "iwae_samples": 10,
@@ -292,7 +292,7 @@ def run():
         "save_model_every": 100,
         "ar_vae_flg": True,
         "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
-        "gamma_schedule": (2.2500082, 20, 8000),
+        "gamma_schedule": (0.00001, 20, 8000),
         "gamma_multiplier": [1,1,1],
         "factor_schedule": (0.1,10,8000)
     }
@@ -405,6 +405,7 @@ def run():
     eval_loader = DataLoader(eval_dataset, batch_size=params["batch_size"], shuffle=True)
 
     for epoch in tqdm(range(params["epochs"])):
+        epoch = epoch + (10000-params["epochs"])
         eval_mode = "deep" if epoch % params["deeper_eval_every"] == 0 else "fast"
         beta_0, beta_1, t_1 = params["kl_beta_schedule"]
         kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, beta_1)

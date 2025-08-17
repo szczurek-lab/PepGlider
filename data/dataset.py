@@ -321,7 +321,7 @@ class AMPDataManager:
     
 def plot_hist_lengths(data):
     unique_values = np.unique(data)
-
+    print(f'unique_values = unique_values')
     bin_edges = np.concatenate([unique_values - 0.5, [unique_values[-1] + 0.5]])
 
     plt.hist(data, bins=bin_edges, edgecolor='black', rwidth=0.8)

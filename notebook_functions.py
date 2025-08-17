@@ -1,0 +1,332 @@
+import pandas as pd
+import os
+import matplotlib.pyplot as plt
+import numpy as np
+import io
+import csv
+import glob
+import re
+import copy
+import matplotlib.patches as mpatches
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import notebook_functions as n
+import torch
+from torch.utils.data import TensorDataset, DataLoader, random_split
+from model.model import EncoderRNN, DecoderRNN
+import random
+from pathlib import Path
+from scipy import stats
+from torch import optim, nn, logsumexp, cuda, save, backends, manual_seed, LongTensor, zeros_like, ones_like, tensor, cat
+from torch.distributions import Normal
+torch.autograd.set_detect_anomaly(True)
+import itertools
+import seaborn as sns
+from tqdm import tqdm
+import data.dataset as dataset_lib
+from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
+import ar_vae_metrics as m
+# from sklearn.decomposition import IncrementalPCA
+
+def find_files_with_matching_epochs(grouped_files):
+    """
+    Znajduje pliki z tym samym numerem epoki i grupuje je według sufiksu.
+
+    Args:
+        grouped_files (dict): Zagnieżdżony słownik z prefiksami, sufiksami i listą plików.
+    
+    Returns:
+        dict: Słownik z kluczem epoki.
+    """
+    epochs_to_files = {}
+
+    for prefix, groups in grouped_files.items():
+        for suffix, file_list in groups.items():
+            for filename in file_list:
+                # Używamy wyrażenia regularnego, aby znaleźć numer epoki
+                match = re.search(r'epoch(\d+)', filename)
+                if match:
+                    epoch_number = int(match.group(1))
+                    
+                    if epoch_number not in epochs_to_files:
+                        epochs_to_files[epoch_number] = {}
+                    if prefix not in epochs_to_files[epoch_number]:
+                        epochs_to_files[epoch_number][prefix] = {'_encoder': '', '_decoder': ''}
+                    # print(epochs_to_files)
+                    # print(f'\n')
+                    # print(epoch_number)
+                    # print(prefix)
+                    # print(f'\n')
+                    # Dodajemy plik do odpowiedniej listy na podstawie sufiksu
+                    epochs_to_files[epoch_number][prefix][suffix] = filename
+    
+    return epochs_to_files
+
+def find_and_group_model_files(prefixes_to_compare, suffixes_to_group=['_encoder', '_decoder'], directory="./first_working_models"):
+    """
+    Wyszukuje pliki .pt dla danych prefiksów i grupuje je według sufiksów.
+
+    Args:
+        prefixes_to_compare (list): Lista prefiksów do porównania.
+        suffixes_to_group (list): Lista sufiksów do grupowania (np. ['_encoder', '_decoder']).
+        directory (str): Ścieżka do folderu, w którym szukamy plików.
+    
+    Returns:
+        dict: Zagnieżdżony słownik z pogrupowanymi plikami.
+              Przykład: {'prefix_name': {'_encoder': [...], '_decoder': [...]}}
+    """
+    found_files = {}
+    unique_prefixes = sorted(list(set(prefixes_to_compare)))
+
+    for prefix in unique_prefixes:
+        search_pattern = os.path.join(directory, f"{prefix}*.pt")
+        all_matches = glob.glob(search_pattern)
+        files_for_prefix = {suffix: [] for suffix in suffixes_to_group}
+
+        for file_path in all_matches:
+            file_name = os.path.basename(file_path)
+            found = False
+            for suffix in suffixes_to_group:
+                if file_name.endswith(f"{suffix}.pt"):
+                    files_for_prefix[suffix].append(file_name)
+                    found = True
+                    break
+        
+        found_files[prefix] = files_for_prefix
+    
+    return found_files
+
+def read_and_fix_csv(file_path, all_expected_columns):
+    """
+    Wczytuje plik CSV, ręcznie uzupełnia wiersze o brakujące kolumny
+    i zwraca DataFrame z danymi.
+    
+    Args:
+        file_path (str): Ścieżka do pliku CSV.
+        all_expected_columns (list): Lista nazw wszystkich oczekiwanych kolumn.
+    
+    Returns:
+        pd.DataFrame: Naprawiony DataFrame z danymi.
+    """
+    if not isinstance(all_expected_columns, list):
+        print("Błąd: 'all_expected_columns' musi być listą.")
+        return None
+
+    fixed_rows = []
+    
+    try:
+        with open(file_path, 'r', newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            header = next(reader)
+            num_cols_in_header = len(header)
+            num_expected_cols = len(all_expected_columns)
+            
+            for row in reader:
+                if len(row) != num_cols_in_header:
+                    
+                    if len(row) > num_expected_cols:
+                        row = row[:num_expected_cols]
+                    
+                    if len(row) < num_expected_cols:
+                        row.extend([None] * (num_expected_cols - len(row)))
+
+                fixed_rows.append(row)
+                
+    except FileNotFoundError:
+        print(f"Błąd: Plik '{file_path}' nie został znaleziony.")
+        return None
+    except Exception as e:
+        print(f"Wystąpił nieoczekiwany błąd podczas przetwarzania pliku '{file_path}': {e}")
+        return None
+    
+    df = pd.DataFrame(fixed_rows, columns=all_expected_columns)
+    df['MAE length'] = pd.to_numeric(df['MAE length'], errors='coerce')
+    df['MAE charge'] = pd.to_numeric(df['MAE charge'], errors='coerce')
+    df['MAE hydrophobicity moment'] = pd.to_numeric(df['MAE hydrophobicity moment'], errors='coerce')
+    df = df.fillna(0)
+    
+    return df
+
+def convert_rgba_to_rgb(rgba):
+    row, col, ch = rgba.shape
+    if rgba.dtype == 'uint8':
+        rgba = rgba.astype('float32') / 255.0
+    if ch == 3:
+        return rgba
+    assert ch == 4
+    rgb = np.zeros((row, col, 3), dtype='float32')
+    r, g, b, a = rgba[:, :, 0], rgba[:, :, 1], rgba[:, :, 2], rgba[:, :, 3]
+    a = np.asarray(a, dtype='float32')
+
+    rgb[:, :, 0] = r * a + (1.0 - a)
+    rgb[:, :, 1] = g * a + (1.0 - a)
+    rgb[:, :, 2] = b * a + (1.0 - a)
+
+    return np.asarray(rgb)
+
+def truncate_to_shortest(list_of_arrays):
+    """
+    Przycinanie wszystkich tablic NumPy w liście do wymiaru
+    najkrótszej tablicy.
+    
+    Args:
+        list_of_arrays (list): Lista tablic NumPy.
+
+    Returns:
+        list: Nowa lista tablic, wszystkie o tej samej długości.
+    """
+    if not list_of_arrays:
+        return []
+
+    # 1. Znajdź najkrótszy wymiar (np. liczbę wierszy)
+    shortest_dim = min(arr.shape[0] for arr in list_of_arrays)
+
+    # 2. Utwórz nową listę z przyciętymi tablicami
+    truncated_arrays = [arr[:shortest_dim] for arr in list_of_arrays]
+
+    return truncated_arrays
+
+def plot_dim(data, target, epoch_number, models_prefixs_to_compare, filename, dim2=1, xlim=None, ylim=None):
+    attr = ['Length', 'Charge' , 'Hydrophobic moment']
+    n_rows = len(attr)
+    n_cols = int(data.shape[0]/len(attr))
+    n_plots = n_rows * n_cols
+    min_row = []
+    max_row = []
+    for i in range(len(attr)):
+        min_row.append(np.min(target[i*n_cols:(i*n_cols)+n_cols,:,i]))
+        max_row.append(np.max(target[i*n_cols:(i*n_cols)+n_cols,:,i]))
+        
+    fig, axes = plt.subplots(
+        nrows=n_rows,
+        ncols=n_cols,
+        figsize=(5*n_cols, 5*n_rows),
+        dpi=150           
+    )
+    axes_flat = axes.flatten()
+    for i in range(n_cols):
+        for j in range(n_rows):
+            axes[j,i].scatter(
+                        x=data[(j*n_cols)+i,:, j],
+                        y=data[(j*n_cols)+i,:, dim2],
+                        c=target[(j*n_cols)+i,:,j],
+                        s=12,
+                        linewidths=0,
+                        cmap="viridis",
+                        alpha=0.5,
+                        vmin=min_row[j],  
+                        vmax=max_row[j]  
+            )
+            axes[j,i].set_title(f'{models_prefixs_to_compare[i].split("_ar-vae")[0]}', fontsize = 16)
+            axes[j,i].set_xlabel(f'dimension: {attr[j]}', fontsize=14)
+            axes[j,i].set_ylabel(f'not regularized dimension', fontsize=14)
+    for i in range(n_rows):
+        divider = make_axes_locatable(axes[i, n_cols-1])
+        cax = divider.append_axes("right", size="5%", pad=0.1)
+        cbar_ax_row = fig.colorbar(
+            axes[i, n_cols-1].collections[0], 
+            cax=cax,
+            label='Length',
+            shrink=0.8,
+            aspect=20 
+        )
+        cbar_ax_row.ax.set_ylabel('')
+    fig.suptitle(f"Epoch {epoch_number}", fontsize=20, fontweight='bold')
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.savefig(filename, format='png', dpi=150)
+    plt.show()
+    
+def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1, grid_res=0.05, z_dim = 56, params = {}):
+    attr = ['Length', 'Charge' , 'Hydrophobic moment']
+    all_final_z_points = []
+    all_final_attr_labels = []
+    n_compare = len(encoders_list)
+    DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
+            
+    for d in dim1:
+        dim_z = [[] for _ in range(n_compare)]
+        dim_attr = [[] for _ in range(n_compare)]
+        
+        for i, (encoder_name, decoder_name) in enumerate(zip(encoders_list, decoders_list)):
+            encoder = EncoderRNN(
+                    params["num_heads"],
+                    params["num_layers"],
+                    params["latent_dim"],
+                    params["encoding"],
+                    params["dropout"],
+                    params["layer_norm"],
+            )
+            decoder = DecoderRNN(
+                    params["num_heads"],
+                    params["num_layers"],
+                    params["latent_dim"],
+                    params["encoding"],
+                    params["dropout"],
+                    params["layer_norm"],
+            )
+            encoder.load_state_dict(torch.load(f"./first_working_models/{encoder_name}", map_location=DEVICE))
+            encoder = encoder.to(DEVICE)
+            decoder.load_state_dict(torch.load(f"./first_working_models/{decoder_name}", map_location=DEVICE))
+            decoder = decoder.to(DEVICE)
+
+            if train_loader != None:
+                for batch, labels, physchem, attributes_input in train_loader: 
+                    peptides = batch.permute(1, 0).type(LongTensor).to(DEVICE) # S x B
+                    mu, std = encoder(peptides)
+                    z = mu.clone()
+                    outputs = decoder(z)
+                    src = outputs.permute(1, 2, 0)  # B x C x S
+                    src_decoded = src.argmax(dim=1) # B x S
+                    decoded = dataset_lib.decoded(src_decoded, "") 
+                    filtered_list = [item for item in decoded if item.strip()]
+                    indexes = [index for index, item in enumerate(decoded) if item.strip()]
+                    labels = dataset_lib.calculate_physchem_test(filtered_list)
+                                
+                    dim_z[i].append(z[indexes, :].detach().cpu().numpy())
+                    dim_attr[i].append(labels.detach().cpu().numpy())
+            else:                       
+                x1 = torch.arange(-5., 5., grid_res)
+                x2 = torch.arange(-5., 5., grid_res)
+                z1, z2 = torch.meshgrid([x1, x2])
+                num_points = z1.size(0) * z1.size(1)
+                z = torch.randn(1, params["latent_dim"]).to(DEVICE)
+                z = z.repeat(num_points, 1)
+                z[:, d] = z1.contiguous().view(1, -1)
+                z[:, dim2] = z2.contiguous().view(1, -1)                                   
+                mini_batch_size = 500
+                num_mini_batches = num_points // mini_batch_size
+                for j in tqdm(range(num_mini_batches)):
+                    z_batch = z[j * mini_batch_size:(j + 1) * mini_batch_size, :]
+                    outputs = decoder(z_batch)
+                    src = outputs.permute(1, 2, 0)  # B x C x S
+                    src_decoded = src.argmax(dim=1) # B x S
+                    decoded = dataset_lib.decoded(src_decoded, "") 
+                    filtered_list = [item for item in decoded if item.strip()]
+                    indexes = [index for index, item in enumerate(decoded) if item.strip()]
+                    labels = dataset_lib.calculate_physchem_test(filtered_list)
+                                
+                    dim_z[i].append(z_batch[indexes, :].detach().cpu().numpy())
+                    dim_attr[i].append(labels.detach().cpu().numpy())
+        for i in range(n_compare):
+            # print(dim_z[0].shape)
+            aggregated_z = np.vstack(dim_z[i])
+            aggregated_attr = np.vstack(dim_attr[i])
+            
+            all_final_z_points.append(aggregated_z)
+            all_final_attr_labels.append(aggregated_attr)
+        # print(f'final_z_points shape = {len(all_final_z_points)}')
+        # print(f'final_attr_labels shape = {len(all_final_attr_labels)}')
+    final_z_points = truncate_to_shortest(all_final_z_points)
+    final_attr_labels = truncate_to_shortest(all_final_attr_labels)
+    aggregated_z_points = np.stack(final_z_points)
+    aggregated_attr_labels = np.stack(final_attr_labels)
+    # print(f'aggregated_z_points shape = {aggregated_z_points.shape}')
+    # print(f'aggregated_attr_labels shape = {aggregated_attr_labels.shape}')
+    save_filename = os.path.join(
+            os.getcwd(),
+            f'latent_surface_{dim2}dim.png'
+    )
+    match = re.search(r'epoch(\d+)', encoder_name)
+    if match:
+        epoch_number = int(match.group(1))
+    return aggregated_z_points, aggregated_attr_labels, epoch_number, save_filename, dim2
+    # plot_dim(aggregated_z_points, aggregated_attr_labels, save_filename, dim2=dim2)

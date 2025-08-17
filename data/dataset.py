@@ -129,16 +129,25 @@ def normalize_dimension_to_0_1(tensor: torch.Tensor, dim: int = -1) -> torch.Ten
     normalized_tensor = (tensor - min_vals) / range_vals
     return normalized_tensor
 
-def prepare_data_for_training(data_dir, batch_size):
-    data_manager = AMPDataManager(
-        data_dir / 'unlabelled_positive.csv',
-        data_dir / 'unlabelled_negative.csv',
-        min_len=MIN_LENGTH,
-        max_len=MAX_LENGTH)
+def prepare_data_for_training(data_dir, batch_size, data_type):
+    if data_type == 'positiv_negativ_AMPs':
+        data_manager = AMPDataManager(
+            positive_filepath = data_dir / 'unlabelled_positive.csv',
+            negative_filepath = data_dir / 'unlabelled_negative.csv',
+            min_len=MIN_LENGTH,
+            max_len=MAX_LENGTH)
 
-    amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
+        amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
+
+    elif data_type == 'uniprot':
+        data_manager = AMPDataManager(
+            uniprot_filepath = [data_dir / i for i in ['Uniprot_0_25_train.csv','Uniprot_0_25_test.csv','Uniprot_0_25_val.csv']],
+            min_len=MIN_LENGTH,
+            max_len=MAX_LENGTH)
+
+        amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
+        
     attributes = normalize_attributes(attributes_input)
-
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
     train_size = int(0.8 * len(dataset))
     eval_size = len(dataset) - train_size
@@ -150,43 +159,51 @@ def prepare_data_for_training(data_dir, batch_size):
 class AMPDataManager:
     def __init__(
             self,
-            positive_filepath: str,
-            negative_filepath: str,
+            positive_filepath: str = None,
+            negative_filepath: List[str] = None,
+            uniprot_filepath: str = None,
             min_len: int,
             max_len: int,
     ):
         if str(positive_filepath).endswith(".csv"):
             self.positive_data = pd.read_csv(positive_filepath)
         else:
-            with open(positive_filepath) as fasta_file:  # Will close handle cleanly
-                identifiers = []
-                sequences = []
-                for seq_record in SeqIO.parse(fasta_file, 'fasta'):  # (generator)
-                    seq_str = str(seq_record.seq)  # Convert Seq object to string
-                    if seq_str:  # Only add non-empty sequences
-                        sequences.append(seq_str)
-                        identifiers.append(seq_record.id)
+            self.positive_data = None
+            # with open(positive_filepath) as fasta_file:  # Will close handle cleanly
+            #     identifiers = []
+            #     sequences = []
+            #     for seq_record in SeqIO.parse(fasta_file, 'fasta'):  # (generator)
+            #         seq_str = str(seq_record.seq)  # Convert Seq object to string
+            #         if seq_str:  # Only add non-empty sequences
+            #             sequences.append(seq_str)
+            #             identifiers.append(seq_record.id)
             
-            #converting lists to pandas Series    
-            s1 = pd.Series(identifiers, name='ID')
-            s2 = pd.Series(sequences, name='Sequence')
-            #Gathering Series into a pandas DataFrame and rename index as ID column
-            self.positive_data = pd.DataFrame({'ID': s1, 'Sequence': s2})
+            # #converting lists to pandas Series    
+            # s1 = pd.Series(identifiers, name='ID')
+            # s2 = pd.Series(sequences, name='Sequence')
+            # #Gathering Series into a pandas DataFrame and rename index as ID column
+            # self.positive_data = pd.DataFrame({'ID': s1, 'Sequence': s2})
         if str(negative_filepath).endswith(".csv"):
             self.negative_data = pd.read_csv(negative_filepath)
         else:
-            with open(negative_filepath) as fasta_file:  # Will close handle cleanly
-                identifiers = []
-                sequences = []
-                for seq_record in SeqIO.parse(fasta_file, 'fasta'):  # (generator)
-                    seq_str = str(seq_record.seq)  # Convert Seq object to string
-                    if seq_str:  # Only add non-empty sequences
-                        sequences.append(seq_str)
-                        identifiers.append(seq_record.id)
+            self.negative_data = None
+            # with open(negative_filepath) as fasta_file:  # Will close handle cleanly
+            #     identifiers = []
+            #     sequences = []
+            #     for seq_record in SeqIO.parse(fasta_file, 'fasta'):  # (generator)
+            #         seq_str = str(seq_record.seq)  # Convert Seq object to string
+            #         if seq_str:  # Only add non-empty sequences
+            #             sequences.append(seq_str)
+            #             identifiers.append(seq_record.id)
   
             s1 = pd.Series(identifiers, name='ID')
             s2 = pd.Series(sequences, name='Sequence')
             self.negative_data = pd.DataFrame({'ID': s1, 'Sequence': s2})
+        if uniprot_filepath != '':
+            dfs = [pd.read_excel(f) for f in uniprot_filepath]
+            self.uniprot_data = pd.concat(dfs, ignore_index=True)
+        else:
+            self.uniprot_data = None
 
         self.min_len = min_len
         self.max_len = max_len
@@ -196,7 +213,10 @@ class AMPDataManager:
         return df.loc[mask]
 
     def _filter_data(self):
-        return self._filter_by_length(self.positive_data), self.negative_data
+        if self.positive_data is not None and self.negative_data is not None:
+            return self._filter_by_length(self.positive_data), self.negative_data
+        else: 
+            return self._filter_by_length(self.uniprot_data)
 
     @staticmethod
     def _get_probs(peptide_lengths: List[int]) -> Dict[int, float]:
@@ -270,8 +290,14 @@ class AMPDataManager:
         pos_dataset.loc[:, 'Label'] = 1
         neg_dataset.loc[:, 'Label'] = 0
         merged = pd.concat([pos_dataset, neg_dataset])
-        x = np.asarray(merged['Sequence'].tolist())
-        y = np.asarray(merged['Label'].tolist())
+        return merged
+    
+    def output_data(self, df):
+        x = np.asarray(df['Sequence'].tolist())
+        if 'Label' in df.columns:
+            y = np.asarray(df['Label'].tolist())
+        else:
+            y = np.zeros((x.shape[0]))
         x_changed = pad(to_one_hot(x))
         attributes = calculate_physchem_test(decoded(x_changed, ""),) 
         return x_changed, y, attributes, x
@@ -282,4 +308,8 @@ class AMPDataManager:
 
     def get_merged_data(self, balanced: bool = True):
         pos_dataset, neg_dataset = self.get_data(balanced=balanced)
-        return self._join_datasets(pos_dataset, neg_dataset)
+        return self.output_data(self._join_datasets(pos_dataset, neg_dataset))
+    
+    def get_uniprot_data(self):
+        uniprot_dataset = self._filter_data()
+        return self.output_data(uniprot_dataset)

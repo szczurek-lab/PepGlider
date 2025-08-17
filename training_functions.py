@@ -237,7 +237,7 @@ def run_epoch_iwae(
 
     return stat_sum["total"] / len_data
 
-def run(encoder_filepath=None, decoder_filepath=None):
+def run(data_type, encoder_filepath=None, decoder_filepath=None):
     global ROOT_DIR 
     ROOT_DIR = Path(__file__).parent
     DATA_DIR = ROOT_DIR / "data"
@@ -296,7 +296,7 @@ def run(encoder_filepath=None, decoder_filepath=None):
         betas=(0.9, 0.999),
     )
 
-    train_loader, eval_loader = dataset_lib.prepare_data_for_training(DATA_DIR, params['batch_size'])
+    train_loader, eval_loader = dataset_lib.prepare_data_for_training(DATA_DIR, params['batch_size'], data_type)
 
     for epoch in tqdm(range(params["epochs"])):
         eval_mode = "deep" if epoch % params["deeper_eval_every"] == 0 else "fast"

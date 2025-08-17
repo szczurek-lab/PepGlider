@@ -19,7 +19,8 @@ import monitoring as mn
 import regularization as r
 import datetime
 import csv
-
+from torch.utils.data import DataLoader
+from params_setting import set_params
 
 def run_epoch_iwae(
     mode: Literal["test", "train"],
@@ -295,7 +296,7 @@ def run(encoder_filepath=None, decoder_filepath=None):
         betas=(0.9, 0.999),
     )
 
-    train_loader, eval_loader = dataset_lib.prepare_data_for_training(data_dir, params['batch_size'])
+    train_loader, eval_loader = dataset_lib.prepare_data_for_training(DATA_DIR, params['batch_size'])
 
     for epoch in tqdm(range(params["epochs"])):
         eval_mode = "deep" if epoch % params["deeper_eval_every"] == 0 else "fast"

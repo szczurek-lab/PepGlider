@@ -11,9 +11,10 @@ from Bio import SeqIO
 from modlamp import analysis
 from sklearn.preprocessing import QuantileTransformer
 import sys
-sys.append('..')
+sys.path.append('..')
 from model.constants import MIN_LENGTH, MAX_LENGTH
 from torch.utils.data import TensorDataset, DataLoader, random_split
+from torch import tensor 
 
 STD_AA = list('ACDEFGHIKLMNPQRSTVWY')
 

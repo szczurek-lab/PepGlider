@@ -10,6 +10,10 @@ import torch
 from Bio import SeqIO
 from modlamp import analysis
 from sklearn.preprocessing import QuantileTransformer
+import sys
+sys.append('..')
+from model.constants import MIN_LENGTH, MAX_LENGTH
+from torch.utils.data import TensorDataset, DataLoader, random_split
 
 STD_AA = list('ACDEFGHIKLMNPQRSTVWY')
 
@@ -59,44 +63,16 @@ def calculate_hydrophobicmoment(data:list):
     return list(h.uH)
 
 def calculate_physchem_test(peptides: List[str]) -> torch.Tensor:
-    """
-    Calculates physicochemical properties of peptides and returns them as a PyTorch tensor.
-
-    Args:
-        peptides (List[str]): A list of peptide sequences.
-
-    Returns:
-        torch.Tensor: A tensor containing the physicochemical properties.
-                      Shape will be (num_peptides, num_physchem_features).
-    """
-    # Initialize lists to store properties for each peptide
-    # We'll collect properties for each peptide as sub-lists
     all_features_per_peptide = []
-
-    # Calculate properties for the entire list of peptides
-    # This is more efficient than calling GlobalAnalysis for each peptide
-    # print(dir(modlamp))
     global_analysis_obj = analysis.GlobalAnalysis(peptides)
-
-    # Length
     lengths = calculate_length_test(peptides)
     global_analysis_obj.calc_charge()
-    charges_np_array = np.asarray(global_analysis_obj.charge).flatten() # <--- KLUCZOWA ZMIANA
+    charges_np_array = np.asarray(global_analysis_obj.charge).flatten()
     charges = charges_np_array.tolist()
-
-    # print(f"DEBUG: charges (after asarray and flatten): {charges[:5]} (first 5 elements, len={len(charges)})")
-
     global_analysis_obj.calc_uH()
-    # To samo dla hydrophobic_moments
-    hydrophobic_moments_np_array = np.asarray(global_analysis_obj.uH).flatten() # <--- KLUCZOWA ZMIANA
+    hydrophobic_moments_np_array = np.asarray(global_analysis_obj.uH).flatten()
     hydrophobic_moments = hydrophobic_moments_np_array.tolist()
 
-    # print(f"DEBUG: hydrophobic_moments (after asarray and flatten): {hydrophobic_moments[:5]} (first 5 elements, len={len(hydrophobic_moments)})")
-
-
-    # Consolidate features for each peptide
-    # Assuming all lists (lengths, charges, hydrophobic_moments) have the same length
-    # which should be len(peptides)
     for i in range(len(peptides)):
         peptide_features = [
             lengths[i],
@@ -105,31 +81,15 @@ def calculate_physchem_test(peptides: List[str]) -> torch.Tensor:
         ]
         all_features_per_peptide.append(peptide_features)
 
-    # Convert the list of lists into a PyTorch tensor
-    # It will automatically infer the shape (num_peptides, num_features)
     physchem_tensor = torch.tensor(all_features_per_peptide, dtype=torch.float32)
 
     return physchem_tensor
 
 def pad(x: List[List[float]], max_length: int = 25) -> torch.Tensor:
-    """
-    Pads sequences to the same length using PyTorch. Sequences longer than `max_length` are truncated.
-    Sequences shorter than `max_length` are padded with 0.0 at the end.
-
-    Args:
-        x (List[List[float]]): List of sequences to pad.
-        max_length (int): Maximum length to pad or truncate the sequences to.
-
-    Returns:
-        torch.Tensor: Padded tensor of shape (len(x), max_length).
-    """
-    # Convert input to torch tensors
-    sequences = [torch.tensor(seq[:max_length]) for seq in x]  # Truncate longer sequences
-    # Pad sequences
+    sequences = [torch.tensor(seq[:max_length]) for seq in x]
     padded_sequences = torch.nn.utils.rnn.pad_sequence(
         sequences, batch_first=True, padding_value=0.0
     )
-    # Truncate or pad to ensure all sequences are exactly max_length
     if padded_sequences.size(1) > max_length:
         return padded_sequences[:, :max_length]
     elif padded_sequences.size(1) < max_length:
@@ -140,87 +100,53 @@ def pad(x: List[List[float]], max_length: int = 25) -> torch.Tensor:
     
 def normalize_attributes(physchem_tensor_original, ):
     fitted_transformers: Dict[int, QuantileTransformer] = {}
-    feature_names = ["Hydrophobic Moment", "Length", "Charge"]# [hydrophobicity_moment, length, charge] - correct order
-    physchem_tensor_normalized = torch.empty_like(physchem_tensor_original) # Tworzy tensor o tym samym kształcie i dtype co original
+    feature_names = ["Hydrophobic Moment", "Length", "Charge"]
+    physchem_tensor_normalized = torch.empty_like(physchem_tensor_original) 
+
     for col_idx in range(3):
         feature_name = feature_names[col_idx] if col_idx < len(feature_names) else f"Column_{col_idx}"
-        # print(f"\nProcessing column {col_idx} ('{feature_name}') with Quantile Transformation...")
-
         column_tensor = physchem_tensor_original[:, col_idx]
-
         data_to_transform_np = column_tensor.cpu().numpy().reshape(-1, 1)
-
         qt = QuantileTransformer(output_distribution='normal', random_state=42)
-
         transformed_data_np = qt.fit_transform(data_to_transform_np)
-
         fitted_transformers[col_idx] = qt
+        transformed_column_tensor_2d = torch.from_numpy(transformed_data_np).float()
+        physchem_tensor_normalized[:, col_idx] = transformed_column_tensor_2d.squeeze(1) 
 
-        transformed_column_tensor_2d = torch.from_numpy(transformed_data_np).float() # to jest już (N, 1)
-
-        physchem_tensor_normalized[:, col_idx] = transformed_column_tensor_2d.squeeze(1) # Squeeze, bo przypisujemy 1D do 1D slices
-
-        # print(f"Applied Quantile Transformation to '{feature_name}'. Min: {transformed_column_tensor_2d.min():.4f}, Max: {transformed_column_tensor_2d.max():.4f}")
-
-
-    # print("\nNormalized physchem_tensor (first 5 rows):")
-    # print(physchem_tensor_normalized[:5])
-    # print(f"Shape of normalized physchem_tensor: {physchem_tensor_normalized.shape}")
     return physchem_tensor_normalized
+
 def normalize_dimension_to_0_1(tensor: torch.Tensor, dim: int = -1) -> torch.Tensor:
-    """
-    Normalizuje każdy 'wymiar' (kolumnę/cechę) tensora do zakresu [0, 1].
-
-    Args:
-        tensor (torch.Tensor): Tensor wejściowy, np. o kształcie (batch_size, num_features)
-                               lub (seq_len, batch_size, num_features).
-        dim (int): Wymiar, wzdłuż którego ma nastąpić normalizacja. Domyślnie -1,
-                   co oznacza ostatni wymiar (np. wymiar cech).
-                   Jeśli tensor ma kształt (N, M) i chcesz normalizować każdą kolumnę,
-                   ustaw dim=0. Jeśli chcesz normalizować każdy wiersz, ustaw dim=1.
-
-    Returns:
-        torch.Tensor: Znormalizowany tensor o tym samym kształcie co wejściowy.
-    """
     if not isinstance(tensor, torch.Tensor):
         raise TypeError("Wejście musi być tensorem PyTorch.")
-
-    # Sprawdzenie, czy wymiar jest poprawny
     if dim >= tensor.ndim or dim < -tensor.ndim:
         raise ValueError(f"Wymiar {dim} jest poza zakresem tensora o {tensor.ndim} wymiarach.")
 
-    # Obliczanie minimum i maksimum wzdłuż określonego wymiaru,
-    # zachowując wymiary (keepdim=True) aby umożliwić broadcastowanie.
-    # Wymiar, który normalizujemy, staje się jednowymiarowy (np. 1).
-
-    # Przykład: Jeśli tensor ma kształt (10, 5) i dim=1 (normalizacja każdego wiersza)
-    # min_vals będzie (10, 1)
-    # max_vals będzie (10, 1)
-
-    # Przykład: Jeśli tensor ma kształt (10, 5) i dim=0 (normalizacja każdej kolumny)
-    # min_vals będzie (1, 5)
-    # max_vals będzie (1, 5)
-
     min_vals = tensor.min(dim=dim, keepdim=True).values
     max_vals = tensor.max(dim=dim, keepdim=True).values
-
-    # Uniknięcie dzielenia przez zero w przypadku, gdy max_val == min_val
-    # (tj. wszystkie wartości w danym wymiarze są takie same).
-    # W takim przypadku, wartości powinny stać się 0.
     range_vals = max_vals - min_vals
-    
-    # Dodanie małej wartości epsilon, aby uniknąć dzielenia przez zero,
-    # gdy wszystkie wartości w danym wymiarze są identyczne.
-    # W PyTorch 2.0 i nowszych, torch.where jest efektywne.
-    range_vals[range_vals == 0] = 1.0 # Jeśli zakres wynosi 0, ustaw go na 1, aby uniknąć NaNów.
-                                      # Wtedy (x - min_x) / 1.0 = 0 dla wszystkich x = min_x.
-
+    range_vals[range_vals == 0] = 1.0
     normalized_tensor = (tensor - min_vals) / range_vals
-
     return normalized_tensor
 
-class AMPDataManager:
+def prepare_data_for_training(data_dir, batch_size):
+    data_manager = AMPDataManager(
+        data_dir / 'unlabelled_positive.csv',
+        data_dir / 'unlabelled_negative.csv',
+        min_len=MIN_LENGTH,
+        max_len=MAX_LENGTH)
 
+    amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
+    attributes = normalize_attributes(attributes_input)
+
+    dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
+    train_size = int(0.8 * len(dataset))
+    eval_size = len(dataset) - train_size
+    train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    eval_loader = DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
+    return train_loader, eval_loader
+
+class AMPDataManager:
     def __init__(
             self,
             positive_filepath: str,
@@ -256,11 +182,9 @@ class AMPDataManager:
                     if seq_str:  # Only add non-empty sequences
                         sequences.append(seq_str)
                         identifiers.append(seq_record.id)
-
-            #converting lists to pandas Series    
+  
             s1 = pd.Series(identifiers, name='ID')
             s2 = pd.Series(sequences, name='Sequence')
-            #Gathering Series into a pandas DataFrame and rename index as ID column
             self.negative_data = pd.DataFrame({'ID': s1, 'Sequence': s2})
 
         self.min_len = min_len

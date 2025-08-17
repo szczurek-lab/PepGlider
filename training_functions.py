@@ -2,7 +2,6 @@ import torch
 import os
 from torch import optim, nn, logsumexp, cuda, save, backends, manual_seed, LongTensor, zeros_like, ones_like, tensor, cat
 from torch.distributions import Normal
-from torch.utils.data import TensorDataset, DataLoader, random_split
 torch.autograd.set_detect_anomaly(True)
 from model.model import EncoderRNN, DecoderRNN
 import numpy as np
@@ -21,34 +20,6 @@ import regularization as r
 import datetime
 import csv
 
-def set_seed(seed: int = 42) -> None:
-    """
-    Source:
-    https://wandb.ai/sauravmaheshkar/RSNA-MICCAI/reports/How-to-Set-Random-Seeds-in-PyTorch-and-Tensorflow--VmlldzoxMDA2MDQy
-    """
-    np.random.seed(seed)
-    random.seed(seed)
-    manual_seed(seed)
-    cuda.manual_seed(seed)
-    # When running on the CuDNN backend, two further options must be set
-    backends.cudnn.deterministic = True
-    backends.cudnn.benchmark = False
-    # Set a fixed value for the hash seed
-    os.environ["PYTHONHASHSEED"] = str(seed)
-    return None
-
-def get_model_arch_hash(model: nn.Module) -> int:
-    return hash(";".join(sorted([str(v.shape) for v in model.state_dict().values()])))
-
-def save_model(model: nn.Module, name: str, with_hash: bool = True) -> None:
-    if with_hash:
-        short_hash = str(get_model_arch_hash(model)).removeprefix("-")[:5]
-        model_name = f"{short_hash}_{name}"
-    else:
-        model_name = name
-    save(
-        model.state_dict(), (MODELS_DIR / model_name).with_suffix(".pt")
-    )
 
 def run_epoch_iwae(
     mode: Literal["test", "train"],
@@ -264,3 +235,159 @@ def run_epoch_iwae(
                 csv_writer.writerow(data_row)
 
     return stat_sum["total"] / len_data
+
+def run(encoder_filepath=None, decoder_filepath=None):
+    global ROOT_DIR 
+    ROOT_DIR = Path(__file__).parent
+    DATA_DIR = ROOT_DIR / "data"
+    global MODELS_DIR 
+    MODELS_DIR = ROOT_DIR / "first_working_models"
+    params, train_log_file, eval_log_file, logger = set_params(ROOT_DIR)
+    encoder = EncoderRNN(
+        params["num_heads"],
+        params["num_layers"],
+        params["latent_dim"],
+        params["encoding"],
+        params["dropout"],
+        params["layer_norm"],
+    )
+    decoder = DecoderRNN(
+        params["num_heads"],
+        params["num_layers"],
+        params["latent_dim"],
+        params["encoding"],
+        params["dropout"],
+        params["layer_norm"],
+    )
+    DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
+    if encoder_filepath is not None:
+        is_cpu = False if torch.cuda.is_available() else True
+
+        if is_cpu:
+            encoder.load_state_dict(
+                torch.load(
+                    encoder_filepath,
+                    map_location=DEVICE
+                )
+            )
+        else:
+            encoder.load_state_dict(torch.load(encoder_filepath))
+            
+    if decoder_filepath is not None:
+        is_cpu = False if torch.cuda.is_available() else True
+
+        if is_cpu:
+            decoder.load_state_dict(
+                torch.load(
+                    decoder_filepath,
+                    map_location=DEVICE
+                )
+            )
+        else:
+            decoder.load_state_dict(torch.load(decoder_filepath))
+
+    encoder = encoder.to(DEVICE)
+    decoder = decoder.to(DEVICE)
+
+    optimizer = Adam(
+        itertools.chain(encoder.parameters(), decoder.parameters()),
+        lr=params["lr"],
+        betas=(0.9, 0.999),
+    )
+
+    train_loader, eval_loader = dataset_lib.prepare_data_for_training(data_dir, params['batch_size'])
+
+    for epoch in tqdm(range(params["epochs"])):
+        eval_mode = "deep" if epoch % params["deeper_eval_every"] == 0 else "fast"
+        beta_0, beta_1, t_1 = params["kl_beta_schedule"]
+        kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, beta_1)
+        gamma_0, gamma_1, t_1 = params["gamma_schedule"]
+        if epoch < 1000:
+            gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, 0.0)
+        else:
+            gamma = min(gamma_0 + (gamma_1 - gamma_0) / t_1 * epoch, gamma_1)
+        delta_0, delta_1, t_1  = params['factor_schedule']
+        delta = min(max(delta_0 + (delta_1 - delta_0) / t_1 * epoch, delta_0), delta_1)
+        run_epoch_iwae(
+                mode="train",
+                encoder=encoder,
+                decoder=decoder,
+                dataloader=train_loader,
+                device=DEVICE,
+                logger=logger,
+                train_log_file = train_log_file,
+                eval_log_file = eval_log_file,
+                epoch=epoch,
+                optimizer=optimizer,
+                kl_beta=kl_beta,
+                eval_mode=eval_mode,
+                iwae_samples=params["iwae_samples"],
+                ar_vae_flg=params["ar_vae_flg"],
+                reg_dim=params["reg_dim"],
+                gamma = gamma,
+                gamma_multiplier = params['gamma_multiplier'],
+                factor = delta
+        )
+        if eval_mode == "deep":
+            loss = run_epoch_iwae(
+                    mode="test",
+                    encoder=encoder,
+                    decoder=decoder,
+                    dataloader=eval_loader,
+                    device=DEVICE,
+                    logger=logger,
+                    train_log_file = train_log_file,
+                    eval_log_file = eval_log_file,
+                    epoch=epoch,
+                    optimizer=None,
+                    kl_beta=kl_beta,
+                    eval_mode=eval_mode,
+                    iwae_samples=params["iwae_samples"],
+                    ar_vae_flg=params["ar_vae_flg"],
+                    reg_dim=params["reg_dim"],
+                    gamma=gamma,
+                    gamma_multiplier = params['gamma_multiplier'],
+                    factor = delta
+            )
+
+            if epoch > 0 and epoch % params["save_model_every"] == 0:
+                save_model(
+                        encoder,
+                        f"{params['task_name']}_{params['model_name']}_epoch{epoch}_encoder.pt",
+                        with_hash=False,
+                )
+                save_model(
+                        decoder,
+                        f"{params['task_name']}_{params['model_name']}_epoch{epoch}_decoder.pt",
+                        with_hash=False,
+                )
+    # eval_model() -> probably to do
+
+def set_seed(seed: int = 42) -> None:
+    """
+    Source:
+    https://wandb.ai/sauravmaheshkar/RSNA-MICCAI/reports/How-to-Set-Random-Seeds-in-PyTorch-and-Tensorflow--VmlldzoxMDA2MDQy
+    """
+    np.random.seed(seed)
+    random.seed(seed)
+    manual_seed(seed)
+    cuda.manual_seed(seed)
+    # When running on the CuDNN backend, two further options must be set
+    backends.cudnn.deterministic = True
+    backends.cudnn.benchmark = False
+    # Set a fixed value for the hash seed
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    return None
+
+def get_model_arch_hash(model: nn.Module) -> int:
+    return hash(";".join(sorted([str(v.shape) for v in model.state_dict().values()])))
+
+def save_model(model: nn.Module, name: str, with_hash: bool = True) -> None:
+    if with_hash:
+        short_hash = str(get_model_arch_hash(model)).removeprefix("-")[:5]
+        model_name = f"{short_hash}_{name}"
+    else:
+        model_name = name
+    save(
+        model.state_dict(), (MODELS_DIR / model_name).with_suffix(".pt")
+    )

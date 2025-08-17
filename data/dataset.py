@@ -144,9 +144,7 @@ def prepare_data_for_training(data_dir, batch_size, data_type):
             uniprot_filepath = [data_dir / i for i in ['Uniprot_0_25_train.csv','Uniprot_0_25_test.csv','Uniprot_0_25_val.csv']],
             min_len=MIN_LENGTH,
             max_len=MAX_LENGTH)
-
         amp_x, amp_y, attributes_input, _ = data_manager.get_uniprot_data()
-        
     attributes = normalize_attributes(attributes_input)
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
     train_size = int(0.8 * len(dataset))
@@ -312,4 +310,23 @@ class AMPDataManager:
     
     def get_uniprot_data(self):
         uniprot_dataset = self._filter_data()
+        uniprot_seq = uniprot_dataset['Sequence'].tolist()
+        uniprot_lengths = [len(seq) for seq in uniprot_seq]
+        uniprot_dataset.loc[:, "Sequence length"] = negative_lengths
+
+        probs = self._get_probs(uniprot_lengths)
+        plot_hist_lengths(uniprot_dataset['Sequence length'].to_numpy())
         return self.output_data(uniprot_dataset)
+    
+def plot_hist_lengths(data):
+    unique_values = np.unique(data)
+
+    bin_edges = np.concatenate([unique_values - 0.5, [unique_values[-1] + 0.5]])
+
+    plt.hist(data, bins=bin_edges, edgecolor='black', rwidth=0.8)
+    plt.xticks(unique_values)  # Set the x-ticks to be the unique values
+
+    plt.xlabel('Length')
+    plt.ylabel('Frequency')
+    plt.title("UniProt lengths' sequency histogram")
+    plt.savefig('uniprot_lengths_seq_hist.png')

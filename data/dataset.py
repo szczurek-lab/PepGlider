@@ -145,7 +145,7 @@ def prepare_data_for_training(data_dir, batch_size, data_type):
             min_len=MIN_LENGTH,
             max_len=MAX_LENGTH)
 
-        amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
+        amp_x, amp_y, attributes_input, _ = data_manager.get_uniprot_data()
         
     attributes = normalize_attributes(attributes_input)
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
@@ -162,8 +162,8 @@ class AMPDataManager:
             positive_filepath: str = None,
             negative_filepath: List[str] = None,
             uniprot_filepath: str = None,
-            min_len: int,
-            max_len: int,
+            min_len: int = 0,
+            max_len: int = 25,
     ):
         if str(positive_filepath).endswith(".csv"):
             self.positive_data = pd.read_csv(positive_filepath)
@@ -196,11 +196,11 @@ class AMPDataManager:
             #             sequences.append(seq_str)
             #             identifiers.append(seq_record.id)
   
-            s1 = pd.Series(identifiers, name='ID')
-            s2 = pd.Series(sequences, name='Sequence')
-            self.negative_data = pd.DataFrame({'ID': s1, 'Sequence': s2})
+            # s1 = pd.Series(identifiers, name='ID')
+            # s2 = pd.Series(sequences, name='Sequence')
+            # self.negative_data = pd.DataFrame({'ID': s1, 'Sequence': s2})
         if uniprot_filepath != '':
-            dfs = [pd.read_excel(f) for f in uniprot_filepath]
+            dfs = [pd.read_csv(f) for f in uniprot_filepath]
             self.uniprot_data = pd.concat(dfs, ignore_index=True)
         else:
             self.uniprot_data = None

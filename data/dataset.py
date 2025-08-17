@@ -146,6 +146,7 @@ def prepare_data_for_training(data_dir, batch_size, data_type):
             max_len=MAX_LENGTH)
         amp_x, amp_y, attributes_input, _ = data_manager.get_uniprot_data()
     attributes = normalize_attributes(attributes_input)
+    plot_hist_lengths(attributes[0].cpu().numpy())
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
     train_size = int(0.8 * len(dataset))
     eval_size = len(dataset) - train_size
@@ -315,7 +316,7 @@ class AMPDataManager:
         uniprot_dataset.loc[:, "Sequence length"] = uniprot_lengths
 
         probs = self._get_probs(uniprot_lengths)
-        plot_hist_lengths(uniprot_dataset['Sequence length'].to_numpy())
+        # plot_hist_lengths(uniprot_dataset['Sequence length'].to_numpy())
         return self.output_data(uniprot_dataset)
     
 def plot_hist_lengths(data):
@@ -328,5 +329,5 @@ def plot_hist_lengths(data):
 
     plt.xlabel('Length')
     plt.ylabel('Frequency')
-    plt.title("UniProt lengths' sequency histogram")
+    plt.title("UniProt normalized lengths' sequency histogram")
     plt.savefig('uniprot_lengths_seq_hist.png')

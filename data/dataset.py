@@ -312,7 +312,7 @@ class AMPDataManager:
         uniprot_dataset = self._filter_data()
         uniprot_seq = uniprot_dataset['Sequence'].tolist()
         uniprot_lengths = [len(seq) for seq in uniprot_seq]
-        uniprot_dataset.loc[:, "Sequence length"] = negative_lengths
+        uniprot_dataset.loc[:, "Sequence length"] = uniprot_lengths
 
         probs = self._get_probs(uniprot_lengths)
         plot_hist_lengths(uniprot_dataset['Sequence length'].to_numpy())

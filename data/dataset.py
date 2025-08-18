@@ -146,8 +146,10 @@ def prepare_data_for_training(data_dir, batch_size, data_type):
             max_len=MAX_LENGTH)
         amp_x, amp_y, attributes_input, _ = data_manager.get_uniprot_data()
     attributes = normalize_attributes(attributes_input)
-    plot_hist_lengths(attributes[0].cpu().numpy())
-    dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
+    #print(f'attributes shape = {attributes.shape}')
+    #print(f'attributes_input shape = {attributes_input.shape}')
+    # plot_hist_lengths(attributes[:,0].cpu().numpy())
+    dataset = TensorDataset(amp_x, tensor(amp_y), attributes_input, attributes_input)
     train_size = int(0.8 * len(dataset))
     eval_size = len(dataset) - train_size
     train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
@@ -160,7 +162,7 @@ class AMPDataManager:
             self,
             positive_filepath: str = None,
             negative_filepath: List[str] = None,
-            uniprot_filepath: str = None,
+            uniprot_filepath: List[str] = [],
             min_len: int = 0,
             max_len: int = 25,
     ):
@@ -198,7 +200,7 @@ class AMPDataManager:
             # s1 = pd.Series(identifiers, name='ID')
             # s2 = pd.Series(sequences, name='Sequence')
             # self.negative_data = pd.DataFrame({'ID': s1, 'Sequence': s2})
-        if uniprot_filepath != '':
+        if len(uniprot_filepath) != 0:
             dfs = [pd.read_csv(f) for f in uniprot_filepath]
             self.uniprot_data = pd.concat(dfs, ignore_index=True)
         else:
@@ -321,13 +323,13 @@ class AMPDataManager:
     
 def plot_hist_lengths(data):
     unique_values = np.unique(data)
-    print(f'unique_values = unique_values')
+    print(f'unique_values = {unique_values}')
     bin_edges = np.concatenate([unique_values - 0.5, [unique_values[-1] + 0.5]])
 
-    plt.hist(data, bins=bin_edges, edgecolor='black', rwidth=0.8)
+    plt.hist(data, bins=bin_edges, edgecolor='black')
     plt.xticks(unique_values)  # Set the x-ticks to be the unique values
 
     plt.xlabel('Length')
     plt.ylabel('Frequency')
     plt.title("UniProt normalized lengths' sequency histogram")
-    plt.savefig('uniprot_lengths_seq_hist.png')
+    plt.savefig('uniprot_norm_lengths_seq_hist.png')

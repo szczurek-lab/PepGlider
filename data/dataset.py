@@ -130,7 +130,7 @@ def normalize_dimension_to_0_1(tensor: torch.Tensor, dim: int = -1) -> torch.Ten
     return normalized_tensor
 
 def prepare_data_for_training(data_dir, batch_size, data_type):
-    if data_type == 'positiv_negativ_AMPs':
+    if 'positiv_negativ_AMPs' in data_type and 'uniprot' in data_type:
         data_manager = AMPDataManager(
             positive_filepath = data_dir / 'unlabelled_positive.csv',
             negative_filepath = data_dir / 'unlabelled_negative.csv',
@@ -138,8 +138,15 @@ def prepare_data_for_training(data_dir, batch_size, data_type):
             max_len=MAX_LENGTH)
 
         amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
+    elif 'positiv_negativ_AMPs' in data_type:
+        data_manager = AMPDataManager(
+            positive_filepath = data_dir / 'unlabelled_positive.csv',
+            negative_filepath = data_dir / 'unlabelled_negative.csv',
+            min_len=MIN_LENGTH,
+            max_len=MAX_LENGTH)
 
-    elif data_type == 'uniprot':
+        amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
+    elif 'uniprot' in data_type:
         data_manager = AMPDataManager(
             uniprot_filepath = [data_dir / i for i in ['Uniprot_0_25_train.csv','Uniprot_0_25_test.csv','Uniprot_0_25_val.csv']],
             min_len=MIN_LENGTH,

@@ -185,14 +185,15 @@ def truncate_to_shortest(list_of_arrays):
 
     return truncated_arrays
 
-def plot_dim(data, target, epoch_number, models_prefixs_to_compare, filename, dim2=1, xlim=None, ylim=None):
-    attr = ['Length', 'Charge' , 'Hydrophobic moment']
-    n_rows = len(attr)
-    n_cols = int(data.shape[0]/len(attr))
+def plot_dim(data, target, epoch_number, models_prefixs_to_compare, filename, dim2=1, attr = ['Length', 'Charge' , 'Hydrophobic moment'], xlim=None, ylim=None):
+    n_rows = len(target.shape[-1])
+    n_cols = int(data.shape[0]/len(target.shape[-1]))
     n_plots = n_rows * n_cols
+    n_sets = target.ndim
+    
     min_row = []
     max_row = []
-    for i in range(len(attr)):
+    for i in range(len(target.shape[-1])):
         min_row.append(np.min(target[i*n_cols:(i*n_cols)+n_cols,:,i]))
         max_row.append(np.max(target[i*n_cols:(i*n_cols)+n_cols,:,i]))
         
@@ -239,12 +240,14 @@ def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1
     attr = ['Length', 'Charge' , 'Hydrophobic moment']
     all_final_z_points = []
     all_final_attr_labels = []
+    all_final_mae = []
     n_compare = len(encoders_list)
     DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
             
     for d in dim1:
         dim_z = [[] for _ in range(n_compare)]
         dim_attr = [[] for _ in range(n_compare)]
+        dim_mae = [[] for _ in range(n_compare)]
         
         for i, (encoder_name, decoder_name) in enumerate(zip(encoders_list, decoders_list)):
             encoder = EncoderRNN(
@@ -280,6 +283,17 @@ def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1
                     filtered_list = [item for item in decoded if item.strip()]
                     indexes = [index for index, item in enumerate(decoded) if item.strip()]
                     labels = dataset_lib.calculate_physchem_test(filtered_list)
+                    # print(f'attributes_input shape = {attributes_input.shape}')
+                    # print(f'labels shape = {labels.shape}')
+                    if params['mae_flg']:
+                        diff_tensors = []
+
+                        for k in range(len(dim1)):
+                            abs_diff = torch.abs(attributes_input[indexes, k] - labels[:, k]).unsqueeze(1)
+                            diff_tensors.append(abs_diff)
+                        mae_tensor = torch.cat(diff_tensors, dim=1)
+                        dim_mae[i].append(mae_tensor.detach().cpu().numpy())
+                        # print(f'mae_tensor shape = {mae_tensor.shape}')
                                 
                     dim_z[i].append(z[indexes, :].detach().cpu().numpy())
                     dim_attr[i].append(labels.detach().cpu().numpy())
@@ -303,6 +317,15 @@ def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1
                     filtered_list = [item for item in decoded if item.strip()]
                     indexes = [index for index, item in enumerate(decoded) if item.strip()]
                     labels = dataset_lib.calculate_physchem_test(filtered_list)
+                    if params['mae_flg']:
+                        diff_tensors = []
+
+                        for k in range(len(dim1)):
+                            abs_diff = torch.abs(attributes_input[indexes, k] - labels[:, k]).unsqueeze(1)
+                            diff_tensors.append(abs_diff)
+                        mae_tensor = torch.cat(diff_tensors, dim=1)
+                        dim_mae[i].append(mae_tensor.detach().cpu().numpy())
+                        # print(f'mae_tensor shape = {mae_tensor.shape}')
                                 
                     dim_z[i].append(z_batch[indexes, :].detach().cpu().numpy())
                     dim_attr[i].append(labels.detach().cpu().numpy())
@@ -310,15 +333,28 @@ def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1
             # print(dim_z[0].shape)
             aggregated_z = np.vstack(dim_z[i])
             aggregated_attr = np.vstack(dim_attr[i])
+            if params['mae_flg']:
+                aggregated_mae = np.vstack(dim_mae[i])
             
             all_final_z_points.append(aggregated_z)
             all_final_attr_labels.append(aggregated_attr)
+            if params['mae_flg']:
+                all_final_mae.append(aggregated_mae)
+                # print(f'all_final_mae shapes = {all_final_mae[i].shape}')
         # print(f'final_z_points shape = {len(all_final_z_points)}')
         # print(f'final_attr_labels shape = {len(all_final_attr_labels)}')
     final_z_points = truncate_to_shortest(all_final_z_points)
     final_attr_labels = truncate_to_shortest(all_final_attr_labels)
+    if params['mae_flg']:
+        final_mae = truncate_to_shortest(all_final_mae)
     aggregated_z_points = np.stack(final_z_points)
     aggregated_attr_labels = np.stack(final_attr_labels)
+    # print(f'aggregated_attr_labels shape = {aggregated_attr_labels.shape}')
+    if params['mae_flg']:
+        aggregated_mae = np.stack(final_mae)
+        # print(f'aggregated_mae shape = {aggregated_mae.shape}')
+        aggregated_attr_labels_and_mae = np.stack([aggregated_attr_labels, aggregated_mae], axis=3)
+        print(f'aggregated_attr_labels_and_mae shape = {aggregated_attr_labels_and_mae.shape}')
     # print(f'aggregated_z_points shape = {aggregated_z_points.shape}')
     # print(f'aggregated_attr_labels shape = {aggregated_attr_labels.shape}')
     save_filename = os.path.join(
@@ -328,5 +364,102 @@ def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1
     match = re.search(r'epoch(\d+)', encoder_name)
     if match:
         epoch_number = int(match.group(1))
-    return aggregated_z_points, aggregated_attr_labels, epoch_number, save_filename, dim2
+    if params['mae_flg']:
+        return aggregated_z_points, aggregated_attr_labels_and_mae, epoch_number, save_filename, dim2, 
+    else:
+        return aggregated_z_points, aggregated_attr_labels, epoch_number, save_filename, dim2
     # plot_dim(aggregated_z_points, aggregated_attr_labels, save_filename, dim2=dim2)
+
+def save_sequences(seqs, filename):
+    with open(filename, "w", newline="") as file:
+        writer = csv.writer(file)
+        for seq in seqs:
+            writer.writerow([seq])
+            
+def latent_explore(encoders_list, decoders_list, shift, params, ):
+    DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
+    generated = {}
+    generated_analog = {}
+    results = {}
+    results_analog = {}
+    
+    for i, (encoder_name, decoder_name) in enumerate(zip(encoders_list, decoders_list)):
+        encoder = EncoderRNN(
+            params["num_heads"],
+            params["num_layers"],
+            params["latent_dim"],
+            params["encoding"],
+            params["dropout"],
+            params["layer_norm"],
+        )
+        decoder = DecoderRNN(
+            params["num_heads"],
+            params["num_layers"],
+            params["latent_dim"],
+            params["encoding"],
+            params["dropout"],
+            params["layer_norm"],
+        )
+        encoder.load_state_dict(torch.load(f"./first_working_models/{encoder_name}", map_location=DEVICE))
+        encoder = encoder.to(DEVICE)
+        decoder.load_state_dict(torch.load(f"./first_working_models/{decoder_name}", map_location=DEVICE))
+        decoder = decoder.to(DEVICE)
+        
+        encoder = encoder.eval()
+        decoder = decoder.eval()      
+        model = encoder_name.split("_ar-vae")[0]    
+        
+        results[model] = {}
+        results_analog[model] = {}
+    
+    
+        for attr_name, attr_dim in attr_dict.items():
+            results[model][attr_name] = {}
+            results_analog[model][attr_name] = {}
+    
+            for shift_value in [0, -shift, shift]:
+    
+                results[model][attr_name][shift_value] = {}
+    
+                # Generate unconstrained
+                seq = decoder.generate_from(1000, params["latent_dim"], attr_dim, shift_value)
+                generated_sequences = dataset.decoded(dataset.from_one_hot(transpose(seq, 0,1)), "0")
+                save_sequences(generated_sequences, f"{model}_unconstrained_{attr_name}_{shift_value}.csv")
+    
+                generated_sequences = [seq.strip().rstrip("0") for seq in generated_sequences]
+                generated_sequences = [seq for seq in generated_sequences if '0' not in seq]
+                generated[model] = generated_sequences
+                
+                length = calculate_length(generated_sequences)
+                charge = calculate_charge(generated_sequences)
+                hm = calculate_hydrophobicmoment(generated_sequences)
+    
+                results[model][attr_name][shift_value]['Length'] = length
+                results[model][attr_name][shift_value]['Charge'] = np.array(charge).flatten()
+                results[model][attr_name][shift_value]['Hydrophobic moment'] = np.array(hm).flatten()
+
+                
+    
+                # Generate analog
+                results_analog[model][attr_name][shift_value] = {}
+                mu, std = encoder(peptides)
+                mod_mu = mu.clone().detach()
+                mod_mu[:, attr_dim] = mod_mu[:, attr_dim] + shift_value
+                outputs = decoder(mod_mu)
+                src = outputs.permute(1, 2, 0) 
+                seq = src.argmax(dim=1)
+                modified_sequences = dataset.decoded(seq, "")
+    
+                save_sequences(modified_sequences, f"{model}_modified_{attr_name}_{shift_value}.csv")
+    
+                modified_sequences = [seq.strip().rstrip("0") for seq in modified_sequences]
+                modified_sequences = [seq for seq in modified_sequences if '0' not in seq]
+                generated_analog[model] = modified_sequences
+                
+                length = calculate_length(modified_sequences)
+                charge = calculate_charge(modified_sequences)
+                hm = calculate_hydrophobicmoment(modified_sequences)
+    
+                results_analog[model][attr_name][shift_value]['Length'] = length
+                results_analog[model][attr_name][shift_value]['Charge'] = np.array(charge).flatten()
+                results_analog[model][attr_name][shift_value]['Hydrophobic moment'] = np.array(hm).flatten()

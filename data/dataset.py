@@ -156,7 +156,8 @@ def prepare_data_for_training(data_dir, batch_size, data_type):
     attributes = normalize_attributes(attributes_input)
     #print(f'attributes shape = {attributes.shape}')
     #print(f'attributes_input shape = {attributes_input.shape}')
-    plot_hist_lengths(attributes_input[:,0].cpu().numpy())
+    for i, attr_name in enumerate(['Length', 'Charge', 'Hydrophobic moment']):
+        plot_hist_lengths(attributes_input[:,i].cpu().numpy(), attr_name)
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
     train_size = int(0.8 * len(dataset))
     eval_size = len(dataset) - train_size
@@ -164,6 +165,19 @@ def prepare_data_for_training(data_dir, batch_size, data_type):
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     eval_loader = DataLoader(eval_dataset, batch_size=batch_size, shuffle=True)
     return train_loader, eval_loader
+
+def plot_hist_lengths(data, attr_name):
+    unique_values = np.unique(data)
+    print(f'unique_values = {unique_values}')
+    bin_edges = np.concatenate([unique_values - 0.5, [unique_values[-1] + 0.5]])
+
+    plt.hist(data, bins=bin_edges, edgecolor='black')
+    plt.xticks(unique_values)  # Set the x-ticks to be the unique values
+
+    plt.xlabel('Length')
+    plt.ylabel('Frequency')
+    plt.title("Data {attr_name}s' sequency histogram")
+    plt.savefig(f'{attr_name}_seq_hist.png')
 
 class AMPDataManager:
     def __init__(
@@ -353,16 +367,3 @@ class AMPDataManager:
         for i in pd.unique(filtered_df['Sequence length']):
             final_df = pd.concat([final_df, filtered_df[filtered_df['Sequence length'] == i].iloc[:counts,:]])
         return self.output_data(final_df)
-    
-def plot_hist_lengths(data):
-    unique_values = np.unique(data)
-    print(f'unique_values = {unique_values}')
-    bin_edges = np.concatenate([unique_values - 0.5, [unique_values[-1] + 0.5]])
-
-    plt.hist(data, bins=bin_edges, edgecolor='black')
-    plt.xticks(unique_values)  # Set the x-ticks to be the unique values
-
-    plt.xlabel('Length')
-    plt.ylabel('Frequency')
-    plt.title("UniProt lengths' sequency histogram")
-    plt.savefig('lengths_seq_hist.png')

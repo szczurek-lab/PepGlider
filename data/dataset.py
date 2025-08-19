@@ -156,7 +156,7 @@ def prepare_data_for_training(data_dir, batch_size, data_type):
     #print(f'attributes shape = {attributes.shape}')
     #print(f'attributes_input shape = {attributes_input.shape}')
     # plot_hist_lengths(attributes[:,0].cpu().numpy())
-    dataset = TensorDataset(amp_x, tensor(amp_y), attributes_input, attributes_input)
+    dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
     train_size = int(0.8 * len(dataset))
     eval_size = len(dataset) - train_size
     train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])

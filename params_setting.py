@@ -13,7 +13,7 @@ def set_params(root_dir):
         "dropout": 0.1,
         "batch_size": 512,
         "lr": 0.001,
-        "kl_beta_schedule": (0.00001, 0.1, 8000),
+        "kl_beta_schedule": (0.000001, 0.01, 8000),
         "train_size": None,
         "epochs": 10000,
         "iwae_samples": 10,

@@ -134,10 +134,11 @@ def prepare_data_for_training(data_dir, batch_size, data_type):
         data_manager = AMPDataManager(
             positive_filepath = data_dir / 'unlabelled_positive.csv',
             negative_filepath = data_dir / 'unlabelled_negative.csv',
+            uniprot_filepath = [data_dir / i for i in ['Uniprot_0_25_train.csv','Uniprot_0_25_test.csv','Uniprot_0_25_val.csv']],
             min_len=MIN_LENGTH,
             max_len=MAX_LENGTH)
 
-        amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
+        amp_x, amp_y, attributes_input, _ = data_manager.get_uniform_data()
     elif 'positiv_negativ_AMPs' in data_type:
         data_manager = AMPDataManager(
             positive_filepath = data_dir / 'unlabelled_positive.csv',
@@ -155,7 +156,7 @@ def prepare_data_for_training(data_dir, batch_size, data_type):
     attributes = normalize_attributes(attributes_input)
     #print(f'attributes shape = {attributes.shape}')
     #print(f'attributes_input shape = {attributes_input.shape}')
-    # plot_hist_lengths(attributes[:,0].cpu().numpy())
+    plot_hist_lengths(attributes_input[:,0].cpu().numpy())
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
     train_size = int(0.8 * len(dataset))
     eval_size = len(dataset) - train_size
@@ -318,15 +319,40 @@ class AMPDataManager:
         pos_dataset, neg_dataset = self.get_data(balanced=balanced)
         return self.output_data(self._join_datasets(pos_dataset, neg_dataset))
     
+    def calculate_lengths(self, dataset):
+        seqs = dataset['Sequence'].tolist()
+        lengths = [len(seq) for seq in seqs]
+        dataset.loc[:, "Sequence length"] = lengths
+        return dataset, lengths
+    
     def get_uniprot_data(self):
         uniprot_dataset = self._filter_data()
-        uniprot_seq = uniprot_dataset['Sequence'].tolist()
-        uniprot_lengths = [len(seq) for seq in uniprot_seq]
-        uniprot_dataset.loc[:, "Sequence length"] = uniprot_lengths
+        uniprot_dataset,uniprot_lengths = self.calculate_lengths(uniprot_dataset)
 
         probs = self._get_probs(uniprot_lengths)
         # plot_hist_lengths(uniprot_dataset['Sequence length'].to_numpy())
         return self.output_data(uniprot_dataset)
+    
+    def get_uniform_data(self):
+        pos_dataset, neg_dataset = self._filter_data()
+        pos_dataset,_ = self.calculate_lengths(pos_dataset)
+        neg_dataset,_ = self.calculate_lengths(neg_dataset)
+
+        uniprot_dataset = self._filter_data()
+        uniprot_dataset,_ = self.calculate_lengths(uniprot_dataset)
+
+        pos_lengths = set(pos_dataset['Sequence length'].unique())
+        neg_lengths = set(neg_dataset['Sequence length'].unique())
+        uniprot_lengths = set(uniprot_dataset['Sequence length'].unique())
+        common_lengths = pos_lengths & neg_lengths & uniprot_lengths
+
+        df = pd.concat([pos_dataset[['Sequence', "Sequence length"]], neg_dataset[['Sequence', "Sequence length"]], uniprot_dataset], axis=0)
+        filtered_df = df[df['Sequence length'].isin(common_lengths)]
+        counts = filtered_df['Sequence length'].value_counts().min()
+        final_df = pd.DataFrame()
+        for i in pd.unique(filtered_df['Sequence length']):
+            final_df = pd.concat([final_df, filtered_df[filtered_df['Sequence length'] == i].iloc[:counts,:]])
+        return self.output_data(final_df)
     
 def plot_hist_lengths(data):
     unique_values = np.unique(data)
@@ -338,5 +364,5 @@ def plot_hist_lengths(data):
 
     plt.xlabel('Length')
     plt.ylabel('Frequency')
-    plt.title("UniProt normalized lengths' sequency histogram")
-    plt.savefig('uniprot_norm_lengths_seq_hist.png')
+    plt.title("UniProt lengths' sequency histogram")
+    plt.savefig('lengths_seq_hist.png')

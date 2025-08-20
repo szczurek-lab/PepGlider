@@ -171,7 +171,8 @@ def plot_hist_lengths(data, attr_name):
     print(f'unique_values = {unique_values}')
     bin_edges = np.concatenate([unique_values - 0.5, [unique_values[-1] + 0.5]])
 
-    plt.hist(data, bins=bin_edges, edgecolor='black')
+    plt.hist(data, bins=20)
+    #bin_edges, edgecolor='black')
     plt.xticks(unique_values)  # Set the x-ticks to be the unique values
 
     plt.xlabel('Length')
@@ -352,7 +353,7 @@ class AMPDataManager:
     
     def get_uniform_data(self):
         pos_dataset, neg_dataset, uniprot_dataset = self._filter_data()
-        pos_dataset, neg_dataset = self._equalize_data(pos_dataset, neg_dataset, balanced_classes=balanced)
+        pos_dataset, neg_dataset = self._equalize_data(pos_dataset, neg_dataset, balanced_classes=True)
         pos_dataset,_ = self.calculate_lengths(pos_dataset)
         neg_dataset,_ = self.calculate_lengths(neg_dataset)
         uniprot_dataset,_ = self.calculate_lengths(uniprot_dataset)
@@ -361,7 +362,8 @@ class AMPDataManager:
         neg_lengths = set(neg_dataset['Sequence length'].unique())
         uniprot_lengths = set(uniprot_dataset['Sequence length'].unique())
         common_lengths = pos_lengths & neg_lengths & uniprot_lengths
-
+        if 7 in common_lengths:
+           common_lengths.remove(7)
         df = pd.concat([pos_dataset[['Sequence', "Sequence length"]], neg_dataset[['Sequence', "Sequence length"]], uniprot_dataset], axis=0)
         filtered_df = df[df['Sequence length'].isin(common_lengths)]
         counts = filtered_df['Sequence length'].value_counts().min()

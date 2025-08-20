@@ -159,6 +159,7 @@ def prepare_data_for_training(data_dir, batch_size, data_type):
     for i, attr_name in enumerate(['Length', 'Charge', 'Hydrophobic moment']):
         plot_hist_lengths(attributes_input[:,i].cpu().numpy(), attr_name)
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
+    print(f'dataset size = {len(dataset)}')
     train_size = int(0.8 * len(dataset))
     eval_size = len(dataset) - train_size
     train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])

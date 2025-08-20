@@ -171,9 +171,9 @@ def plot_hist_lengths(data, attr_name):
     print(f'unique_values = {unique_values}')
     bin_edges = np.concatenate([unique_values - 0.5, [unique_values[-1] + 0.5]])
 
-    plt.hist(data, bins=20)
+    plt.hist(data, bins=40)
     #bin_edges, edgecolor='black')
-    plt.xticks(unique_values)  # Set the x-ticks to be the unique values
+    # plt.xticks(unique_values)  # Set the x-ticks to be the unique values
 
     plt.xlabel('Length')
     plt.ylabel('Frequency')

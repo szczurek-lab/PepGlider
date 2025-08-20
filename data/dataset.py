@@ -176,8 +176,9 @@ def plot_hist_lengths(data, attr_name):
 
     plt.xlabel('Length')
     plt.ylabel('Frequency')
-    plt.title("Data {attr_name}s' sequency histogram")
+    plt.title(f"Data {attr_name}s' sequency histogram")
     plt.savefig(f'{attr_name}_seq_hist.png')
+    plt.close()
 
 class AMPDataManager:
     def __init__(

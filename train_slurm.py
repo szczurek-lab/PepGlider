@@ -30,6 +30,7 @@ if __name__ == '__main__':
         os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
         "hyperparams_tuning_factor_0.1_ar-vae_epoch900_decoder.pt"
     )
-    run(['positiv_negativ_AMPs'])
+    #run(['positiv_negativ_AMPs'])
     #run(['uniprot'], encoder_filepath, decoder_filepath)
-    #run(['uniprot','positiv_negativ_AMPs'], encoder_filepath, decoder_filepath)
+    run(['uniprot','positiv_negativ_AMPs'])
+# , encoder_filepath, decoder_filepath)

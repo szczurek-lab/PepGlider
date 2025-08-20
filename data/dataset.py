@@ -237,7 +237,9 @@ class AMPDataManager:
         return df.loc[mask]
 
     def _filter_data(self):
-        if self.positive_data is not None and self.negative_data is not None:
+        if self.positive_data is not None and self.negative_data is not None and self.uniprot_data is not None:
+            return self._filter_by_length(self.positive_data), self.negative_data, self._filter_by_length(self.uniprot_data)
+        elif self.positive_data is not None and self.negative_data is not None:
             return self._filter_by_length(self.positive_data), self.negative_data
         else: 
             return self._filter_by_length(self.uniprot_data)
@@ -349,11 +351,10 @@ class AMPDataManager:
         return self.output_data(uniprot_dataset)
     
     def get_uniform_data(self):
-        pos_dataset, neg_dataset = self._filter_data()
+        pos_dataset, neg_dataset, uniprot_dataset = self._filter_data()
+        pos_dataset, neg_dataset = self._equalize_data(pos_dataset, neg_dataset, balanced_classes=balanced)
         pos_dataset,_ = self.calculate_lengths(pos_dataset)
         neg_dataset,_ = self.calculate_lengths(neg_dataset)
-
-        uniprot_dataset = self._filter_data()
         uniprot_dataset,_ = self.calculate_lengths(uniprot_dataset)
 
         pos_lengths = set(pos_dataset['Sequence length'].unique())

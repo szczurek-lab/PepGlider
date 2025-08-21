@@ -30,9 +30,9 @@ if __name__ == '__main__':
         os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
         "hyperparams_tuning_factor_0.1_ar-vae_epoch900_decoder.pt"
     )
-    print('AMPs/nonAMPs')
+    # print('AMPs/nonAMPs')
     run(['positiv_negativ_AMPs'])
     #run(['uniprot'], encoder_filepath, decoder_filepath)
-    print('merged data AMPs/nonAMPs + Uniprot')
-    run(['uniprot','positiv_negativ_AMPs'])
+    # print('merged data AMPs/nonAMPs + Uniprot')
+    # run(['uniprot','positiv_negativ_AMPs'])
 # , encoder_filepath, decoder_filepath)

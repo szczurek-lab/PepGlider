@@ -45,7 +45,7 @@ def set_params(root_dir):
         with open(root_dir / train_log_file, 'a', newline='') as csvfile:
             if params["ar_vae_flg"]:
                 header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta",] 
-                if params["scale_factor"]:
+                if params["scale_factor_flg"]:
                         header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta","Scale factor",]
             else:
                 header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss", "KL Div", "KL Div * Beta"]
@@ -63,7 +63,7 @@ def set_params(root_dir):
                           "MIG - length", "MIG - charge", "MIG - hydrophobicity moment",
                           "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity moment"
                           ] 
-                if params["scale_factor"]:
+                if params["scale_factor_flg"]:
                     header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta", "Scale factor",
                             "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
                             "MAE length", "MAE charge", "MAE hydrophobicity moment", 

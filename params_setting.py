@@ -27,7 +27,8 @@ def set_params(root_dir):
         "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
         "gamma_schedule": (0.00001, 20, 8000),
         "gamma_multiplier": [1,1,1],
-        "factor_schedule": (1,1,8000)
+        "factor_schedule": (1,1,8000),
+        'scale_factor_flg': True
     }
 
     if params["use_clearml"]:
@@ -42,7 +43,12 @@ def set_params(root_dir):
         logger = None
         train_log_file = f'training_log_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.csv'.replace(' ', '_')
         with open(root_dir / train_log_file, 'a', newline='') as csvfile:
-            header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta",] if params["ar_vae_flg"] else ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss", "KL Div", "KL Div * Beta"]
+            if params["ar_vae_flg"]:
+                header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta",] 
+                if params["scale_factor"]:
+                        header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta","Scale factor",]
+            else:
+                header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss", "KL Div", "KL Div * Beta"]
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(header)
         eval_log_file = f'validation_log_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.csv'.replace(' ', '_')
@@ -57,6 +63,16 @@ def set_params(root_dir):
                           "MIG - length", "MIG - charge", "MIG - hydrophobicity moment",
                           "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity moment"
                           ] 
+                if params["scale_factor"]:
+                    header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta", "Scale factor",
+                            "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
+                            "MAE length", "MAE charge", "MAE hydrophobicity moment", 
+                            "Interpretability - length", "Interpretability - charge", "Interpretability - hydrophobicity moment",
+                            "Corr_score - length", "Corr_score - charge", "Corr_score - hydrophobicity moment",
+                            "Modularity - length", "Modularity - charge", "Modularity - hydrophobicity moment",
+                            "MIG - length", "MIG - charge", "MIG - hydrophobicity moment",
+                            "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity moment"
+                            ] 
             else:
                 header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta",
                           "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 

@@ -40,7 +40,8 @@ def run_epoch_iwae(
     reg_dim,
     gamma,
     gamma_multiplier,
-    factor
+    factor,
+    scale_factor_flg
 ):
     print(f'Epoch {epoch}')
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
@@ -75,7 +76,7 @@ def run_epoch_iwae(
         prior_distr = Normal(zeros_like(mu), ones_like(std))
         q_distr = Normal(mu, std)
         iwae_terms, all_kl_divs, all_srcs, all_tgts = [], [], [], []
-        reg_losses_per_sample_list, reg_losses_with_gamma_per_sample_list  = [], []
+        reg_losses_per_sample_list, reg_losses_with_gamma_per_sample_list, scale_factor_per_sample_list  = [], [], []
         for _ in range(K):
             z = q_distr.rsample().to(device) # B, L
             if mode == 'test':
@@ -102,18 +103,26 @@ def run_epoch_iwae(
             if ar_vae_flg:
                 reg_loss = 0
                 reg_loss_with_gamma = 0
+                scale_factor = 0
                 for dim in reg_dim:
+                    z_reshaped = z.reshape(-1,z.shape[1])
                     reg_loss_with_gamma_partly, reg_loss_partly = r.compute_reg_loss(
-                    z.reshape(-1,z.shape[1]), physchem_torch[:, dim], dim, gamma, gamma_multiplier[dim], device, factor #gamma i delta z papera
+                    z_reshaped, physchem_torch[:, dim], dim, gamma, gamma_multiplier[dim], device, factor #gamma i delta z papera
                     )
+                    if scale_factor_flg:
+                        scale_factor += 0.02 * torch.mean(torch.square(z_reshaped[:,reg_dim]))
                     reg_loss_with_gamma += reg_loss_with_gamma_partly
                     reg_loss += reg_loss_partly
                 reg_losses_per_sample_list.append(reg_loss)
                 reg_losses_with_gamma_per_sample_list.append(reg_loss_with_gamma)
+                if scale_factor_flg:
+                    scale_factor_per_sample_list.append(reg_loss)
 
         if ar_vae_flg:
             total_reg_loss_with_gamma = torch.stack(reg_losses_with_gamma_per_sample_list, dim=0).mean(dim=0).sum()
             total_reg_loss = torch.stack(reg_losses_per_sample_list, dim=0).mean(dim=0).sum()
+            if scale_factor_flg:
+                total_scale_factor = torch.stack(scale_factor_per_sample_list, dim=0).mean(dim=0).sum()
         stacked_srcs = torch.stack(all_srcs, dim=0).permute(0,2,1,3)
         stacked_tgts = torch.stack(all_tgts, dim=0)
         cross_entropy = ce_loss_fun(
@@ -122,7 +131,9 @@ def run_epoch_iwae(
         ).sum(dim=2)
         # print(f'cross_entropy shape = {cross_entropy.shape}')
         stacked_kl_divs = torch.stack(all_kl_divs, dim=0)#.mean(dim=0)
-        if ar_vae_flg:
+        if ar_vae_flg and scale_factor_flg:
+            loss = logsumexp(cross_entropy + kl_beta * stacked_kl_divs, dim=0).mean(dim=0) + total_reg_loss_with_gamma + total_scale_factor
+        elif ar_vae_flg:
             loss = logsumexp(cross_entropy + kl_beta * stacked_kl_divs, dim=0).mean(dim=0) + total_reg_loss_with_gamma
         else:
             loss = logsumexp(cross_entropy + kl_beta * stacked_kl_divs, dim=0).mean(dim=0)
@@ -134,6 +145,8 @@ def run_epoch_iwae(
         if ar_vae_flg:
             stat_sum["reg_loss"] = total_reg_loss
             stat_sum["reg_loss_gamma"] = total_reg_loss_with_gamma
+            if scale_factor_flg:
+                stat_sum["scale_factor"] = total_scale_factor
             # print(f'total_reg_loss_with_gamma = {total_reg_loss_with_gamma}')
         stat_sum["total"] += loss.item() * len(batch)   
 
@@ -219,13 +232,13 @@ def run_epoch_iwae(
         data_row = [mode, epoch, stat_sum["total"] / len_data, 
                         stat_sum["ce_sum"] / len_data, 
                         stat_sum["kl_mean"] / len_data, 
-                        kl_beta * stat_sum["kl_mean"] / len_data,
-                        stat_sum["reg_loss"].item(),
+                        kl_beta * stat_sum["kl_mean"] / len_data]
+        if ar_vae_flg:
+            data_row = data_row + [stat_sum["reg_loss"].item(),
                         stat_sum["reg_loss_gamma"].item(),
-                        factor] if ar_vae_flg else [mode, epoch, stat_sum["total"] / len_data, 
-                                                                         stat_sum["ce_sum"] / len_data, 
-                                                                         stat_sum["kl_mean"] / len_data,
-                                                                         kl_beta * stat_sum["kl_mean"] / len_data]
+                        factor]
+            if scale_factor_flg:
+                        data_row = data_row + [stat_sum["scale_factor"].item()] 
         with open(ROOT_DIR / train_log_file, 'a', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(data_row)
@@ -327,7 +340,8 @@ def run(data_type, encoder_filepath=None, decoder_filepath=None):
                 reg_dim=params["reg_dim"],
                 gamma = gamma,
                 gamma_multiplier = params['gamma_multiplier'],
-                factor = delta
+                factor = delta,
+                scale_factor_flg = params['scale_factor_flg']
         )
         if eval_mode == "deep":
             loss = run_epoch_iwae(
@@ -348,7 +362,8 @@ def run(data_type, encoder_filepath=None, decoder_filepath=None):
                     reg_dim=params["reg_dim"],
                     gamma=gamma,
                     gamma_multiplier = params['gamma_multiplier'],
-                    factor = delta
+                    factor = delta,
+                    scale_factor_flg = params['scale_factor_flg']
             )
 
             if epoch > 0 and epoch % params["save_model_every"] == 0:

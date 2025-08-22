@@ -24,11 +24,11 @@ if __name__ == '__main__':
     set_seed()
     encoder_filepath = os.path.join(
         os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
-        "hyperparams_tuning_factor_0.1_ar-vae_epoch900_encoder.pt"
+        "hyperparams_tuning_uniform_length_more_data_ar-vae_epoch900_encoder.pt"
     )
     decoder_filepath = os.path.join(
         os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
-        "hyperparams_tuning_factor_0.1_ar-vae_epoch900_decoder.pt"
+        "hyperparams_tuning_uniform_length_more_data_ar-vae_epoch900_decoder.pt"
     )
     # print('AMPs/nonAMPs')
     run(['positiv_negativ_AMPs'])

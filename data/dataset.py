@@ -108,10 +108,10 @@ def normalize_attributes(physchem_tensor_original, ):
         feature_name = feature_names[col_idx] if col_idx < len(feature_names) else f"Column_{col_idx}"
         column_tensor = physchem_tensor_original[:, col_idx]
         data_to_transform_np = column_tensor.cpu().numpy().reshape(-1, 1)
-        # qt = QuantileTransformer(output_distribution='normal', random_state=42)
-        qt = QuantileTransformer(
-                    output_distribution='uniform',
-                    n_quantiles=10,                )
+        qt = QuantileTransformer(output_distribution='normal', random_state=42)
+        # qt = QuantileTransformer(
+                    # output_distribution='uniform',
+                    # n_quantiles=10,                )
         transformed_data_np = qt.fit_transform(data_to_transform_np)
         fitted_transformers[col_idx] = qt
         transformed_column_tensor_2d = torch.from_numpy(transformed_data_np).float()

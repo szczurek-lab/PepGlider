@@ -312,6 +312,7 @@ def run(data_type, encoder_filepath=None, decoder_filepath=None):
     train_loader, eval_loader = dataset_lib.prepare_data_for_training(DATA_DIR, params['batch_size'], data_type)
 
     for epoch in tqdm(range(params["epochs"])):
+        epoch = epoch + (10000-params['epochs'])
         eval_mode = "deep" if epoch % params["deeper_eval_every"] == 0 else "fast"
         beta_0, beta_1, t_1 = params["kl_beta_schedule"]
         kl_beta = min(beta_0 + (beta_1 - beta_0) / t_1 * epoch, beta_1)

@@ -42,7 +42,7 @@ def reg_loss_sign(latent_code, attribute, device, factor=1.0):
     # print(f'lc_tanh shape {lc_tanh.shape}')
     attribute_sign = sign(attribute_dist_mat)
     # print(f'attribute_sign shape {attribute_sign.shape}')
-    sign_loss = loss_fn(lc_tanh, attribute_sign.float())
+    sign_loss = loss_fn(lc_tanh, attribute_dist_mat.float())
     # print(f'sign_loss shape {sign_loss.shape}')
     # print(f'sign_loss {sign_loss}')
     return sign_loss.to(device)

@@ -116,7 +116,7 @@ def run_epoch_iwae(
                 reg_losses_per_sample_list.append(reg_loss)
                 reg_losses_with_gamma_per_sample_list.append(reg_loss_with_gamma)
                 if scale_factor_flg:
-                    scale_factor_per_sample_list.append(reg_loss)
+                    scale_factor_per_sample_list.append(scale_factor)
 
         if ar_vae_flg:
             total_reg_loss_with_gamma = torch.stack(reg_losses_with_gamma_per_sample_list, dim=0).mean(dim=0).sum()

@@ -213,9 +213,9 @@ class AMPDataManager:
                 new_data1 = pd.read_csv(data_dir / 'escherichiacoliatcc25922_mic.csv')
                 new_data2 = pd.read_csv(data_dir / 'staphylococcusaureusatcc25923_mic.csv')
 
-                self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='1')
-                self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='1')
-            print(self.positive_data)
+                self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
+                self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
+            # print(self.positive_data)
         else:
             self.positive_data = None
             # with open(positive_filepath) as fasta_file:  # Will close handle cleanly
@@ -253,11 +253,11 @@ class AMPDataManager:
             self.uniprot_data = pd.concat(dfs, ignore_index=True)
         else:
             self.uniprot_data = None
-
+        self.mic_flg = mic_flg
         self.min_len = min_len
         self.max_len = max_len
     @staticmethod
-    def update_and_add_sequences(df_main: pd.DataFrame, new_df: pd.DataFrame, new_label: str = '1') -> pd.DataFrame:
+    def update_and_add_sequences(df_main: pd.DataFrame, new_df: pd.DataFrame, new_label: str = 'mic') -> pd.DataFrame:
         """
         Updates existing sequences in the main DataFrame with activity values from a new DataFrame
         and appends new sequences with a specified label.
@@ -286,8 +286,8 @@ class AMPDataManager:
         new_sequences_df = new_df[~new_df['sequence'].isin(df_main['Sequence'])].copy()
         
         # Add the 'label' column with the specified value
-        new_sequences_df['label'] = new_label
-        new_sequences_df = new_sequences_df.rename(columns={'sequence': 'Sequence'})
+        # new_sequences_df['label'] = new_label
+        new_sequences_df = new_sequences_df.rename(columns={'sequence': 'Sequence', 'activity':new_label})
         # Append the new sequences to the main DataFrame
         updated_df = pd.concat([df_main, new_sequences_df], ignore_index=True)
         
@@ -386,6 +386,12 @@ class AMPDataManager:
             y = np.zeros((x.shape[0]))
         x_changed = pad(to_one_hot(x))
         attributes = calculate_physchem_test(decoded(x_changed, ""),) 
+        if self.mic_flg:
+            mic_e_cola = torch.Tensor(df['mic_e_cola'].tolist())
+            print(mic_e_cola)
+            mic_s_aureus = torch.Tensor(df['mic_s_aureus'].tolist())
+            result_tensor = torch.cat([attributes, mic_e_cola, mic_s_aureus], dim=1)
+            return x_changed, y, result_tensor, x
         return x_changed, y, attributes, x
 
     def get_data(self, balanced: bool = True):

@@ -128,7 +128,7 @@ def report_sequence_char(
                 iteration=epoch
             )
             logger.report_scalar(
-                title="MAE between original hydrophobicity moment metric vs. decoded",
+                title="MAE between original hydrophobicity metric vs. decoded",
                 series=hue,
                 value=mean_absolute_error(physchem_original[:,2], physchem_decoded[:,2]),
                 iteration=epoch
@@ -258,7 +258,7 @@ def report_sequence_char_test(
                 iteration=epoch
             )
             logger.report_scalar(
-                title="MAE between original hydrophobicity moment metric vs. decoded",
+                title="MAE between original hydrophobicity metric vs. decoded",
                 series=hue,
                 value=mae_hm,
                 iteration=epoch

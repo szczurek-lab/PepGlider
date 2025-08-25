@@ -58,6 +58,11 @@ def calculate_charge(data:list):
     # return h.charge
     return list(h.charge)
 
+def calculate_hydrophobicity(data:list):
+    h = analysis.GlobalAnalysis(data)
+    h.calc_H()
+    return list(h.H)
+
 def calculate_hydrophobicmoment(data:list):
     h = analysis.GlobalAnalysis(data)
     h.calc_uH()
@@ -70,15 +75,15 @@ def calculate_physchem_test(peptides: List[str]) -> torch.Tensor:
     global_analysis_obj.calc_charge()
     charges_np_array = np.asarray(global_analysis_obj.charge).flatten()
     charges = charges_np_array.tolist()
-    global_analysis_obj.calc_uH()
-    hydrophobic_moments_np_array = np.asarray(global_analysis_obj.uH).flatten()
-    hydrophobic_moments = hydrophobic_moments_np_array.tolist()
+    global_analysis_obj.calc_H()
+    hydrophobicity_np_array = np.asarray(global_analysis_obj.H).flatten()
+    hydrophobicity = hydrophobicity_np_array.tolist()
 
     for i in range(len(peptides)):
         peptide_features = [
             lengths[i],
             charges[i],
-            hydrophobic_moments[i]
+            hydrophobicity[i]
         ]
         all_features_per_peptide.append(peptide_features)
 

@@ -186,7 +186,7 @@ def _compute_score_matrix(mus, ys):
     return score_matrix
 
 def extract_relevant_attributes(labels, reg_dim): 
-    attr_list = ['Length', 'Charge', 'Hydrophobic moment']
+    attr_list = ['Length', 'Charge', 'Hydrophobicity']
     attr_final = []
     for i in reg_dim:
         attr_final.append(attr_list[i])

@@ -145,7 +145,8 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg):
             uniprot_filepath = [data_dir / i for i in ['Uniprot_0_25_train.csv','Uniprot_0_25_test.csv','Uniprot_0_25_val.csv']],
             min_len=MIN_LENGTH,
             max_len=MAX_LENGTH,
-            mic_flg = mic_flg)
+            mic_flg = mic_flg,
+            data_dir = data_dir)
 
         amp_x, amp_y, attributes_input, _ = data_manager.get_uniform_data()
     elif 'positiv_negativ_AMPs' in data_type:
@@ -154,7 +155,8 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg):
             negative_filepath = data_dir / 'unlabelled_negative.csv',
             min_len=MIN_LENGTH,
             max_len=MAX_LENGTH,
-            mic_flg = mic_flg)
+            mic_flg = mic_flg,
+            data_dir = data_dir)
 
         amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
     elif 'uniprot' in data_type:
@@ -162,7 +164,8 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg):
             uniprot_filepath = [data_dir / i for i in ['Uniprot_0_25_train.csv','Uniprot_0_25_test.csv','Uniprot_0_25_val.csv']],
             min_len=MIN_LENGTH,
             max_len=MAX_LENGTH,
-            mic_flg = mic_flg)
+            mic_flg = mic_flg,
+            data_dir = data_dir)
         amp_x, amp_y, attributes_input, _ = data_manager.get_uniprot_data()
     attributes = normalize_attributes(attributes_input)
     #print(f'attributes shape = {attributes.shape}')
@@ -201,13 +204,14 @@ class AMPDataManager:
             uniprot_filepath: List[str] = [],
             min_len: int = 0,
             max_len: int = 25,
-            mic_flg: bool = False
+            mic_flg: bool = False,
+            data_dir: str = ''
     ):
         if str(positive_filepath).endswith(".csv"):
             self.positive_data = pd.read_csv(positive_filepath)
             if mic_flg:
-                new_data1 = pd.read_csv('escherichiacoliatcc25922_mic.csv')
-                new_data2 = pd.read_csv('staphylococcusaureusatcc25923_mic.csv')
+                new_data1 = pd.read_csv(data_dir / 'escherichiacoliatcc25922_mic.csv')
+                new_data2 = pd.read_csv(data_dir / 'staphylococcusaureusatcc25923_mic.csv')
 
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='1')
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='1')

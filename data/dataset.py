@@ -137,14 +137,15 @@ def normalize_dimension_to_0_1(tensor: torch.Tensor, dim: int = -1) -> torch.Ten
     normalized_tensor = (tensor - min_vals) / range_vals
     return normalized_tensor
 
-def prepare_data_for_training(data_dir, batch_size, data_type):
+def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg):
     if 'positiv_negativ_AMPs' in data_type and 'uniprot' in data_type:
         data_manager = AMPDataManager(
             positive_filepath = data_dir / 'unlabelled_positive.csv',
             negative_filepath = data_dir / 'unlabelled_negative.csv',
             uniprot_filepath = [data_dir / i for i in ['Uniprot_0_25_train.csv','Uniprot_0_25_test.csv','Uniprot_0_25_val.csv']],
             min_len=MIN_LENGTH,
-            max_len=MAX_LENGTH)
+            max_len=MAX_LENGTH,
+            mic_flg = mic_flg)
 
         amp_x, amp_y, attributes_input, _ = data_manager.get_uniform_data()
     elif 'positiv_negativ_AMPs' in data_type:
@@ -152,14 +153,16 @@ def prepare_data_for_training(data_dir, batch_size, data_type):
             positive_filepath = data_dir / 'unlabelled_positive.csv',
             negative_filepath = data_dir / 'unlabelled_negative.csv',
             min_len=MIN_LENGTH,
-            max_len=MAX_LENGTH)
+            max_len=MAX_LENGTH,
+            mic_flg = mic_flg)
 
         amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
     elif 'uniprot' in data_type:
         data_manager = AMPDataManager(
             uniprot_filepath = [data_dir / i for i in ['Uniprot_0_25_train.csv','Uniprot_0_25_test.csv','Uniprot_0_25_val.csv']],
             min_len=MIN_LENGTH,
-            max_len=MAX_LENGTH)
+            max_len=MAX_LENGTH,
+            mic_flg = mic_flg)
         amp_x, amp_y, attributes_input, _ = data_manager.get_uniprot_data()
     attributes = normalize_attributes(attributes_input)
     #print(f'attributes shape = {attributes.shape}')
@@ -198,9 +201,17 @@ class AMPDataManager:
             uniprot_filepath: List[str] = [],
             min_len: int = 0,
             max_len: int = 25,
+            mic_flg: bool = False
     ):
         if str(positive_filepath).endswith(".csv"):
             self.positive_data = pd.read_csv(positive_filepath)
+            if mic_flg:
+                new_data1 = pd.read_csv('escherichiacoliatcc25922_mic.csv')
+                new_data2 = pd.read_csv('staphylococcusaureusatcc25923_mic.csv')
+
+                self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='1')
+                self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='1')
+            print(self.positive_data)
         else:
             self.positive_data = None
             # with open(positive_filepath) as fasta_file:  # Will close handle cleanly
@@ -241,7 +252,39 @@ class AMPDataManager:
 
         self.min_len = min_len
         self.max_len = max_len
-
+    def update_and_add_sequences(df_main: pd.DataFrame, new_df: pd.DataFrame, new_label: str = '1') -> pd.DataFrame:
+        """
+        Updates existing sequences in the main DataFrame with activity values from a new DataFrame
+        and appends new sequences with a specified label.
+        
+        Args:
+            df_main (pd.DataFrame): The main DataFrame (e.g., self.positive_data).
+            new_df (pd.DataFrame): The DataFrame containing new sequences and activities.
+            new_label (str): The label to assign to sequences not present in df_main.
+            
+        Returns:
+            pd.DataFrame: The updated main DataFrame.
+        """
+        # Create a Series to hold the activity values from the new DataFrame, using sequences as the index
+        new_activities = new_df.set_index('sequence')['activity']
+        
+        # 1. Update existing sequences
+        # Use .update() to add new activity values for matching sequences
+        df_main = df_main.set_index('sequence')
+        df_main.update(new_activities)
+        df_main = df_main.reset_index()
+        
+        # 2. Identify and append new sequences
+        # Find sequences that are in the new_df but not in df_main
+        new_sequences_df = new_df[~new_df['sequence'].isin(df_main['sequence'])].copy()
+        
+        # Add the 'label' column with the specified value
+        new_sequences_df['label'] = new_label
+        
+        # Append the new sequences to the main DataFrame
+        updated_df = pd.concat([df_main, new_sequences_df], ignore_index=True)
+        
+        return updated_df
     def _filter_by_length(self, df: pd.DataFrame) -> pd.DataFrame:
         mask = (df['Sequence'].str.len() >= self.min_len) & (df['Sequence'].str.len() <= self.max_len)
         return df.loc[mask]

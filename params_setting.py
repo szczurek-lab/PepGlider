@@ -28,7 +28,8 @@ def set_params(root_dir):
         "gamma_schedule": (0.00001, 20, 8000),
         "gamma_multiplier": [1,1,1],
         "factor_schedule": (1,1,8000),
-        'scale_factor_flg': False
+        'scale_factor_flg': False,
+        'mic_flg': True
     }
 
     if params["use_clearml"]:

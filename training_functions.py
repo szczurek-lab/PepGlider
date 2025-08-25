@@ -176,7 +176,7 @@ def run_epoch_iwae(
         ar_vae_metrics["Modularity"] = m.compute_modularity(latent_codes, attributes, attr_list)
         ar_vae_metrics["MIG"] = m.compute_mig(latent_codes, attributes,attr_list)
         ar_vae_metrics["SAP_score"] = m.compute_sap_score(latent_codes, attributes, attr_list)
-        print(ar_vae_metrics)
+        # print(ar_vae_metrics)
     if eval_mode == "deep": 
         metrics_list = mn.report_sequence_char_test(
                 logger,
@@ -309,7 +309,7 @@ def run(data_type, encoder_filepath=None, decoder_filepath=None):
         betas=(0.9, 0.999),
     )
 
-    train_loader, eval_loader = dataset_lib.prepare_data_for_training(DATA_DIR, params['batch_size'], data_type)
+    train_loader, eval_loader = dataset_lib.prepare_data_for_training(DATA_DIR, params['batch_size'], data_type, params['mic_flg'])
 
     for epoch in tqdm(range(params["epochs"])):
         epoch = epoch + (10000-params['epochs'])

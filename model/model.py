@@ -170,7 +170,8 @@ class DecoderRNN(nn.Module):
         # print(f"Przykładowa średnia z1: {z1.mean().item():.2f}")
         # print(f"Przykładowa średnia z2: {z2.mean().item():.2f}")
         z = torch.randn(batch_size, latent_dim).to(DEVICE) # Generowanie losowego wektora z
-        z[:, dim1] = (z[:, dim1] + shift_value).to(DEVICE)
+        for dim in dim1:
+            z[:, dim] = (z[:, dim] + shift_value).to(DEVICE)
         # z = z.repeat(num_points, 1).to(DEVICE) # Powielenie go do rozmiaru num_points x z_dim
         # z[:, dim1] = z1.to(DEVICE).contiguous().view(-1) # Spłaszcz z1 do 1D i przypisz do kolumny d
         # z[:, dim2] = z2.to(DEVICE).contiguous().view(-1)

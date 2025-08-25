@@ -13,7 +13,7 @@ def set_params(root_dir):
         "dropout": 0.1,
         "batch_size": 512,
         "lr": 0.001,
-        "kl_beta_schedule": (0.000001, 0.01, 8000),
+        "kl_beta_schedule": (0.00001, 0.1, 8000),
         "train_size": None,
         "epochs": 10000,
         "iwae_samples": 10,
@@ -24,7 +24,7 @@ def set_params(root_dir):
         "deeper_eval_every": 20,
         "save_model_every": 100,
         "ar_vae_flg": True,
-        "reg_dim": [1], # [length, charge, hydrophobicity_moment]
+        "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
         "gamma_schedule": (0.00001, 20, 8000),
         "gamma_multiplier": [1,1,1],
         "factor_schedule": (1,1,8000),
@@ -57,31 +57,31 @@ def set_params(root_dir):
                 header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta", 
                           "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
                           "MAE length", "MAE charge", "MAE hydrophobicity moment", 
-                          "Interpretability - length", "Interpretability - charge", "Interpretability - hydrophobicity moment",
-                          "Corr_score - length", "Corr_score - charge", "Corr_score - hydrophobicity moment",
-                          "Modularity - length", "Modularity - charge", "Modularity - hydrophobicity moment",
-                          "MIG - length", "MIG - charge", "MIG - hydrophobicity moment",
-                          "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity moment"
+                          "Interpretability - length", "Interpretability - charge", "Interpretability - hydrophobicity","Interpretability - mean",
+                          "Corr_score - length", "Corr_score - charge", "Corr_score - hydrophobicity","Corr_score - mean",
+                          "Modularity - length", "Modularity - charge", "Modularity - hydrophobicity","Modularity - mean",
+                          "MIG - length", "MIG - charge", "MIG - hydrophobicity moment","MIG - mean",
+                          "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity","SAP_score - mean"
                           ] 
                 if params["scale_factor_flg"]:
                     header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta", "Scale factor",
                             "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
                             "MAE length", "MAE charge", "MAE hydrophobicity moment", 
-                            "Interpretability - length", "Interpretability - charge", "Interpretability - hydrophobicity moment",
-                            "Corr_score - length", "Corr_score - charge", "Corr_score - hydrophobicity moment",
-                            "Modularity - length", "Modularity - charge", "Modularity - hydrophobicity moment",
-                            "MIG - length", "MIG - charge", "MIG - hydrophobicity moment",
-                            "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity moment"
-                            ] 
+                            "Interpretability - length", "Interpretability - charge", "Interpretability - hydrophobicity","Interpretability - mean",
+                            "Corr_score - length", "Corr_score - charge", "Corr_score - hydrophobicity","Corr_score - mean",
+                            "Modularity - length", "Modularity - charge", "Modularity - hydrophobicity","Modularity - mean",
+                            "MIG - length", "MIG - charge", "MIG - hydrophobicity moment","MIG - mean",
+                            "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity","SAP_score - mean"
+                        ] 
             else:
                 header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta",
                           "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
                           "MAE length", "MAE charge", "MAE hydrophobicity moment", 
-                          "Interpretability - length", "Interpretability - charge", "Interpretability - hydrophobicity moment",
-                          "Corr_score - length", "Corr_score - charge", "Corr_score - hydrophobicity moment",
-                          "Modularity - length", "Modularity - charge", "Modularity - hydrophobicity moment",
-                          "MIG - length", "MIG - charge", "MIG - hydrophobicity moment",
-                          "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity moment"
+                          "Interpretability - length", "Interpretability - charge", "Interpretability - hydrophobicity","Interpretability - mean",
+                          "Corr_score - length", "Corr_score - charge", "Corr_score - hydrophobicity","Corr_score - mean",
+                          "Modularity - length", "Modularity - charge", "Modularity - hydrophobicity","Modularity - mean",
+                          "MIG - length", "MIG - charge", "MIG - hydrophobicity moment","MIG - mean",
+                          "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity","SAP_score - mean"
                           ] 
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(header)

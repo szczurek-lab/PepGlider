@@ -275,17 +275,19 @@ class AMPDataManager:
         
         # 1. Update existing sequences
         # Use .update() to add new activity values for matching sequences
-        df_main = df_main.set_index('sequence')
+        # CHANGE: Use 'Sequence' here
+        df_main = df_main.set_index('Sequence')
         df_main.update(new_activities)
         df_main = df_main.reset_index()
         
         # 2. Identify and append new sequences
         # Find sequences that are in the new_df but not in df_main
-        new_sequences_df = new_df[~new_df['sequence'].isin(df_main['sequence'])].copy()
+        # CHANGE: Use 'Sequence' here
+        new_sequences_df = new_df[~new_df['sequence'].isin(df_main['Sequence'])].copy()
         
         # Add the 'label' column with the specified value
         new_sequences_df['label'] = new_label
-        
+        new_sequences_df = new_sequences_df.rename(columns={'sequence': 'Sequence'})
         # Append the new sequences to the main DataFrame
         updated_df = pd.concat([df_main, new_sequences_df], ignore_index=True)
         

@@ -101,17 +101,25 @@ def compute_modularity(latent_codes, attributes, attr_list):
     """
     scores = {}
     mi = np.array([])
+    padded_mi_partly = np.array([])
     for i, attr_name in tqdm(enumerate(attr_list)):
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':
             finite_mask = np.isfinite(attributes[:,i])
-            mi_partly = continuous_mutual_info(latent_codes[finite_mask,i], attributes[finite_mask,i]).reshape(-1, 1)
+            mi_partly = continuous_mutual_info(latent_codes[finite_mask,:], attributes[finite_mask,i]).reshape(-1, 1)
         else:
-            mi_partly = continuous_mutual_info(latent_codes[:,i], attributes[:,i]).reshape(-1, 1)
-        mi = np.column_stack((mi, mi_partly))
-        modularity = _modularity(mi[:, i].reshape(-1, 56))
+            mi_partly = continuous_mutual_info(latent_codes, attributes[:,i]).reshape(-1, 1)
+            if mi.shape[0] != 0:
+                rows_to_pad = mi.shape[0] - mi_partly.shape[0]
+
+                padded_mi_partly = np.pad(mi_partly, ((0, rows_to_pad), (0, 0)), 
+                                        mode='constant', constant_values=np.nan)
+            else:
+                padded_mi_partly = mi_partly
+        mi = np.column_stack((mi, padded_mi_partly))
+        modularity = _modularity(mi_partly.reshape(-1, 56))
         scores[attr_name] = modularity.item()
     print(f'mi.shape = {mi.shape}')
-    scores['mean'] = np.mean(_modularity(mi))
+    scores['mean'] = np.nanmean(_modularity(mi))
     print(f'scores from modularity = {scores}')
     return scores
 

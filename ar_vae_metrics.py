@@ -45,7 +45,7 @@ def compute_interpretability_metric(latent_codes, attributes, attr_list):
     for i, attr_name in tqdm(enumerate(attr_list)):
         # print(attr_name)
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':
-            finite_mask = torch.isfinite(attributes[:,i])
+            finite_mask = np.isfinite(attributes[:,i])
             latent_codes = latent_codes[finite_mask,:]
             attr_labels = attributes[finite_mask, i]
         else:
@@ -75,7 +75,7 @@ def compute_mig(latent_codes, attributes, attr_list):
     mig_scores = np.array([])
     for i, attr_name in tqdm(enumerate(attr_list)):
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':
-            finite_mask = torch.isfinite(attributes[:,i])
+            finite_mask = np.isfinite(attributes[:,i])
             m = continuous_mutual_info(latent_codes[finite_mask,i], attributes[finite_mask,i])
             entropy = continuous_entropy(attributes[finite_mask,i])
         else:
@@ -102,7 +102,7 @@ def compute_modularity(latent_codes, attributes, attr_list):
     mi = np.array([])
     for i, attr_name in tqdm(enumerate(attr_list)):
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':
-            finite_mask = torch.isfinite(attributes[:,i])
+            finite_mask = np.isfinite(attributes[:,i])
             mi_partly = continuous_mutual_info(latent_codes[finite_mask,i], attributes[finite_mask,i]).reshape(-1, 1)
         else:
             mi_partly = continuous_mutual_info(latent_codes[:,i], attributes[:,i]).reshape(-1, 1)
@@ -157,7 +157,7 @@ def _compute_correlation_matrix(mus, ys, attr_list):
     for i in tqdm(range(num_latent_codes)):
         for j in range(num_attributes):
             if attr_list[j] == 'MIC E.coli' or attr_list[j] == 'MIC S.aureus':
-                finite_mask = torch.isfinite(ys[:,j])
+                finite_mask = np.isfinite(ys[:,j])
                 mu_i = mus[finite_mask, i]
                 y_j = ys[finite_mask, j]
             else:
@@ -203,7 +203,7 @@ def _compute_score_matrix(mus, ys, attr_list):
     for i in tqdm(range(num_latent_codes)):
         for j in range(num_attributes):
             if attr_list[j] == 'MIC E.coli' or attr_list[j] == 'MIC S.aureus':
-                finite_mask = torch.isfinite(ys[:,j])
+                finite_mask = np.isfinite(ys[:,j])
                 mu_i = mus[finite_mask, i]
                 y_j = ys[finite_mask, j]
             else:

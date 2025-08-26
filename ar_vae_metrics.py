@@ -46,7 +46,7 @@ def compute_interpretability_metric(latent_codes_input, attributes, attr_list):
     total = 0
     latent_codes = latent_codes_input
     for i, attr_name in tqdm(enumerate(attr_list)):
-        print(attr_name)
+        # print(attr_name)
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':
             finite_mask = np.isfinite(attributes[:,i])
             latent_codes = latent_codes_input[finite_mask,:]
@@ -98,7 +98,7 @@ def compute_mig(latent_codes, attributes, attr_list):
             mig_scores = mig_scores_partly
         else:
             mig_scores = np.column_stack((mig_scores, padded_mig_partly))
-        score_dict[attr_name] = mig_scores[i]
+        score_dict[attr_name] = padded_mig_partly
     print(f'mig_scores.shape = {mig_scores.shape}')
     score_dict['mean'] = np.nanmean(mig_scores)
     print(f'score_dict from mig = {score_dict}')

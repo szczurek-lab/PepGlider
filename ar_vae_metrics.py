@@ -45,7 +45,7 @@ def compute_interpretability_metric(latent_codes, attributes, attr_list):
     for i, attr_name in tqdm(enumerate(attr_list)):
         # print(attr_name)
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':
-            finite_mask = torch.isfinite(attributes[:,dim])
+            finite_mask = torch.isfinite(attributes[:,i])
             latent_codes = latent_codes[finite_mask,:]
             attr_labels = attributes[finite_mask, i]
         else:

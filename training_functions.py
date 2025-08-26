@@ -105,8 +105,8 @@ def run_epoch_iwae(
                 reg_loss_with_gamma = 0
                 scale_factor = 0
                 for dim in reg_dim:
+                    finite_mask = torch.isfinite(physchem[:,dim])
                     if dim ==3 or dim ==4:
-                        finite_mask = torch.isfinite(physchem[:,dim])
                         z_reshaped = z[finite_mask].reshape(-1,z.shape[1])
                     else:
                         z_reshaped = z.reshape(-1,z.shape[1])

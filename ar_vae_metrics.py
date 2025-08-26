@@ -43,15 +43,15 @@ def compute_interpretability_metric(latent_codes, attributes, attr_list):
     interpretability_metrics = {}
     total = 0
     for i, attr_name in tqdm(enumerate(attr_list)):
-        print(attr_name)
+        # print(attr_name)
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':
             finite_mask = torch.isfinite(attributes[:,dim])
             latent_codes = latent_codes[finite_mask,:]
             attr_labels = attributes[finite_mask, i]
         else:
             attr_labels = attributes[:, i]
-        print(f'latent_codes = {latent_codes}')
-        print(f'attr_labels = {attr_labels}')
+        # print(f'latent_codes = {latent_codes}')
+        # print(f'attr_labels = {attr_labels}')
         mutual_info = mutual_info_regression(latent_codes, attr_labels)
         dim = np.argmax(mutual_info)
 

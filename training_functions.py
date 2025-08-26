@@ -174,6 +174,8 @@ def run_epoch_iwae(
     if mode == 'test':
         latent_codes = np.concatenate(latent_codes, 0)
         attributes = cat(attributes, dim=0).numpy()
+        print(f'latent_codes shape = {latent_codes.shape}')
+        print(f'attributes shape = {attributes.shape}')
         attributes, attr_list = m.extract_relevant_attributes(attributes, reg_dim)
         ar_vae_metrics = {}
         ar_vae_metrics["Interpretability"] = m.compute_interpretability_metric(latent_codes, attributes, attr_list)

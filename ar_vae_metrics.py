@@ -75,7 +75,7 @@ def compute_mig(latent_codes, attributes, attr_list):
         attributes: np.array num_points x num_attributes
     """
     score_dict = {}
-    mig_scores = np.array([])
+    mig_scores = None
     padded_mig_partly = np.array([])
     for i, attr_name in tqdm(enumerate(attr_list)):
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':
@@ -94,7 +94,10 @@ def compute_mig(latent_codes, attributes, attr_list):
                                         mode='constant', constant_values=np.nan)
         else:
                 padded_mig_partly = mig_scores_partly
-        mig_scores = np.column_stack((mig_scores, padded_mig_partly))
+        if mig_scores is None:
+            mig_scores = padded_mig_partly
+        else:
+            mig_scores = np.column_stack((mig_scores, padded_mig_partly))
         score_dict[attr_name] = mig_scores[i]
     print(f'mig_scores.shape = {mig_scores.shape}')
     score_dict['mean'] = np.nanmean(mig_scores)
@@ -110,7 +113,7 @@ def compute_modularity(latent_codes, attributes, attr_list):
         attributes: np.array num_points x num_attributes
     """
     scores = {}
-    mi = np.array([])
+    mi = None
     padded_mi_partly = np.array([])
     for i, attr_name in tqdm(enumerate(attr_list)):
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':
@@ -125,7 +128,10 @@ def compute_modularity(latent_codes, attributes, attr_list):
                                         mode='constant', constant_values=np.nan)
             else:
                 padded_mi_partly = mi_partly
-        mi = np.column_stack((mi, padded_mi_partly))
+        if mi is None:
+            mi = mi_partly
+        else:
+            mi = np.column_stack((mi, padded_mi_partly))
         modularity = _modularity(mi_partly.reshape(-1, 56))
         scores[attr_name] = modularity.item()
     print(f'mi.shape = {mi.shape}')

@@ -43,7 +43,12 @@ def compute_interpretability_metric(latent_codes, attributes, attr_list):
     interpretability_metrics = {}
     total = 0
     for i, attr_name in tqdm(enumerate(attr_list)):
-        attr_labels = attributes[:, i]
+        if attr_name == 'mic_e_cola' or attr_name == 'mic_s_aureus':
+            finite_mask = torch.isfinite(attributes[:,dim])
+            latent_codes = latent_codes[finite_mask,:]
+            attr_labels = attributes[finite_mask, i]
+        else:
+            attr_labels = attributes[:, i]
         mutual_info = mutual_info_regression(latent_codes, attr_labels)
         dim = np.argmax(mutual_info)
 
@@ -64,13 +69,22 @@ def compute_mig(latent_codes, attributes, attr_list):
         attributes: np.array num_points x num_attributes
     """
     score_dict = {}
-    m = continuous_mutual_info(latent_codes, attributes)
-    entropy = continuous_entropy(attributes)
-    sorted_m = np.sort(m, axis=0)[::-1]
-    mig_scores = np.divide(sorted_m[0, :] - sorted_m[1, :], entropy[:])
+    mig_scores = np.array([])
     for i, attr_name in tqdm(enumerate(attr_list)):
+        if attr_name == 'mic_e_cola' or attr_name == 'mic_s_aureus':
+            finite_mask = torch.isfinite(attributes[:,i])
+            m = continuous_mutual_info(latent_codes[finite_mask,i], attributes[finite_mask,i])
+            entropy = continuous_entropy(attributes[finite_mask,i])
+        else:
+            m = continuous_mutual_info(latent_codes[:,i], attributes[:,i])
+            entropy = continuous_entropy(attributes[:,i])
+        sorted_m = np.sort(m, axis=0)[::-1]
+        mig_scores_partly = np.divide(sorted_m[0, :] - sorted_m[1, :], entropy[:]).reshape(-1, 1)
+        mig_scores = np.column_stack((mig_scores, mig_scores_partly))
         score_dict[attr_name] = mig_scores[i]
+    print(f'mig_scores.shape = {mig_scores.shape}')
     score_dict['mean'] = np.mean(mig_scores)
+    print(f'score_dict from mig = {score_dict}')
     return score_dict
 
 
@@ -82,11 +96,19 @@ def compute_modularity(latent_codes, attributes, attr_list):
         attributes: np.array num_points x num_attributes
     """
     scores = {}
-    mi = continuous_mutual_info(latent_codes, attributes)
+    mi = np.array([])
     for i, attr_name in tqdm(enumerate(attr_list)):
+        if attr_name == 'mic_e_cola' or attr_name == 'mic_s_aureus':
+            finite_mask = torch.isfinite(attributes[:,i])
+            mi_partly = continuous_mutual_info(latent_codes[finite_mask,i], attributes[finite_mask,i]).reshape(-1, 1)
+        else:
+            mi_partly = continuous_mutual_info(latent_codes[:,i], attributes[:,i]).reshape(-1, 1)
+        mi = np.column_stack((mi, mi_partly))
         modularity = _modularity(mi[:, i].reshape(-1, 56))
         scores[attr_name] = modularity.item()
+    print(f'mi.shape = {mi.shape}')
     scores['mean'] = np.mean(_modularity(mi))
+    print(f'scores from modularity = {scores}')
     return scores
 
 
@@ -114,7 +136,7 @@ def compute_correlation_score(latent_codes, attributes, attr_list):
         latent_codes: np.array num_points x num_codes
         attributes: np.array num_points x num_attributes
     """
-    corr_matrix = _compute_correlation_matrix(latent_codes, attributes)
+    corr_matrix = _compute_correlation_matrix(latent_codes, attributes, attr_list)
     scores = {}
     for i, attr_name in tqdm(enumerate(attr_list)):
         scores[attr_name] = np.max(corr_matrix, axis=0)[i]
@@ -122,7 +144,7 @@ def compute_correlation_score(latent_codes, attributes, attr_list):
     return scores
 
 
-def _compute_correlation_matrix(mus, ys):
+def _compute_correlation_matrix(mus, ys, attr_list):
     """
     Compute correlation matrix for correlation score metric
     """
@@ -131,8 +153,13 @@ def _compute_correlation_matrix(mus, ys):
     score_matrix = np.zeros([num_latent_codes, num_attributes])
     for i in tqdm(range(num_latent_codes)):
         for j in range(num_attributes):
-            mu_i = mus[:, i]
-            y_j = ys[:, j]
+            if attr_list[j] == 'mic_e_cola' or attr_list[j] == 'mic_s_aureus':
+                finite_mask = torch.isfinite(ys[:,j])
+                mu_i = mus[finite_mask, i]
+                y_j = ys[finite_mask, j]
+            else:
+                mu_i = mus[:, i]
+                y_j = ys[:, j]
             rho, p = spearmanr(mu_i, y_j)
             if p <= 0.05:
                 score_matrix[i, j] = np.abs(rho)
@@ -151,7 +178,7 @@ def compute_sap_score(latent_codes, attributes, attr_list):
         latent_codes: np.array num_points x num_codes
         attributes: np.array num_points x num_attributes
     """
-    score_matrix = _compute_score_matrix(latent_codes, attributes)
+    score_matrix = _compute_score_matrix(latent_codes, attributes, attr_list)
     # Score matrix should have shape [num_codes, num_attributes].
     assert score_matrix.shape[0] == latent_codes.shape[1]
     assert score_matrix.shape[1] == attributes.shape[1]
@@ -163,7 +190,7 @@ def compute_sap_score(latent_codes, attributes, attr_list):
     return scores
 
 
-def _compute_score_matrix(mus, ys):
+def _compute_score_matrix(mus, ys, attr_list):
     """
     Compute score matrix for sap score computation.
     """
@@ -172,8 +199,13 @@ def _compute_score_matrix(mus, ys):
     score_matrix = np.zeros([num_latent_codes, num_attributes])
     for i in tqdm(range(num_latent_codes)):
         for j in range(num_attributes):
-            mu_i = mus[:, i]
-            y_j = ys[:, j]
+            if attr_list[j] == 'mic_e_cola' or attr_list[j] == 'mic_s_aureus':
+                finite_mask = torch.isfinite(ys[:,j])
+                mu_i = mus[finite_mask, i]
+                y_j = ys[finite_mask, j]
+            else:
+                mu_i = mus[:, i]
+                y_j = ys[:, j]
             # Attributes are considered continuous.
             cov_mu_i_y_j = np.cov(mu_i, y_j, ddof=1)
             cov_mu_y = cov_mu_i_y_j[0, 1] ** 2

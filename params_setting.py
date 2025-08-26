@@ -74,6 +74,16 @@ def set_params(root_dir):
                             "MIG - length", "MIG - charge", "MIG - hydrophobicity moment","MIG - mean",
                             "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity","SAP_score - mean"
                         ] 
+                if params['mic_flg']:
+                    header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta", 
+                            "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
+                            "MAE length", "MAE charge", "MAE hydrophobicity moment", 
+                            "Interpretability - length", "Interpretability - charge", "Interpretability - hydrophobicity", "Interpretability - mic_e_cola", "Interpretability - mic_s_aureus","Interpretability - mean",
+                            "Corr_score - length", "Corr_score - charge", "Corr_score - hydrophobicity", "Corr_score - mic_e_cola", "Corr_score - mic_s_aureus","Corr_score - mean",
+                            "Modularity - length", "Modularity - charge", "Modularity - hydrophobicity", "Modularity - mic_e_cola", "Modularity - mic_s_aureus","Modularity - mean",
+                            "MIG - length", "MIG - charge", "MIG - hydrophobicity moment", "MIG - mic_e_cola", "MIG - mic_s_aureus","MIG - mean",
+                            "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity", "SAP_score - mic_e_cola", "SAP_score - mic_s_aureus","SAP_score - mean"
+                            ] 
             else:
                 header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta",
                           "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
@@ -84,6 +94,16 @@ def set_params(root_dir):
                           "MIG - length", "MIG - charge", "MIG - hydrophobicity moment","MIG - mean",
                           "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity","SAP_score - mean"
                           ] 
+                if params['mic_flg']:
+                    header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta",
+                            "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
+                            "MAE length", "MAE charge", "MAE hydrophobicity moment", 
+                            "Interpretability - length", "Interpretability - charge", "Interpretability - hydrophobicity", "Interpretability - mic_e_cola", "Interpretability - mic_s_aureus","Interpretability - mean",
+                            "Corr_score - length", "Corr_score - charge", "Corr_score - hydrophobicity", "Corr_score - mic_e_cola", "Corr_score - mic_s_aureus","Corr_score - mean",
+                            "Modularity - length", "Modularity - charge", "Modularity - hydrophobicity", "Modularity - mic_e_cola", "Modularity - mic_s_aureus","Modularity - mean",
+                            "MIG - length", "MIG - charge", "MIG - hydrophobicity moment", "MIG - mic_e_cola", "MIG - mic_s_aureus","MIG - mean",
+                            "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity", "SAP_score - mic_e_cola", "SAP_score - mic_s_aureus","SAP_score - mean"
+                            ] 
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(header)
     return params, train_log_file, eval_log_file, logger

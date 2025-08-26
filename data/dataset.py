@@ -215,7 +215,7 @@ class AMPDataManager:
 
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
-            # print(self.positive_data)
+            print(self.positive_data)
         else:
             self.positive_data = None
             # with open(positive_filepath) as fasta_file:  # Will close handle cleanly
@@ -387,9 +387,9 @@ class AMPDataManager:
         x_changed = pad(to_one_hot(x))
         attributes = calculate_physchem_test(decoded(x_changed, ""),) 
         if self.mic_flg:
-            mic_e_cola = torch.Tensor(df['mic_e_cola'].tolist())
+            mic_e_cola = torch.Tensor(df['mic_e_cola'].tolist()).unsqueeze(1)
             print(mic_e_cola)
-            mic_s_aureus = torch.Tensor(df['mic_s_aureus'].tolist())
+            mic_s_aureus = torch.Tensor(df['mic_s_aureus'].tolist()).unsqueeze(1)
             result_tensor = torch.cat([attributes, mic_e_cola, mic_s_aureus], dim=1)
             return x_changed, y, result_tensor, x
         return x_changed, y, attributes, x

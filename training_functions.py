@@ -105,14 +105,19 @@ def run_epoch_iwae(
                 reg_loss_with_gamma = 0
                 scale_factor = 0
                 for dim in reg_dim:
-                    z_reshaped = z.reshape(-1,z.shape[1])
-                    reg_loss_with_gamma_partly, reg_loss_partly = r.compute_reg_loss(
-                    z_reshaped, physchem_torch[:, dim], dim, gamma, gamma_multiplier[dim], device, factor #gamma i delta z papera
-                    )
-                    if scale_factor_flg:
-                        scale_factor += 0.02 * torch.mean(torch.square(z_reshaped[:,reg_dim]))
-                    reg_loss_with_gamma += reg_loss_with_gamma_partly
-                    reg_loss += reg_loss_partly
+                    if dim ==3 or dim ==4:
+                        finite_mask = torch.isfinite(physchem[:,dim])
+                        z_reshaped = z[finite_mask].reshape(-1,z.shape[1])
+                    else:
+                        z_reshaped = z.reshape(-1,z.shape[1])
+                    if z_reshaped.shape[0] != 0:
+                        reg_loss_with_gamma_partly, reg_loss_partly = r.compute_reg_loss(
+                        z_reshaped, physchem_torch[:, dim], dim, gamma, gamma_multiplier[dim], device, factor #gamma i delta z papera
+                        )
+                        if scale_factor_flg:
+                            scale_factor += 0.02 * torch.mean(torch.square(z_reshaped[:,reg_dim]))
+                        reg_loss_with_gamma += reg_loss_with_gamma_partly
+                        reg_loss += reg_loss_partly
                 reg_losses_per_sample_list.append(reg_loss)
                 reg_losses_with_gamma_per_sample_list.append(reg_loss_with_gamma)
                 if scale_factor_flg:

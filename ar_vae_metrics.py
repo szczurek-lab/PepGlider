@@ -47,7 +47,7 @@ def compute_interpretability_metric(latent_codes, attributes, attr_list):
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':
             finite_mask = np.isfinite(attributes[:,i])
             finite_positions = np.argwhere(finite_mask)
-            latent_codes = latent_codes[finite_positions,:]
+            latent_codes = latent_codes[finite_positions,i]
             attr_labels = attributes[finite_positions, i]
         else:
             attr_labels = attributes[:, i]

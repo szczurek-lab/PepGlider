@@ -12,11 +12,12 @@ def continuous_mutual_info(mus, ys):
         mus: np.array num_points x num_points
         ys: np.array num_points x num_attributes
     """
-    num_codes = mus.shape[1]
-    num_attributes = ys.shape[1]
-    m = np.zeros([num_codes, num_attributes])
-    for i in tqdm(range(num_attributes)):
-        m[:, i] = mutual_info_regression(mus, ys[:, i])
+    # num_codes = mus.shape[1]
+    # num_attributes = ys.shape[1]
+    # m = np.zeros([num_codes, num_attributes])
+    # for i in tqdm(range(num_attributes)):
+    #     m[:, i] = mutual_info_regression(mus, ys[:, i])
+    m = mutual_info_regression(mus, ys)
     return m
 
 def continuous_entropy(ys):
@@ -24,12 +25,13 @@ def continuous_entropy(ys):
     Args:
         ys: np.array num_points x num_attributes
     """
-    num_factors = ys.shape[1]
-    h = np.zeros(num_factors)
-    for j in tqdm(range(num_factors)):
-        h[j] = mutual_info_regression(
-            ys[:, j].reshape(-1, 1), ys[:, j]
-        )
+    # num_factors = ys.shape[1]
+    # h = np.zeros(num_factors)
+    # for j in tqdm(range(num_factors)):
+    #     h[j] = mutual_info_regression(
+    #         ys[:, j].reshape(-1, 1), ys[:, j]
+    #     )
+    h = mutual_info_regression(ys.reshape(-1, 1), ys)
     return h
 
 def compute_interpretability_metric(latent_codes_input, attributes, attr_list):
@@ -74,20 +76,28 @@ def compute_mig(latent_codes, attributes, attr_list):
     """
     score_dict = {}
     mig_scores = np.array([])
+    padded_mig_partly = np.array([])
     for i, attr_name in tqdm(enumerate(attr_list)):
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':
             finite_mask = np.isfinite(attributes[:,i])
-            m = continuous_mutual_info(latent_codes[finite_mask,i], attributes[finite_mask,i])
+            m = continuous_mutual_info(latent_codes[finite_mask,:], attributes[finite_mask,i])
             entropy = continuous_entropy(attributes[finite_mask,i])
         else:
-            m = continuous_mutual_info(latent_codes[:,i], attributes[:,i])
+            m = continuous_mutual_info(latent_codes, attributes[:,i])
             entropy = continuous_entropy(attributes[:,i])
         sorted_m = np.sort(m, axis=0)[::-1]
         mig_scores_partly = np.divide(sorted_m[0, :] - sorted_m[1, :], entropy[:]).reshape(-1, 1)
-        mig_scores = np.column_stack((mig_scores, mig_scores_partly))
+        if mig_scores.shape[0] != 0:
+                rows_to_pad = mig_scores.shape[0] - mig_scores_partly.shape[0]
+
+                padded_mig_partly = np.pad(mig_scores_partly, ((0, rows_to_pad), (0, 0)), 
+                                        mode='constant', constant_values=np.nan)
+        else:
+                padded_mig_partly = mig_scores_partly
+        mig_scores = np.column_stack((mig_scores, padded_mig_partly))
         score_dict[attr_name] = mig_scores[i]
     print(f'mig_scores.shape = {mig_scores.shape}')
-    score_dict['mean'] = np.mean(mig_scores)
+    score_dict['mean'] = np.nanmean(mig_scores)
     print(f'score_dict from mig = {score_dict}')
     return score_dict
 

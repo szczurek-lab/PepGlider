@@ -43,16 +43,15 @@ def compute_interpretability_metric(latent_codes, attributes, attr_list):
     interpretability_metrics = {}
     total = 0
     for i, attr_name in tqdm(enumerate(attr_list)):
-        print(attr_name)
+        # print(attr_name)
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':
             finite_mask = np.isfinite(attributes[:,i])
-            finite_positions = np.argwhere(finite_mask)
-            latent_codes = latent_codes[finite_positions,:]
-            attr_labels = attributes[finite_positions, i]
+            latent_codes = latent_codes[finite_mask,:]
+            attr_labels = attributes[finite_mask, i]
         else:
             attr_labels = attributes[:, i]
-        print(f'latent_codes = {latent_codes}')
-        print(f'attr_labels = {attr_labels}')
+        print(f'latent_codes = {latent_codes.shape}')
+        print(f'attr_labels = {attr_labels.shape}')
         mutual_info = mutual_info_regression(latent_codes, attr_labels)
         dim = np.argmax(mutual_info)
 
@@ -77,9 +76,8 @@ def compute_mig(latent_codes, attributes, attr_list):
     for i, attr_name in tqdm(enumerate(attr_list)):
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':
             finite_mask = np.isfinite(attributes[:,i])
-            finite_positions = np.argwhere(finite_mask)
-            m = continuous_mutual_info(latent_codes[finite_positions,i], attributes[finite_positions,i])
-            entropy = continuous_entropy(attributes[finite_positions,i])
+            m = continuous_mutual_info(latent_codes[finite_mask,i], attributes[finite_mask,i])
+            entropy = continuous_entropy(attributes[finite_mask,i])
         else:
             m = continuous_mutual_info(latent_codes[:,i], attributes[:,i])
             entropy = continuous_entropy(attributes[:,i])
@@ -105,8 +103,7 @@ def compute_modularity(latent_codes, attributes, attr_list):
     for i, attr_name in tqdm(enumerate(attr_list)):
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':
             finite_mask = np.isfinite(attributes[:,i])
-            finite_positions = np.argwhere(finite_mask)
-            mi_partly = continuous_mutual_info(latent_codes[finite_positions,i], attributes[finite_positions,i]).reshape(-1, 1)
+            mi_partly = continuous_mutual_info(latent_codes[finite_mask,i], attributes[finite_mask,i]).reshape(-1, 1)
         else:
             mi_partly = continuous_mutual_info(latent_codes[:,i], attributes[:,i]).reshape(-1, 1)
         mi = np.column_stack((mi, mi_partly))
@@ -161,9 +158,8 @@ def _compute_correlation_matrix(mus, ys, attr_list):
         for j in range(num_attributes):
             if attr_list[j] == 'MIC E.coli' or attr_list[j] == 'MIC S.aureus':
                 finite_mask = np.isfinite(ys[:,j])
-                finite_positions = np.argwhere(finite_mask)
-                mu_i = mus[finite_positions, i]
-                y_j = ys[finite_positions, j]
+                mu_i = mus[finite_mask, i]
+                y_j = ys[finite_mask, j]
             else:
                 mu_i = mus[:, i]
                 y_j = ys[:, j]
@@ -208,9 +204,8 @@ def _compute_score_matrix(mus, ys, attr_list):
         for j in range(num_attributes):
             if attr_list[j] == 'MIC E.coli' or attr_list[j] == 'MIC S.aureus':
                 finite_mask = np.isfinite(ys[:,j])
-                finite_positions = np.argwhere(finite_mask)
-                mu_i = mus[finite_positions, i]
-                y_j = ys[finite_positions, j]
+                mu_i = mus[finite_mask, i]
+                y_j = ys[finite_mask, j]
             else:
                 mu_i = mus[:, i]
                 y_j = ys[:, j]

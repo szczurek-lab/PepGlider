@@ -42,6 +42,7 @@ def compute_interpretability_metric(latent_codes_input, attributes, attr_list):
     """
     interpretability_metrics = {}
     total = 0
+    latent_codes = latent_codes_input
     for i, attr_name in tqdm(enumerate(attr_list)):
         print(attr_name)
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':

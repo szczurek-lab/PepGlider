@@ -86,8 +86,7 @@ def compute_mig(latent_codes, attributes, attr_list):
             m = continuous_mutual_info(latent_codes, attributes[:,i])
             entropy = continuous_entropy(attributes[:,i])
         sorted_m = np.sort(m, axis=0)[::-1]
-        print(f'sorted_m shape = {sorted_m.shape}')
-        mig_scores_partly = np.divide(sorted_m[0, :] - sorted_m[1, :], entropy[:]).reshape(-1, 1)
+        mig_scores_partly = np.divide(sorted_m[0] - sorted_m[1], entropy[:]).reshape(-1, 1)
         if mig_scores is not None:
                 rows_to_pad = mig_scores.shape[0] - mig_scores_partly.shape[0]
 

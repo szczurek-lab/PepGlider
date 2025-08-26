@@ -87,7 +87,7 @@ def compute_mig(latent_codes, attributes, attr_list):
             entropy = continuous_entropy(attributes[:,i])
         sorted_m = np.sort(m, axis=0)[::-1]
         mig_scores_partly = np.divide(sorted_m[0, :] - sorted_m[1, :], entropy[:]).reshape(-1, 1)
-        if mig_scores.shape[0] != 0:
+        if mig_scores is not None:
                 rows_to_pad = mig_scores.shape[0] - mig_scores_partly.shape[0]
 
                 padded_mig_partly = np.pad(mig_scores_partly, ((0, rows_to_pad), (0, 0)), 
@@ -95,7 +95,7 @@ def compute_mig(latent_codes, attributes, attr_list):
         else:
                 padded_mig_partly = mig_scores_partly
         if mig_scores is None:
-            mig_scores = padded_mig_partly
+            mig_scores = mig_scores_partly
         else:
             mig_scores = np.column_stack((mig_scores, padded_mig_partly))
         score_dict[attr_name] = mig_scores[i]
@@ -121,7 +121,7 @@ def compute_modularity(latent_codes, attributes, attr_list):
             mi_partly = continuous_mutual_info(latent_codes[finite_mask,:], attributes[finite_mask,i]).reshape(-1, 1)
         else:
             mi_partly = continuous_mutual_info(latent_codes, attributes[:,i]).reshape(-1, 1)
-            if mi.shape[0] != 0:
+            if mi is not None:
                 rows_to_pad = mi.shape[0] - mi_partly.shape[0]
 
                 padded_mi_partly = np.pad(mi_partly, ((0, rows_to_pad), (0, 0)), 

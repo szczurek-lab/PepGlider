@@ -24,14 +24,15 @@ if __name__ == '__main__':
     set_seed()
     encoder_filepath = os.path.join(
         os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
-        "hyperparams_tuning_uniform_length_more_data_ar-vae_epoch900_encoder.pt"
+        "hyperparams_tuning_mic_added_ar-vae_epoch1000_encoder.pt"
     )
     decoder_filepath = os.path.join(
         os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
-        "hyperparams_tuning_uniform_length_more_data_ar-vae_epoch900_decoder.pt"
+        "hyperparams_tuning_mic_added_ar-vae_epoch1000_decoder.pt"
     )
     # print('AMPs/nonAMPs')
-    run(['positiv_negativ_AMPs'])
+    # run(['positiv_negativ_AMPs'])
+    run(['positiv_negativ_AMPs'], encoder_filepath, decoder_filepath)
     #run(['uniprot'], encoder_filepath, decoder_filepath)
     # print('merged data AMPs/nonAMPs + Uniprot')
     # run(['uniprot','positiv_negativ_AMPs'], encoder_filepath, decoder_filepath)

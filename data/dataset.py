@@ -428,10 +428,8 @@ class AMPDataManager:
         return self.output_data(uniprot_dataset)
 
     def get_positive_data(self):
-        print(self.positive_data)
         positive_dataset = self._filter_data()
-        print(positive_dataset)
-        positive_dataset = positive_dataset.loc[:, 'Label'] = 1
+        positive_dataset.loc[:, 'Label'] = 1
         return self.output_data(positive_dataset)
     
     def get_uniform_data(self):

@@ -159,6 +159,16 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg):
             data_dir = data_dir)
 
         amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
+    elif 'positiv_AMPs' in data_type:
+        data_manager = AMPDataManager(
+            positive_filepath = data_dir / 'amp_clean.fasta',
+            negative_filepath = None,
+            min_len=MIN_LENGTH,
+            max_len=MAX_LENGTH,
+            mic_flg = mic_flg,
+            data_dir = data_dir)
+
+        amp_x, amp_y, attributes_input, _ = data_manager.get_positive_data()
     elif 'uniprot' in data_type:
         data_manager = AMPDataManager(
             uniprot_filepath = [data_dir / i for i in ['Uniprot_0_25_train.csv','Uniprot_0_25_test.csv','Uniprot_0_25_val.csv']],
@@ -218,20 +228,19 @@ class AMPDataManager:
             # print(self.positive_data)
         else:
             self.positive_data = None
-            # with open(positive_filepath) as fasta_file:  # Will close handle cleanly
-            #     identifiers = []
-            #     sequences = []
-            #     for seq_record in SeqIO.parse(fasta_file, 'fasta'):  # (generator)
-            #         seq_str = str(seq_record.seq)  # Convert Seq object to string
-            #         if seq_str:  # Only add non-empty sequences
-            #             sequences.append(seq_str)
-            #             identifiers.append(seq_record.id)
+            with open(positive_filepath) as fasta_file:  # Will close handle cleanly
+                identifiers = []
+                sequences = []
+                for seq_record in SeqIO.parse(fasta_file, 'fasta'):  # (generator)
+                    seq_str = str(seq_record.seq)  # Convert Seq object to string
+                    if seq_str:  # Only add non-empty sequences
+                        sequences.append(seq_str)
+                        identifiers.append(seq_record.id)
             
-            # #converting lists to pandas Series    
-            # s1 = pd.Series(identifiers, name='ID')
-            # s2 = pd.Series(sequences, name='Sequence')
-            # #Gathering Series into a pandas DataFrame and rename index as ID column
-            # self.positive_data = pd.DataFrame({'ID': s1, 'Sequence': s2})
+            #converting lists to pandas Series    
+            s2 = pd.Series(sequences, name='Sequence')
+            #Gathering Series into a pandas DataFrame and rename index as ID column
+            self.positive_data = pd.DataFrame({'Sequence': s2})
         if str(negative_filepath).endswith(".csv"):
             self.negative_data = pd.read_csv(negative_filepath)
         else:
@@ -301,6 +310,8 @@ class AMPDataManager:
             return self._filter_by_length(self.positive_data), self.negative_data, self._filter_by_length(self.uniprot_data)
         elif self.positive_data is not None and self.negative_data is not None:
             return self._filter_by_length(self.positive_data), self.negative_data
+        elif self.positive_data is not None and self.negative_data is None:
+            return self._filter_by_length(self.positive_data)
         else: 
             return self._filter_by_length(self.uniprot_data)
 
@@ -407,14 +418,19 @@ class AMPDataManager:
         lengths = [len(seq) for seq in seqs]
         dataset.loc[:, "Sequence length"] = lengths
         return dataset, lengths
-    
+  
     def get_uniprot_data(self):
         uniprot_dataset = self._filter_data()
         uniprot_dataset,uniprot_lengths = self.calculate_lengths(uniprot_dataset)
 
         probs = self._get_probs(uniprot_lengths)
-        # plot_hist_lengths(uniprot_dataset['Sequence length'].to_numpy())
+        # plot_hist_lengths(uniprot_dataset['Sequence length'].to_numpy()
         return self.output_data(uniprot_dataset)
+
+    def get_positive_data(self):
+        positive_dataset = self._filter_data()
+        positive_dataset = positive_dataset.loc[:, 'Label'] = 1
+        return self.output_data(positive_dataset)
     
     def get_uniform_data(self):
         pos_dataset, neg_dataset, uniprot_dataset = self._filter_data()

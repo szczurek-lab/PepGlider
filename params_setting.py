@@ -13,7 +13,7 @@ def set_params(root_dir):
         "dropout": 0.1,
         "batch_size": 512,
         "lr": 0.001,
-        "kl_beta_schedule": (0.00001, 0.11, 8000),
+        "kl_beta_schedule": (0.00001, 0.1, 8000),
         "train_size": None,
         "epochs": 10000,
         "iwae_samples": 10,
@@ -24,12 +24,12 @@ def set_params(root_dir):
         "deeper_eval_every": 20,
         "save_model_every": 100,
         "ar_vae_flg": True,
-        "reg_dim": [0,1,2,3,4], # [length, charge, hydrophobicity_moment]
+        "reg_dim": [0,1,2], # [length, charge, hydrophobicity_moment]
         "gamma_schedule": (0.00001, 20, 8000),
-        "gamma_multiplier": [1,1,1,0.055,0.034],
+        "gamma_multiplier": [1,1,1],
         "factor_schedule": (1,1,8000),
         'scale_factor_flg': False,
-        'mic_flg': True
+        'mic_flg': False
     }
 
     if params["use_clearml"]:

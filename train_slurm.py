@@ -33,7 +33,8 @@ if __name__ == '__main__':
         "hyperparams_tuning_mic_added_ar-vae_epoch1000_decoder.pt"
     )
     # print('AMPs/nonAMPs')
-    run(['positiv_negativ_AMPs'])
+    # run(['positiv_negativ_AMPs'])
+    run(['positiv_AMPs'])
     # run(['positiv_negativ_AMPs'], encoder_filepath, decoder_filepath)
     #run(['uniprot'], encoder_filepath, decoder_filepath)
     # print('merged data AMPs/nonAMPs + Uniprot')

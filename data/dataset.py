@@ -161,7 +161,7 @@ def normalize_attributes(physchem_tensor_original, reg_dim):
             non_nan_mask = ~np.isnan(data_to_transform_np)
             normalized_values = adaptive_range_normalize(data_to_transform_np[non_nan_mask])
             transformed_data_np = np.full_like(data_to_transform_np, np.nan)
-            print(normalized_values)
+            # print(normalized_values)
             transformed_data_np[non_nan_mask] = normalized_values
         else:
             qt = QuantileTransformer(
@@ -357,7 +357,7 @@ class AMPDataManager:
         
         # Append the new sequences to the main DataFrame
         updated_df = pd.concat([df_main, new_sequences_df], ignore_index=True)
-        
+        print(updated_df)
         return updated_df
     def _filter_by_length(self, df: pd.DataFrame) -> pd.DataFrame:
         mask = (df['Sequence'].str.len() >= self.min_len) & (df['Sequence'].str.len() <= self.max_len)

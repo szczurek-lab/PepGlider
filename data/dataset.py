@@ -161,6 +161,7 @@ def normalize_attributes(physchem_tensor_original, reg_dim):
             non_nan_mask = ~np.isnan(data_to_transform_np)
             normalized_values = adaptive_range_normalize(data_to_transform_np[non_nan_mask])
             transformed_data_np = np.full_like(data_to_transform_np, np.nan)
+            print(normalized_values)
             transformed_data_np[non_nan_mask] = normalized_values
         else:
             qt = QuantileTransformer(

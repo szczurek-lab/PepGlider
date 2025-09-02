@@ -103,7 +103,50 @@ def pad(x: List[List[float]], max_length: int = 25) -> torch.Tensor:
         return torch.cat((padded_sequences, padding), dim=1)
     else:
         return padded_sequences
+
+def adaptive_range_normalize(data, roi_min=0, roi_max=32, roi_bins=7, out_bins=3):
+    """
+    Adaptive range normalization with emphasis on 0-30 range.
     
+    Args:
+        data: Input array to normalize
+        roi_min: Minimum value of region of interest (default: 0)
+        roi_max: Maximum value of region of interest (default: 30)
+        roi_bins: Number of bins for ROI values (default: 7)
+        out_bins: Number of bins for outside values (default: 3)
+    
+    Returns:
+        Normalized array with values in [-1, 1], where:
+        - ROI values (0-30) are mapped to [-1, 0.4] (70% of range)
+        - Outside values are mapped to [0.4, 1] (30% of range)
+    """
+    data = np.asarray(data)
+    result = np.zeros_like(data)
+    
+    # Separate data into ROI and outside
+    roi_mask = (data >= roi_min) & (data <= roi_max)
+    out_mask = ~roi_mask
+    
+    # Process ROI values (map to [-1, 0.4])
+    if np.any(roi_mask):
+        roi_data = data[roi_mask]
+        hist, bins = np.histogram(roi_data, bins=roi_bins)
+        cdf = np.zeros(len(bins))
+        cdf[1:] = np.cumsum(hist) / np.sum(hist)
+        roi_normalized = np.interp(roi_data, bins, cdf)
+        result[roi_mask] = -(-1 + 1.4 * roi_normalized)
+    
+    # Process outside values (map to [0.4, 1])
+    if np.any(out_mask):
+        out_data = data[out_mask]
+        hist, bins = np.histogram(out_data, bins=out_bins)
+        cdf = np.zeros(len(bins))
+        cdf[1:] = np.cumsum(hist) / np.sum(hist)
+        out_normalized = np.interp(out_data, bins, cdf)
+        result[out_mask] = -(0.4 + 0.6 * out_normalized)
+    
+    return result
+
 def normalize_attributes(physchem_tensor_original, reg_dim):
     fitted_transformers: Dict[int, QuantileTransformer] = {}
     # feature_names = ["Hydrophobic Moment", "Length", "Charge"]
@@ -114,11 +157,14 @@ def normalize_attributes(physchem_tensor_original, reg_dim):
         column_tensor = physchem_tensor_original[:, col_idx]
         data_to_transform_np = column_tensor.cpu().numpy().reshape(-1, 1)
         # qt = QuantileTransformer(output_distribution='normal', random_state=42)
-        qt = QuantileTransformer(
-                    output_distribution='uniform',
-                    n_quantiles=10,                )
-        transformed_data_np = qt.fit_transform(data_to_transform_np)
-        fitted_transformers[col_idx] = qt
+        if col_idx ==3 or col_idx==4:
+            transformed_data_np = adaptive_range_normalize(data_to_transform_np)
+        else:
+            qt = QuantileTransformer(
+                        output_distribution='uniform',
+                        n_quantiles=10,                )
+            transformed_data_np = qt.fit_transform(data_to_transform_np)
+            fitted_transformers[col_idx] = qt
         transformed_column_tensor_2d = torch.from_numpy(transformed_data_np).float()
         physchem_tensor_normalized[:, col_idx] = transformed_column_tensor_2d.squeeze(1) 
 
@@ -220,8 +266,8 @@ class AMPDataManager:
         if str(positive_filepath).endswith(".csv"):
             self.positive_data = pd.read_csv(positive_filepath)
             if mic_flg:
-                new_data1 = pd.read_csv(data_dir / 'escherichiacoliatcc25922_mic.csv')
-                new_data2 = pd.read_csv(data_dir / 'staphylococcusaureusatcc25923_mic.csv')
+                new_data1 = pd.read_csv(data_dir / 'apex-ecoli.tsv', sep='\t')
+                new_data2 = pd.read_csv(data_dir / 'apex-saureus.tsv', sep='\t')
 
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
@@ -241,6 +287,13 @@ class AMPDataManager:
             s2 = pd.Series(sequences, name='Sequence')
             #Gathering Series into a pandas DataFrame and rename index as ID column
             self.positive_data = pd.DataFrame({'Sequence': s2})
+            if mic_flg:
+                new_data1 = pd.read_csv(data_dir / 'apex-ecoli.tsv', sep='\t')
+                new_data2 = pd.read_csv(data_dir / 'apex-saureus.tsv', sep='\t')
+
+                self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
+                self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
+
         if str(negative_filepath).endswith(".csv"):
             self.negative_data = pd.read_csv(negative_filepath)
         else:
@@ -266,21 +319,22 @@ class AMPDataManager:
         self.min_len = min_len
         self.max_len = max_len
     @staticmethod
-    def update_and_add_sequences(df_main: pd.DataFrame, new_df: pd.DataFrame, new_label: str = 'mic') -> pd.DataFrame:
+    def update_and_add_sequences(df_main: pd.DataFrame, new_df: pd.DataFrame, new_label: str = 'MIC') -> pd.DataFrame:
         """
         Updates existing sequences in the main DataFrame with activity values from a new DataFrame
         and appends new sequences with a specified label.
         
         Args:
             df_main (pd.DataFrame): The main DataFrame (e.g., self.positive_data).
-            new_df (pd.DataFrame): The DataFrame containing new sequences and activities.
+            new_df (pd.DataFrame): The DataFrame containing new sequences and MIC values.
             new_label (str): The label to assign to sequences not present in df_main.
             
         Returns:
             pd.DataFrame: The updated main DataFrame.
         """
         # Create a Series to hold the activity values from the new DataFrame, using sequences as the index
-        new_activities = new_df.set_index('sequence')['activity']
+        # CHANGE: Use 'Sequence' and 'MIC'
+        new_activities = new_df.set_index('Sequence')['MIC']
         
         # 1. Update existing sequences
         # Use .update() to add new activity values for matching sequences
@@ -291,11 +345,12 @@ class AMPDataManager:
         # 2. Identify and append new sequences
         # Find sequences that are in the new_df but not in df_main
         # CHANGE: Use 'Sequence' here
-        new_sequences_df = new_df[~new_df['sequence'].isin(df_main['Sequence'])].copy()
+        new_sequences_df = new_df[~new_df['Sequence'].isin(df_main['Sequence'])].copy()
         
         # Add the 'label' column with the specified value
-        # new_sequences_df['label'] = new_label
-        new_sequences_df = new_sequences_df.rename(columns={'sequence': 'Sequence', 'activity':new_label})
+        # CHANGE: Use 'Sequence' and 'MIC' for renaming
+        new_sequences_df = new_sequences_df.rename(columns={'Sequence': 'Sequence', 'MIC': new_label})
+        
         # Append the new sequences to the main DataFrame
         updated_df = pd.concat([df_main, new_sequences_df], ignore_index=True)
         

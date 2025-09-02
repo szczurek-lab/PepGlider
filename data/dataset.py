@@ -104,13 +104,13 @@ def pad(x: List[List[float]], max_length: int = 25) -> torch.Tensor:
     else:
         return padded_sequences
     
-def normalize_attributes(physchem_tensor_original, ):
+def normalize_attributes(physchem_tensor_original, reg_dim):
     fitted_transformers: Dict[int, QuantileTransformer] = {}
-    feature_names = ["Hydrophobic Moment", "Length", "Charge"]
+    # feature_names = ["Hydrophobic Moment", "Length", "Charge"]
     physchem_tensor_normalized = torch.empty_like(physchem_tensor_original) 
 
-    for col_idx in range(3):
-        feature_name = feature_names[col_idx] if col_idx < len(feature_names) else f"Column_{col_idx}"
+    for col_idx in range(len(reg_dim)):
+        # feature_name = feature_names[col_idx] if col_idx < len(feature_names) else f"Column_{col_idx}"
         column_tensor = physchem_tensor_original[:, col_idx]
         data_to_transform_np = column_tensor.cpu().numpy().reshape(-1, 1)
         # qt = QuantileTransformer(output_distribution='normal', random_state=42)
@@ -137,7 +137,7 @@ def normalize_dimension_to_0_1(tensor: torch.Tensor, dim: int = -1) -> torch.Ten
     normalized_tensor = (tensor - min_vals) / range_vals
     return normalized_tensor
 
-def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg):
+def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, reg_dim):
     if 'positiv_negativ_AMPs' in data_type and 'uniprot' in data_type:
         data_manager = AMPDataManager(
             positive_filepath = data_dir / 'unlabelled_positive.csv',
@@ -177,7 +177,7 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg):
             mic_flg = mic_flg,
             data_dir = data_dir)
         amp_x, amp_y, attributes_input, _ = data_manager.get_uniprot_data()
-    attributes = normalize_attributes(attributes_input)
+    attributes = normalize_attributes(attributes_input, reg_dim)
     #print(f'attributes shape = {attributes.shape}')
     #print(f'attributes_input shape = {attributes_input.shape}')
     for i, attr_name in enumerate(['Length', 'Charge', 'Hydrophobic moment']):
@@ -284,7 +284,6 @@ class AMPDataManager:
         
         # 1. Update existing sequences
         # Use .update() to add new activity values for matching sequences
-        # CHANGE: Use 'Sequence' here
         df_main = df_main.set_index('Sequence')
         df_main.update(new_activities)
         df_main = df_main.reset_index()

@@ -316,7 +316,7 @@ def run(data_type, encoder_filepath=None, decoder_filepath=None):
         betas=(0.9, 0.999),
     )
 
-    train_loader, eval_loader = dataset_lib.prepare_data_for_training(DATA_DIR, params['batch_size'], data_type, params['mic_flg'])
+    train_loader, eval_loader = dataset_lib.prepare_data_for_training(DATA_DIR, params['batch_size'], data_type, params['mic_flg'], params['reg_dim'])
 
     for epoch in tqdm(range(params["epochs"])):
         epoch = epoch + (10000-params['epochs'])

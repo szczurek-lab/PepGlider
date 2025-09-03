@@ -161,7 +161,7 @@ def normalize_attributes(physchem_tensor_original, reg_dim):
             non_nan_mask = ~np.isnan(data_to_transform_np)
             normalized_values = adaptive_range_normalize(data_to_transform_np[non_nan_mask])
             transformed_data_np = np.full_like(data_to_transform_np, np.nan)
-            # print(normalized_values)
+            print(normalized_values)
             transformed_data_np[non_nan_mask] = normalized_values
         else:
             qt = QuantileTransformer(
@@ -277,7 +277,6 @@ class AMPDataManager:
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
             # print(self.positive_data)
         else:
-            self.positive_data = None
             with open(positive_filepath) as fasta_file:  # Will close handle cleanly
                 identifiers = []
                 sequences = []
@@ -338,27 +337,30 @@ class AMPDataManager:
         """
         # Create a Series to hold the activity values from the new DataFrame, using sequences as the index
         # CHANGE: Use 'Sequence' and 'MIC'
-        new_activities = new_df.set_index('Sequence')['MIC']
+        # new_activities = new_df.set_index('Sequence')['MIC']
         
-        # 1. Update existing sequences
-        # Use .update() to add new activity values for matching sequences
-        df_main = df_main.set_index('Sequence')
-        df_main.update(new_activities)
-        df_main = df_main.reset_index()
+        # # 1. Update existing sequences
+        # # Use .update() to add new activity values for matching sequences
+        # df_main = df_main.set_index('Sequence')
+        # df_main.update(new_activities)
+        # df_main = df_main.reset_index()
         
-        # 2. Identify and append new sequences
-        # Find sequences that are in the new_df but not in df_main
-        # CHANGE: Use 'Sequence' here
-        new_sequences_df = new_df[~new_df['Sequence'].isin(df_main['Sequence'])].copy()
+        # # 2. Identify and append new sequences
+        # # Find sequences that are in the new_df but not in df_main
+        # # CHANGE: Use 'Sequence' here
+        # new_sequences_df = new_df[~new_df['Sequence'].isin(df_main['Sequence'])].copy()
         
-        # Add the 'label' column with the specified value
-        # CHANGE: Use 'Sequence' and 'MIC' for renaming
-        new_sequences_df = new_sequences_df.rename(columns={'Sequence': 'Sequence', 'MIC': new_label})
+        # # Add the 'label' column with the specified value
+        # # CHANGE: Use 'Sequence' and 'MIC' for renaming
+        # new_sequences_df = new_sequences_df.rename(columns={'Sequence': 'Sequence', 'MIC': new_label})
         
-        # Append the new sequences to the main DataFrame
-        updated_df = pd.concat([df_main, new_sequences_df], ignore_index=True)
-        print(updated_df)
+        # # Append the new sequences to the main DataFrame
+        # updated_df = pd.concat([df_main, new_sequences_df], ignore_index=True)
+        # print(updated_df)
+        updated_df = pd.merge(df_main, new_df, on='Sequence', how='left')
+
         return updated_df
+    
     def _filter_by_length(self, df: pd.DataFrame) -> pd.DataFrame:
         mask = (df['Sequence'].str.len() >= self.min_len) & (df['Sequence'].str.len() <= self.max_len)
         return df.loc[mask]

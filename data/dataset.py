@@ -352,7 +352,7 @@ class AMPDataManager:
         
         # # Add the 'label' column with the specified value
         # # CHANGE: Use 'Sequence' and 'MIC' for renaming
-        # new_sequences_df = new_sequences_df.rename(columns={'Sequence': 'Sequence', 'MIC': new_label})
+        new_df = new_df.rename(columns={'MIC': new_label})
         
         # # Append the new sequences to the main DataFrame
         # updated_df = pd.concat([df_main, new_sequences_df], ignore_index=True)

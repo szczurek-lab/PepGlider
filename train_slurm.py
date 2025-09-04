@@ -25,12 +25,12 @@ if __name__ == '__main__':
     encoder_filepath = os.path.join(
         os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
         # os.sep, "home","gwiazale", "AR-VAE", "first_working_models",
-        "hyperparams_tuning_mic_new_normalization_ar-vae_epoch1400__encoder.pt"
+        "hyperparams_tuning_best_run_only_amps_hydrophobicity_ar-vae_epoch1600_encoder.pt"
     )
     decoder_filepath = os.path.join(
         os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
         # os.sep, "home","gwiazale", "AR-VAE", "first_working_models",
-        "hyperparams_tuning_mic_new_normalization_ar-vae_epoch1400_decoder.pt"
+        "hyperparams_tuning_best_run_only_amps_hydrophobicity_ar-vae_epoch1600_decoder.pt"
     )
     # print('AMPs/nonAMPs')
     # run(['positiv_negativ_AMPs'])

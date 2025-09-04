@@ -96,6 +96,11 @@ def find_and_group_model_files(prefixes_to_compare, suffixes_to_group=['_encoder
     
     return found_files
 
+def clean_row(row):
+    """Removes '[' and ']' characters from a list of strings."""
+    return [item.replace('[', '').replace(']', '') for item in row if isinstance(item, str)]
+
+
 def read_and_fix_csv(file_path, all_expected_columns):
     """
     Wczytuje plik CSV, ręcznie uzupełnia wiersze o brakujące kolumny
@@ -122,15 +127,16 @@ def read_and_fix_csv(file_path, all_expected_columns):
             num_expected_cols = len(all_expected_columns)
             
             for row in reader:
-                if len(row) != num_cols_in_header:
+                cleaned_row = clean_row(row)
+                if len(cleaned_row) != num_cols_in_header:
                     
-                    if len(row) > num_expected_cols:
-                        row = row[:num_expected_cols]
+                    if len(cleaned_row) > num_expected_cols:
+                        cleaned_row = cleaned_row[:num_expected_cols]
                     
-                    if len(row) < num_expected_cols:
-                        row.extend([None] * (num_expected_cols - len(row)))
+                    if len(cleaned_row) < num_expected_cols:
+                        cleaned_row.extend([None] * (num_expected_cols - len(cleaned_row)))
 
-                fixed_rows.append(row)
+                fixed_rows.append(cleaned_row)
                 
     except FileNotFoundError:
         print(f"Błąd: Plik '{file_path}' nie został znaleziony.")
@@ -198,8 +204,9 @@ def plot_dim(data, target, epoch_number, models_prefixs_to_compare, filename, di
     min_row = []
     max_row = []
     for i in range(len(attr)):
-        min_row.append(np.min(target[i*n_cols:(i*n_cols)+n_cols,:,i]))
-        max_row.append(np.max(target[i*n_cols:(i*n_cols)+n_cols,:,i]))
+        if target.shape[2] >= i+1:
+            min_row.append(np.min(target[i*n_cols:(i*n_cols)+n_cols,:,i]))
+            max_row.append(np.max(target[i*n_cols:(i*n_cols)+n_cols,:,i]))
         
     fig, axes = plt.subplots(
         nrows=n_rows,
@@ -210,20 +217,21 @@ def plot_dim(data, target, epoch_number, models_prefixs_to_compare, filename, di
     axes_flat = axes.flatten()
     for i in range(n_cols):
         for j in range(n_rows):
-            axes[j,i].scatter(
-                        x=data[(j*n_cols)+i,:, j],
-                        y=data[(j*n_cols)+i,:, dim2],
-                        c=target[(j*n_cols)+i,:,j],
-                        s=12,
-                        linewidths=0,
-                        cmap="viridis",
-                        alpha=0.5,
-                        vmin=min_row[j],  
-                        vmax=max_row[j]  
-            )
-            axes[j,i].set_title(f'{models_prefixs_to_compare[i].split("_ar-vae")[0]}', fontsize = 16)
-            axes[j,i].set_xlabel(f'dimension: {attr[j]}', fontsize=14)
-            axes[j,i].set_ylabel(f'not regularized dimension', fontsize=14)
+            if target.shape[2] >= j+1:
+                axes[j,i].scatter(
+                            x=data[(j*n_cols)+i,:, j],
+                            y=data[(j*n_cols)+i,:, dim2],
+                            c=target[(j*n_cols)+i,:,j],
+                            s=12,
+                            linewidths=0,
+                            cmap="viridis",
+                            alpha=0.5,
+                            vmin=min_row[j],  
+                            vmax=max_row[j]  
+                )
+                axes[j,i].set_title(f'{models_prefixs_to_compare[i].split("_ar-vae")[0]}', fontsize = 16)
+                axes[j,i].set_xlabel(f'dimension: {attr[j]}', fontsize=14)
+                axes[j,i].set_ylabel(f'not regularized dimension', fontsize=14)
     for i in range(n_rows):
         divider = make_axes_locatable(axes[i, n_cols-1])
         cax = divider.append_axes("right", size="5%", pad=0.1)
@@ -382,7 +390,7 @@ def save_sequences(seqs, filename):
             writer.writerow([seq])
 
 
-def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, attr_dict, mode = ''):
+def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, attr_dict, mode = '', submode = ''):
     DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
     generated = {}
     generated_analog = {}
@@ -395,14 +403,19 @@ def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, at
     tmp_analog_dict = {}
     if mode == 'multi':
         all_combinations_keys = []
-        keys = list(attr_dict.keys())
-        for i in range(2, len(keys) + 1):
-            all_combinations_keys.extend(list(combinations(keys, i)))
-        
         all_combinations_dims = []
-        for combo in all_combinations_keys:
-            dims = [attr_dict[key] for key in combo]
-            all_combinations_dims.append(dims)   
+        if submode == 'chosen':
+            all_combinations_keys.append([k  for k in attr_dict.keys()])
+            all_combinations_dims.append([attr_dict[k]  for k in attr_dict.keys()])
+                
+        else:
+            keys = list(attr_dict.keys())
+            for i in range(2, len(keys) + 1):
+                all_combinations_keys.extend(list(combinations(keys, i)))
+            
+            for combo in all_combinations_keys:
+                dims = [attr_dict[key] for key in combo]
+                all_combinations_dims.append(dims)   
         
         for attr_name, attr_dim in zip(all_combinations_keys, all_combinations_dims):
             unconstrained_dfs_all_attrs = {}
@@ -414,7 +427,7 @@ def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, at
                 unconstrained_dfs_analog_dict_combo[attr] = {}
             models_list = []
 
-            for i, (encoder_name, decoder_name) in enumerate(zip(encoders_list, decoders_list)):
+            for encoder_name, decoder_name in zip(encoders_list, decoders_list):
                 encoder = EncoderRNN(
                     params["num_heads"],
                     params["num_layers"],
@@ -443,62 +456,152 @@ def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, at
                 for attr in attr_name:
                     unconstrained_dfs_dict_combo[attr][model] = []
                     unconstrained_dfs_analog_dict_combo[attr][model] = []
-              
-                for shift_value in shifts_list:
-                    # Generate unconstrained
-                    seq = decoder.generate_from(1000, params["latent_dim"], attr_dim, shift_value)
+
+                    
+                if submode == 'chosen':
+                    seq = decoder.generate_from(1000, params["latent_dim"], attr_dim, shifts)
                     generated_sequences = dataset_lib.decoded(dataset_lib.from_one_hot(transpose(seq, 0,1)), "0")
-                    save_sequences(generated_sequences, f"generated_sequences/{model}_unconstrained_{attr_name}_{shift_value}.csv")
                     generated_sequences = [seq.strip().rstrip("0") for seq in generated_sequences]
                     generated_sequences = [seq for seq in generated_sequences if '0' not in seq]
-                    generated[model+'_'+str(attr_name)+"_"+str(shift_value)] = generated_sequences
+                    cleaned_sequences = [seq for seq in generated_sequences if seq]
+                    generated[model+'_'+str(attr_name)] = cleaned_sequences
     
                     if 'Length' in attr_name:
-                        attr = dataset_lib.calculate_length_test(generated_sequences)
-                        unconstrained_dfs_dict_combo['Length'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+                        if len(cleaned_sequences) == 0:
+                            unconstrained_dfs_dict_combo['Length'][model].append(f'nan ± nan')
+                        else:
+                            attr = dataset_lib.calculate_length_test(cleaned_sequences)
+                            unconstrained_dfs_dict_combo['Length'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
                     if 'Charge' in attr_name:
-                        attr = dataset_lib.calculate_charge(generated_sequences)
-                        unconstrained_dfs_dict_combo['Charge'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                    if 'Hydrophobic moment' in attr_name:
-                        attr = dataset_lib.calculate_hydrophobicmoment(generated_sequences)
-                        unconstrained_dfs_dict_combo['Hydrophobic moment'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+                        if len(cleaned_sequences) == 0:
+                            unconstrained_dfs_dict_combo['Charge'][model].append(f'nan ± nan')
+                        else:
+                            attr = dataset_lib.calculate_charge(cleaned_sequences)
+                            unconstrained_dfs_dict_combo['Charge'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+                    if 'Hydrophobicity' in attr_name:
+                        if len(cleaned_sequences) == 0:
+                            unconstrained_dfs_dict_combo['Hydrophobicity'][model].append(f'nan ± nan')
+                        else:
+                            attr = dataset_lib.calculate_hydrophobicity(cleaned_sequences)
+                            unconstrained_dfs_dict_combo['Hydrophobicity'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
         
                     # Generate analog
                     batch, _, _, _ = next(iter(data_loader))
                     peptides = batch.permute(1, 0).type(LongTensor).to(DEVICE)
                     mu, std = encoder(peptides)
                     mod_mu = mu.clone().detach()
-                    for dim in attr_dim:
-                        mod_mu[:, dim] = mod_mu[:, dim] + shift_value
+                    for i, dim in enumerate(attr_dim):
+                        mod_mu[:, dim] = mod_mu[:, dim] + shifts[i]
                     outputs = decoder(mod_mu)
                     src = outputs.permute(1, 2, 0) 
                     seq = src.argmax(dim=1)
                     modified_sequences = dataset_lib.decoded(seq, "")
-                    save_sequences(modified_sequences, f"{model}_modified_{attr_name}_{shift_value}.csv")
         
                     modified_sequences = [seq.strip().rstrip("0") for seq in modified_sequences]
                     modified_sequences = [seq for seq in modified_sequences if '0' not in seq]
-                    generated_analog[model+'_'+str(attr_name)+"_"+str(shift_value)] = modified_sequences
+                    cleaned_modified_sequences = [seq for seq in modified_sequences if seq]
+                    generated_analog[model+'_'+str(attr_name)+"_"] = cleaned_modified_sequences
     
                     if 'Length' in attr_name:
-                        attr = dataset_lib.calculate_length_test(modified_sequences)
-                        unconstrained_dfs_analog_dict_combo['Length'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+                        if len(cleaned_modified_sequences) == 0:
+                            unconstrained_dfs_analog_dict_combo['Length'][model].append(f'nan ± nan')
+                        else:
+                            attr = dataset_lib.calculate_length_test(cleaned_modified_sequences)
+                            unconstrained_dfs_analog_dict_combo['Length'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
                     if 'Charge' in attr_name:
-                        attr = dataset_lib.calculate_charge(modified_sequences)
-                        unconstrained_dfs_analog_dict_combo['Charge'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                    if 'Hydrophobic moment' in attr_name:
-                        attr = dataset_lib.calculate_hydrophobicmoment(modified_sequences)
-                        unconstrained_dfs_analog_dict_combo['Hydrophobic moment'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+                        if len(cleaned_modified_sequences) == 0:
+                            unconstrained_dfs_analog_dict_combo['Charge'][model].append(f'nan ± nan')
+                        else:
+                            attr = dataset_lib.calculate_charge(cleaned_modified_sequences)
+                            unconstrained_dfs_analog_dict_combo['Charge'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+                    if 'Hydrophobicity' in attr_name:
+                        if len(cleaned_modified_sequences) == 0:
+                            unconstrained_dfs_analog_dict_combo['Hydrophobicity'][model].append(f'nan ± nan')
+                        else:
+                            attr = dataset_lib.calculate_hydrophobicity(cleaned_modified_sequences)
+                            unconstrained_dfs_analog_dict_combo['Hydrophobicity'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+                else:
+                    for shift_value in shifts_list:
+                        # Generate unconstrained
+                        seq = decoder.generate_from(1000, params["latent_dim"], attr_dim, [shift_value for _ in range(len(attr_dim))])
+                        generated_sequences = dataset_lib.decoded(dataset_lib.from_one_hot(transpose(seq, 0,1)), "0")
+                        # save_sequences(generated_sequences, f"generated_sequences/{model}_unconstrained_{attr_name}_{shift_value}.csv")
+                        generated_sequences = [seq.strip().rstrip("0") for seq in generated_sequences]
+                        generated_sequences = [seq for seq in generated_sequences if '0' not in seq]
+                        cleaned_sequences = [seq for seq in generated_sequences if seq]
+                        generated[model+'_'+str(attr_name)+"_"+str(shift_value)] = cleaned_sequences
+        
+                        if 'Length' in attr_name:
+                            if len(cleaned_sequences) == 0:
+                                unconstrained_dfs_dict_combo['Length'][model].append(f'nan ± nan')
+                            else:
+                                attr = dataset_lib.calculate_length_test(cleaned_sequences)
+                                unconstrained_dfs_dict_combo['Length'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+                        if 'Charge' in attr_name:
+                            if len(cleaned_sequences) == 0:
+                                unconstrained_dfs_dict_combo['Charge'][model].append(f'nan ± nan')
+                            else:
+                                attr = dataset_lib.calculate_charge(cleaned_sequences)
+                                unconstrained_dfs_dict_combo['Charge'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+                        if 'Hydrophobicity' in attr_name:
+                            if len(cleaned_sequences) == 0:
+                                unconstrained_dfs_dict_combo['Hydrophobicity'][model].append(f'nan ± nan')
+                            else:
+                                attr = dataset_lib.calculate_hydrophobicity(cleaned_sequences)
+                                unconstrained_dfs_dict_combo['Hydrophobicity'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+            
+                        # Generate analog
+                        batch, _, _, _ = next(iter(data_loader))
+                        peptides = batch.permute(1, 0).type(LongTensor).to(DEVICE)
+                        mu, std = encoder(peptides)
+                        mod_mu = mu.clone().detach()
+                        for i, dim in enumerate(attr_dim):
+                            mod_mu[:, dim] = mod_mu[:, dim] + shift_value
+                        outputs = decoder(mod_mu)
+                        src = outputs.permute(1, 2, 0) 
+                        seq = src.argmax(dim=1)
+                        modified_sequences = dataset_lib.decoded(seq, "")
+                        # save_sequences(modified_sequences, f"{model}_modified_{attr_name}_{shift_value}.csv")
+            
+                        modified_sequences = [seq.strip().rstrip("0") for seq in modified_sequences]
+                        modified_sequences = [seq for seq in modified_sequences if '0' not in seq]
+                        cleaned_modified_sequences = [seq for seq in modified_sequences if seq]
+                        generated_analog[model+'_'+str(attr_name)+"_"+str(shift_value)] = cleaned_modified_sequences
+        
+                        if 'Length' in attr_name:
+                            if len(cleaned_modified_sequences) == 0:
+                                unconstrained_dfs_analog_dict_combo['Length'][model].append(f'nan ± nan')
+                            else:
+                                attr = dataset_lib.calculate_length_test(cleaned_modified_sequences)
+                                unconstrained_dfs_analog_dict_combo['Length'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+                        if 'Charge' in attr_name:
+                            if len(cleaned_modified_sequences) == 0:
+                                unconstrained_dfs_analog_dict_combo['Charge'][model].append(f'nan ± nan')
+                            else:
+                                attr = dataset_lib.calculate_charge(cleaned_modified_sequences)
+                                unconstrained_dfs_analog_dict_combo['Charge'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+                        if 'Hydrophobicity' in attr_name:
+                            if len(cleaned_modified_sequences) == 0:
+                                unconstrained_dfs_analog_dict_combo['Hydrophobicity'][model].append(f'nan ± nan')
+                            else:
+                                attr = dataset_lib.calculate_hydrophobicity(cleaned_modified_sequences)
+                                unconstrained_dfs_analog_dict_combo['Hydrophobicity'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
             # print(f'unconstrained_dfs_dict_combo = {unconstrained_dfs_dict_combo}')
             for attr in attr_name:
                 row_data = np.array(list(unconstrained_dfs_dict_combo[attr].values()))
-                unconstrained_df = pd.DataFrame(row_data, columns=shifts_list, index=models_list)
+                if submode == 'chosen':
+                    unconstrained_df = pd.DataFrame(row_data, index=models_list)
+                else:
+                    unconstrained_df = pd.DataFrame(row_data, columns=shifts_list, index=models_list)
                 unconstrained_dfs_all_attrs[attr] = unconstrained_df
             tmp_dict[str(attr_name)] = unconstrained_dfs_all_attrs
             
             for attr in attr_name:
                 row_data = np.array(list(unconstrained_dfs_analog_dict_combo[attr].values()))
-                unconstrained_df = pd.DataFrame(row_data, columns=shifts_list, index=models_list)
+                if submode == 'chosen':
+                    unconstrained_df = pd.DataFrame(row_data, index=models_list)
+                else:
+                    unconstrained_df = pd.DataFrame(row_data, columns=shifts_list, index=models_list)
                 unconstrained_dfs_analog_all_attrs[attr] = unconstrained_df
             tmp_analog_dict[str(attr_name)] = unconstrained_dfs_analog_all_attrs
         return tmp_dict, tmp_analog_dict, generated, generated_analog
@@ -540,19 +643,20 @@ def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, at
               
                 for shift_value in shifts_list:
                     # Generate unconstrained
-                    seq = decoder.generate_from(1000, params["latent_dim"], [attr_dim], shift_value)
+                    seq = decoder.generate_from(1000, params["latent_dim"], [attr_dim], [shift_value])
                     generated_sequences = dataset_lib.decoded(dataset_lib.from_one_hot(transpose(seq, 0,1)), "0")
-                    save_sequences(generated_sequences, f"generated_sequences/{model}_unconstrained_{attr_name}_{shift_value}.csv")
+                    # save_sequences(generated_sequences, f"generated_sequences/{model}_unconstrained_{attr_name}_{shift_value}.csv")
                     generated_sequences = [seq.strip().rstrip("0") for seq in generated_sequences]
                     generated_sequences = [seq for seq in generated_sequences if '0' not in seq]
-                    generated[model+'_'+attr_name+"_"+str(shift_value)] = generated_sequences
+                    cleaned_sequences = [seq for seq in generated_sequences if seq]
+                    generated[model+'_'+attr_name+"_"+str(shift_value)] = cleaned_sequences
     
                     if attr_name == 'Length':
-                        attr = dataset_lib.calculate_length_test(generated_sequences)
+                        attr = dataset_lib.calculate_length_test(cleaned_sequences)
                     elif attr_name == 'Charge':
-                        attr = dataset_lib.calculate_charge(generated_sequences)
-                    elif attr_name == 'Hydrophobic moment':
-                        attr = dataset_lib.calculate_hydrophobicmoment(generated_sequences)
+                        attr = dataset_lib.calculate_charge(cleaned_sequences)
+                    elif attr_name == 'Hydrophobicity':
+                        attr = dataset_lib.calculate_hydrophobicity(cleaned_sequences)
                     unconstrained_dfs_dict[model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
         
                     # Generate analog
@@ -565,18 +669,19 @@ def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, at
                     src = outputs.permute(1, 2, 0) 
                     seq = src.argmax(dim=1)
                     modified_sequences = dataset_lib.decoded(seq, "")
-                    save_sequences(modified_sequences, f"{model}_modified_{attr_name}_{shift_value}.csv")
+                    # save_sequences(modified_sequences, f"{model}_modified_{attr_name}_{shift_value}.csv")
         
                     modified_sequences = [seq.strip().rstrip("0") for seq in modified_sequences]
                     modified_sequences = [seq for seq in modified_sequences if '0' not in seq]
-                    generated_analog[model+'_'+attr_name+"_"+str(shift_value)] = modified_sequences
+                    cleaned_modified_sequences = [seq for seq in modified_sequences if seq]
+                    generated_analog[model+'_'+attr_name+"_"+str(shift_value)] = cleaned_modified_sequences
     
                     if attr_name == 'Length':
-                        attr = dataset_lib.calculate_length_test(modified_sequences)
+                        attr = dataset_lib.calculate_length_test(cleaned_modified_sequences)
                     elif attr_name == 'Charge':
-                        attr = dataset_lib.calculate_charge(modified_sequences)
-                    elif attr_name == 'Hydrophobic moment':
-                        attr = dataset_lib.calculate_hydrophobicmoment(modified_sequences)
+                        attr = dataset_lib.calculate_charge(cleaned_modified_sequences)
+                    elif attr_name == 'Hydrophobicity':
+                        attr = dataset_lib.calculate_hydrophobicity(cleaned_modified_sequences)
                     unconstrained_dfs_analog_dict[model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
     
             row_data = np.array(list(unconstrained_dfs_dict.values()))
@@ -588,4 +693,104 @@ def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, at
             tmp_analog_dict[attr_name] = unconstrained_df_analog
         return tmp_dict, tmp_analog_dict, generated, generated_analog
 
+def hobbit(encoder_name, decoder_name, data_loader, params, attr_dict, shift_value = 0.2):
+    DEVICE = torch.device('cpu')
+    generated_analog = {}
+    tmp_analog_dict = {}
+    hobbit_path = {shift_value: [0,1,2],
+                   -shift_value: [0,1,2]}
+    encoder = EncoderRNN(
+        params["num_heads"],
+        params["num_layers"],
+        params["latent_dim"],
+        params["encoding"],
+        params["dropout"],
+        params["layer_norm"],
+    )
+    decoder = DecoderRNN(
+        params["num_heads"],
+        params["num_layers"],
+        params["latent_dim"],
+        params["encoding"],
+        params["dropout"],
+        params["layer_norm"],
+    )
+    # print(encoder_name)
+    encoder.load_state_dict(torch.load(f"./first_working_models/{encoder_name}", map_location=DEVICE))
+    encoder = encoder.to(DEVICE)
+    decoder.load_state_dict(torch.load(f"./first_working_models/{decoder_name}", map_location=DEVICE))
+    decoder = decoder.to(DEVICE)
+    encoder = encoder.eval()
+    decoder = decoder.eval()         
 
+    attr_name = [k for k in attr_dict.keys()]
+    unconstrained_dfs_analog_all_attrs = {}
+    unconstrained_dfs_analog_dict_combo = {}
+    for attr in attr_name:
+        unconstrained_dfs_analog_dict_combo[attr] = []
+    model = encoder_name.split("_ar-vae")[0]
+    batch, _, _, _ = next(iter(data_loader))
+    peptides = batch.permute(1, 0).type(LongTensor).to(DEVICE)
+    generated_analog[model+"_"+str(0)] = peptides
+    if 'Length' in attr_name:
+        if len(peptides) == 0:
+            unconstrained_dfs_analog_dict_combo['Length'].append(f'nan ± nan')
+        else:
+            attr = dataset_lib.calculate_length_test(dataset_lib.decoded(peptides.permute(1, 0), ""))
+            unconstrained_dfs_analog_dict_combo['Length'].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+    if 'Charge' in attr_name:
+        if len(peptides) == 0:
+            unconstrained_dfs_analog_dict_combo['Charge'].append(f'nan ± nan')
+        else:
+            attr = dataset_lib.calculate_charge(dataset_lib.decoded(peptides.permute(1, 0), ""))
+            unconstrained_dfs_analog_dict_combo['Charge'].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+    if 'Hydrophobicity' in attr_name:
+        if len(peptides) == 0:
+            unconstrained_dfs_analog_dict_combo['Hydrophobicity'].append(f'nan ± nan')
+        else:
+            attr = dataset_lib.calculate_hydrophobicity(dataset_lib.decoded(peptides.permute(1, 0), ""))
+            unconstrained_dfs_analog_dict_combo['Hydrophobicity'].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+            
+    for shift, dims in hobbit_path.items():    
+        for dim in dims:
+            # Generate analog
+            mu, std = encoder(peptides)
+            mod_mu = mu.clone().detach()
+            mod_mu[:, dim] = mod_mu[:, dim] + shift
+            outputs = decoder(mod_mu)
+            src = outputs.permute(1, 2, 0) 
+            seq = src.argmax(dim=1)
+            modified_sequences = dataset_lib.decoded(seq, "")
+            peptides = seq.permute(1, 0)
+            # save_sequences(modified_sequences, f"{model}_modified_{attr_name}_{shift_value}.csv")
+    
+            modified_sequences = [seq.strip().rstrip("0") for seq in modified_sequences]
+            modified_sequences = [seq for seq in modified_sequences if '0' not in seq]
+            cleaned_modified_sequences = [seq for seq in modified_sequences if seq]
+            generated_analog[model+'_'+str(dim)+"_"+str(shift)] = cleaned_modified_sequences
+    
+            if 'Length' in attr_name:
+                if len(cleaned_modified_sequences) == 0:
+                    unconstrained_dfs_analog_dict_combo['Length'].append(f'nan ± nan')
+                else:
+                    attr = dataset_lib.calculate_length_test(cleaned_modified_sequences)
+                    unconstrained_dfs_analog_dict_combo['Length'].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+            if 'Charge' in attr_name:
+                if len(cleaned_modified_sequences) == 0:
+                    unconstrained_dfs_analog_dict_combo['Charge'].append(f'nan ± nan')
+                else:
+                    attr = dataset_lib.calculate_charge(cleaned_modified_sequences)
+                    unconstrained_dfs_analog_dict_combo['Charge'].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+            if 'Hydrophobicity' in attr_name:
+                if len(cleaned_modified_sequences) == 0:
+                    unconstrained_dfs_analog_dict_combo['Hydrophobicity'].append(f'nan ± nan')
+                else:
+                    attr = dataset_lib.calculate_hydrophobicity(cleaned_modified_sequences)
+                    unconstrained_dfs_analog_dict_combo['Hydrophobicity'].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
+    for attr in attr_name:
+        row_data = np.array(list(unconstrained_dfs_analog_dict_combo[attr])).reshape(1, 7)
+        unconstrained_df = pd.DataFrame(row_data, columns=['Baseline','Length','Charge','Hydrophobicity','Length','Charge','Hydrophobicity'])
+        unconstrained_dfs_analog_all_attrs[attr] = unconstrained_df
+    tmp_analog_dict[str(attr_name)] = unconstrained_dfs_analog_all_attrs
+    return tmp_analog_dict, generated_analog
+        

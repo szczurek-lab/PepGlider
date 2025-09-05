@@ -15,7 +15,7 @@ def set_params(root_dir):
         "lr": 0.001,
         "kl_beta_schedule": (0.00001, 0.1, 8000),
         "train_size": None,
-        "epochs": 10000,
+        "epochs": 8600,
         "iwae_samples": 10,
         "model_name": os.getenv("CLEARML_PROJECT_NAME", 'ar-vae-v4'),
         "use_clearml": False,
@@ -27,7 +27,7 @@ def set_params(root_dir):
         "reg_dim": [0,1,2,3,4], # [length, charge, hydrophobicity_moment]
         "gamma_schedule": (0.00001, 20, 8000),
         "gamma_multiplier": [1,1,1,1,1],
-        "factor_schedule": (0.1,0.1,8000),
+        "factor_schedule": (1,1,8000),
         'scale_factor_flg': False,
         'mic_flg': True
     }

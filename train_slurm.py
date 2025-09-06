@@ -23,19 +23,19 @@ from params_setting import set_params
 if __name__ == '__main__':
     set_seed()
     encoder_filepath = os.path.join(
-        # os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
-        os.sep, "home","gwiazale", "AR-VAE", "first_working_models",
-        "hyperparams_tuning_mic_new_normalization_ar-vae_epoch1400_encoder.pt"
+        os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
+        # os.sep, "home","gwiazale", "AR-VAE", "first_working_models",
+        "hyperparams_tuning_mic_delta_10_ar-vae_epoch1400_encoder.pt"
     )
     decoder_filepath = os.path.join(
-        # os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
-        os.sep, "home","gwiazale", "AR-VAE", "first_working_models",
-        "hyperparams_tuning_mic_new_normalization_ar-vae_epoch1400_decoder.pt"
+        os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
+        # os.sep, "home","gwiazale", "AR-VAE", "first_working_models",
+        "hyperparams_tuning_mic_delta_10_ar-vae_epoch1400_decoder.pt"
     )
     # print('AMPs/nonAMPs')
     # run(['positiv_negativ_AMPs'])
-    # run(['positiv_AMPs'], encoder_filepath, decoder_filepath)
-    run(['positiv_AMPs'])
+    run(['positiv_AMPs'], encoder_filepath, decoder_filepath)
+    # run(['positiv_AMPs'])
     # run(['positiv_negativ_AMPs'], encoder_filepath, decoder_filepath)
     #run(['uniprot'], encoder_filepath, decoder_filepath)
     # print('merged data AMPs/nonAMPs + Uniprot')

@@ -121,16 +121,18 @@ def compute_modularity(latent_codes, attributes, attr_list):
             mi_partly = continuous_mutual_info(latent_codes[finite_mask,:], attributes[finite_mask,i]).reshape(-1, 1)
         else:
             mi_partly = continuous_mutual_info(latent_codes, attributes[:,i]).reshape(-1, 1)
-            if mi is not None:
-                rows_to_pad = mi.shape[0] - mi_partly.shape[0]
+        if mi is not None:
+            rows_to_pad = mi.shape[0] - mi_partly.shape[0]
 
-                padded_mi_partly = np.pad(mi_partly, ((0, rows_to_pad), (0, 0)), 
+            padded_mi_partly = np.pad(mi_partly, ((0, rows_to_pad), (0, 0)), 
                                         mode='constant', constant_values=np.nan)
-            else:
-                padded_mi_partly = mi_partly
+        else:
+            padded_mi_partly = mi_partly
         if mi is None:
             mi = mi_partly
         else:
+            print(mi.shape)
+            print(padded_mi_partly.shape)
             mi = np.column_stack((mi, padded_mi_partly))
         modularity = _modularity(mi_partly.reshape(-1, 56))
         scores[attr_name] = modularity.item()

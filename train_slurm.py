@@ -33,9 +33,9 @@ if __name__ == '__main__':
         "hyperparams_tuning_mic_delta_0.6_ar-vae_epoch1400_decoder.pt"
     )
     # print('AMPs/nonAMPs')
-    # run(['positiv_negativ_AMPs'])
-    run(['positiv_AMPs'], encoder_filepath, decoder_filepath)
-    # run(['positiv_AMPs'])
+    run(['positiv_negativ_AMPs'])
+    # run(['positiv_AMPs'], encoder_filepath, decoder_filepath)
+    run(['positiv_AMPs'])
     # run(['positiv_negativ_AMPs'], encoder_filepath, decoder_filepath)
     #run(['uniprot'], encoder_filepath, decoder_filepath)
     # print('merged data AMPs/nonAMPs + Uniprot')

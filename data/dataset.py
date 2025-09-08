@@ -228,7 +228,7 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, reg_dim):
             data_dir = data_dir)
         amp_x, amp_y, attributes_input, _ = data_manager.get_uniprot_data()
     attributes = normalize_attributes(attributes_input, reg_dim)
-    #print(f'attributes shape = {attributes.shape}')
+    print(f'attributes shape = {attributes.shape}')
     #print(f'attributes_input shape = {attributes_input.shape}')
     for i, attr_name in enumerate(['Length', 'Charge', 'Hydrophobic moment']):
         plot_hist_lengths(attributes_input[:,i].cpu().numpy(), attr_name)

@@ -230,7 +230,7 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, reg_dim):
     attributes = normalize_attributes(attributes_input, reg_dim)
     # print(f'attributes shape = {attributes.shape}')
     for i in range(attributes_input.shape[1]):
-        print(f'{i} - min = {np.mean(attributes_input[:,i].cpu().numpy())}, max = {np.mean(attributes_input[:,i].cpu().numpy())}')
+        print(f'{i} - min = {np.mean(attributes_input[:,i].cpu().numpy(), axis=1)}, max = {np.mean(attributes_input[:,i].cpu().numpy(), axis=1)}')
     #print(f'attributes_input shape = {attributes_input.shape}')
     # for i, attr_name in enumerate(['Length', 'Charge', 'Hydrophobic moment']):
         # plot_hist_lengths(attributes_input[:,i].cpu().numpy(), attr_name)

@@ -131,6 +131,8 @@ def compute_modularity(latent_codes, attributes, attr_list):
         if mi is None:
             mi = mi_partly
         else:
+            print(mi.shape)
+            print(padded_mi_partly.shape)
             mi = np.column_stack((mi, padded_mi_partly))
         modularity = _modularity(mi_partly.reshape(-1, 56))
         scores[attr_name] = modularity.item()

@@ -152,7 +152,7 @@ def normalize_attributes(physchem_tensor_original, reg_dim):
     # feature_names = ["Hydrophobic Moment", "Length", "Charge"]
     physchem_tensor_normalized = torch.empty_like(physchem_tensor_original) 
 
-    for col_idx in range(len(reg_dim)):
+    for col_idx in reg_dim:
         # feature_name = feature_names[col_idx] if col_idx < len(feature_names) else f"Column_{col_idx}"
         column_tensor = physchem_tensor_original[:, col_idx]
         data_to_transform_np = column_tensor.cpu().numpy().reshape(-1, 1)
@@ -230,8 +230,8 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, reg_dim):
     attributes = normalize_attributes(attributes_input, reg_dim)
     print(f'attributes shape = {attributes.shape}')
     #print(f'attributes_input shape = {attributes_input.shape}')
-    for i, attr_name in enumerate(['Length', 'Charge', 'Hydrophobic moment']):
-        plot_hist_lengths(attributes_input[:,i].cpu().numpy(), attr_name)
+    # for i, attr_name in enumerate(['Length', 'Charge', 'Hydrophobic moment']):
+        # plot_hist_lengths(attributes_input[:,i].cpu().numpy(), attr_name)
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
     # print(f'dataset size = {len(dataset)}')
     train_size = int(0.8 * len(dataset))

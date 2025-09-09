@@ -167,6 +167,7 @@ def normalize_attributes(physchem_tensor_original, reg_dim):
             qt = QuantileTransformer(
                         output_distribution='uniform',
                         n_quantiles=10,                )
+            print(data_to_transform_np.shape)
             transformed_data_np = qt.fit_transform(data_to_transform_np)
             print(transformed_data_np)
             fitted_transformers[col_idx] = qt

@@ -41,6 +41,7 @@ def run_epoch_iwae(
     gamma,
     gamma_multiplier,
     factor,
+    factor_multiplier,
     scale_factor_flg
 ):
     print(f'Epoch {epoch}')
@@ -112,7 +113,7 @@ def run_epoch_iwae(
                         z_reshaped = z.reshape(-1,z.shape[1])
                     if z_reshaped.shape[0] != 0:
                         reg_loss_with_gamma_partly, reg_loss_partly = r.compute_reg_loss(
-                        z_reshaped, physchem_torch[finite_mask, dim], dim, gamma, gamma_multiplier[dim], device, factor #gamma i delta z papera
+                        z_reshaped, physchem_torch[finite_mask, dim], dim, gamma, gamma_multiplier[dim], device, factor, factor_multiplier[dim] #gamma i delta z papera
                         )
                         if scale_factor_flg:
                             scale_factor += 0.02 * torch.mean(torch.square(z_reshaped[:,reg_dim]))
@@ -349,6 +350,7 @@ def run(data_type, encoder_filepath=None, decoder_filepath=None):
                 gamma = gamma,
                 gamma_multiplier = params['gamma_multiplier'],
                 factor = delta,
+                factor_multiplier = params['factor_multiplier'],
                 scale_factor_flg = params['scale_factor_flg']
         )
         if eval_mode == "deep":
@@ -371,6 +373,7 @@ def run(data_type, encoder_filepath=None, decoder_filepath=None):
                     gamma=gamma,
                     gamma_multiplier = params['gamma_multiplier'],
                     factor = delta,
+                    factor_multiplier = params['factor_multiplier'],
                     scale_factor_flg = params['scale_factor_flg']
             )
 

@@ -161,15 +161,15 @@ def normalize_attributes(physchem_tensor_original, reg_dim):
             non_nan_mask = ~np.isnan(data_to_transform_np)
             normalized_values = adaptive_range_normalize(data_to_transform_np[non_nan_mask])
             transformed_data_np = np.full_like(data_to_transform_np, np.nan)
-            print(normalized_values)
+            # print(normalized_values)
             transformed_data_np[non_nan_mask] = normalized_values
         else:
             qt = QuantileTransformer(
                         output_distribution='uniform',
                         n_quantiles=10,                )
-            print(data_to_transform_np.shape)
+            # print(data_to_transform_np.shape)
             transformed_data_np = qt.fit_transform(data_to_transform_np)
-            print(transformed_data_np)
+            # print(transformed_data_np)
             fitted_transformers[col_idx] = qt
         transformed_column_tensor_2d = torch.from_numpy(transformed_data_np).float()
         physchem_tensor_normalized[:, col_idx] = transformed_column_tensor_2d.squeeze(1) 

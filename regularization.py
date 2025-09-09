@@ -1,15 +1,15 @@
 from  torch import tensor, nn, tanh, sign
 
-def compute_reg_loss(z, labels, reg_dim, gamma, gamma_multiplier, device, factor=1.0):
+def compute_reg_loss(z, labels, reg_dim, gamma, gamma_multiplier, device, factor=1.0, factor_multiplier=1.0):
     """
     Computes the regularization loss
     """
     x = z[:, reg_dim]
     # print(f'z in reg loss shape = {x.shape}')
-    reg_loss = reg_loss_sign(x, labels, device = device, factor=factor)
+    reg_loss = reg_loss_sign(x, labels, device = device, factor=factor, factor_multiplier = factor_multiplier)
     return (gamma*gamma_multiplier) * reg_loss, reg_loss
 
-def reg_loss_sign(latent_code, attribute, device, factor=1.0):
+def reg_loss_sign(latent_code, attribute, device, factor=1.0, factor_multiplier=1.0):
     """
     Computes the regularization loss given the latent code and attribute
     Args:
@@ -38,7 +38,7 @@ def reg_loss_sign(latent_code, attribute, device, factor=1.0):
 
     # compute regularization loss
     loss_fn = nn.L1Loss()
-    lc_tanh = tanh(lc_dist_mat * factor)
+    lc_tanh = tanh(lc_dist_mat * factor * factor_multiplier)
     # print(f'lc_tanh shape {lc_tanh.shape}')
     attribute_sign = sign(attribute_dist_mat)
     # print(f'attribute_sign shape {attribute_sign.shape}')

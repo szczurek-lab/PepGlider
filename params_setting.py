@@ -15,7 +15,7 @@ def set_params(root_dir):
         "lr": 0.001,
         "kl_beta_schedule": (0.00001, 0.1, 8000),
         "train_size": None,
-        "epochs": 0,
+        "epochs": 8200,
         "iwae_samples": 10,
         "model_name": os.getenv("CLEARML_PROJECT_NAME", 'ar-vae-v4'),
         "use_clearml": False,

@@ -23,14 +23,14 @@ from params_setting import set_params
 if __name__ == '__main__':
     set_seed()
     encoder_filepath = os.path.join(
-        os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
-        # os.sep, "home","gwiazale", "AR-VAE", "first_working_models",
-        "hyperparams_tuning_mic_delta_0.6_ar-vae_epoch1400_encoder.pt"
+        # os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
+        os.sep, "home","gwiazale", "AR-VAE", "first_working_models",
+        "hyperparams_tuning_mic_only_ar-vae_epoch1800_encoder.pt"
     )
     decoder_filepath = os.path.join(
-        os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
-        # os.sep, "home","gwiazale", "AR-VAE", "first_working_models",
-        "hyperparams_tuning_mic_delta_0.6_ar-vae_epoch1400_decoder.pt"
+        # os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
+        os.sep, "home","gwiazale", "AR-VAE", "first_working_models",
+        "hyperparams_tuning_mic_only_ar-vae_epoch1800_decoder.pt"
     )
     # print('AMPs/nonAMPs')
     # run(['positiv_negativ_AMPs'])

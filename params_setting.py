@@ -27,7 +27,7 @@ def set_params(root_dir):
         "reg_dim": [3,4], # [length, charge, hydrophobicity_moment]
         "gamma_schedule": (0.00001, 20, 8000),
         "gamma_multiplier": [1,1,1,1,1],
-        "factor_multiplier": [0.6,0.6],
+        "factor_multiplier": [0.1,0.1,0.1,0.6,0.6],
         "factor_schedule": (1,1,8000),
         'scale_factor_flg': False,
         'mic_flg': True

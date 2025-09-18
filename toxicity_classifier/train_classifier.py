@@ -51,18 +51,19 @@ nonhemolytic_df = parse_fasta_to_df(nonhemolytic_content, 0, 0.2)
 signal_hemolytic_df = parse_fasta_to_df(signal_hemolytic_content, 1, 0.5)
 metabolic_nonhemolytic_df = parse_fasta_to_df(metabolic_hemolytic_content, 1, 0.5)
 hormone_hemolytic_df = parse_fasta_to_df(hormone_hemolytic_content, 1, 0.5)
-
+print('read all fastas')
 # --- Step 3: Concatenate the two DataFrames ---
 final_df = pd.concat([hemolytic_df, nonhemolytic_df, signal_hemolytic_df, metabolic_nonhemolytic_df, hormone_hemolytic_df], ignore_index=True)
 hemolytic_classifier = c.HemolyticClassifier(None)
 features = hemolytic_classifier.get_input_features(final_df['sequence'].to_numpy())
 labels = final_df['nontoxicity'].to_numpy()
 mask_high_quality_idxs = final_df['weight'].to_numpy()
+print(f'features shape = {features.shape}, labels shape = {labels.shape}, mask_high_quality_idxs shape = {mask_high_quality_idxs.shape}')
 train_input, eval_input, train_labels, eval_labels, train_mask_high_quality_idxs, eval_mask_high_quality_idxs = train_test_split(
     features, labels, mask_high_quality_idxs , test_size=0.03, random_state=42, stratify=labels
 )
 
 hemolytic_classifier.train_classifier(train_input, train_labels, train_mask_high_quality_idxs)
 hemolytic_classifier.save('')
-
+print('trained')
 hemolytic_classifier.eval_with_k_fold_cross_validation(eval_input,labels=eval_labels,mask_high_quality_idxs = eval_mask_high_quality_idxs)

@@ -31,15 +31,15 @@ def parse_fasta_to_df(file_content, nontoxicity_label, weight_value):
 
 # --- Step 1: Create mock FASTA file contents for demonstration ---
 # In your actual code, you would read the files from disk:
-with open('./toxicity_classifier/hemolytic.fasta', 'r') as f:
+with open('./toxicity_classifier/hemolytic.fasta', 'r', encoding='utf-8') as f:
     hemolytic_content = f.read()
-with open('./toxicity_classifier/nonhemolytic.fasta', 'r') as f:
+with open('./toxicity_classifier/nonhemolytic.fasta', 'r', encoding='utf-8') as f:
     nonhemolytic_content = f.read()
-with open('./toxicity_classifier/Signal peptide.fasta', 'r') as f:
+with open('./toxicity_classifier/Signal peptide.fasta', 'r', encoding='utf-8') as f:
     signal_hemolytic_content = f.read()
-with open('./toxicity_classifier/Metabolic.fasta', 'r') as f:
+with open('./toxicity_classifier/Metabolic.fasta', 'r', encoding='utf-8') as f:
     metabolic_hemolytic_content = f.read()
-with open('./toxicity_classifier/Hormone.fasta', 'r') as f:
+with open('./toxicity_classifier/Hormone.fasta', 'r', encoding='utf-8') as f:
     hormone_hemolytic_content = f.read()
 
 # --- Step 2: Parse each file and add the toxicity label ---

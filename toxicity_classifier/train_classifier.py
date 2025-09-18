@@ -19,7 +19,7 @@ def parse_fasta_to_df(file_content, nontoxicity_label, weight_value):
     sequences = []
     # Use SeqIO.parse for robust FASTA parsing
     for record in SeqIO.parse(io.StringIO(file_content), "fasta"):
-        if set(str(record.seq)).issubset(AMINO_ACIDS):
+        if all(char in AMINO_ACIDS for char in str(record.seq)):#set(str(record.seq)).issubset(AMINO_ACIDS):
             sequences.append(str(record.seq))
 
     # Create a DataFrame from the list of sequences

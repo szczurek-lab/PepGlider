@@ -1,6 +1,5 @@
 import pandas as pd
 import classifier as c
-from sklearn.model_selection import train_test_split
 
 with open('./toxicity_classifier/hemolytic.fasta', 'r', encoding='utf-8') as f:
     hemolytic_content = f.read()

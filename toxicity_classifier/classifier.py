@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.utils import compute_class_weight
 import torch.nn as nn
 import xgboost as xgb
@@ -111,20 +112,28 @@ class PeptideClassifier(nn.Module):
         mcc_scores = []
         confusion_matrices = []
 
-        for train_index, test_index in kf.split(input_features):
-            train_features = [input_features[i] for i in train_index]
-            test_features = [input_features[i] for i in test_index]
-            train_labels = [labels[i] for i in train_index]
-            test_labels = [labels[i] for i in test_index]
-            train_mask_high_quality_idxs = [mask_high_quality_idxs[i] for i in train_index]
-            test_mask_high_quality_idxs = [mask_high_quality_idxs[i] for i in test_index]
 
-            predictions = self.predict_from_features(test_features)
-            scores = self.predict_from_features(test_features, proba=True)
+        predictions = self.predict_from_features(input_features)
+        scores = self.predict_from_features(input_features, proba=True)
 
-            accuracies.append(accuracy_score(test_labels, predictions))
-            f1_scores.append(f1_score(test_labels, predictions))
-            mcc_scores.append(matthews_corrcoef(test_labels, predictions))
+        accuracies.append(accuracy_score(labels, predictions))
+        f1_scores.append(f1_score(labels, predictions))
+        mcc_scores.append(matthews_corrcoef(labels, predictions))
+        confusion_matrices.append(confusion_matrix(labels, predictions, normalize='true'))
+
+        print(f"Average Accuracy: {np.mean(accuracies):.4f} (+/- {np.std(accuracies):.4f})")
+        print(f"Average F1 Score: {np.mean(f1_scores):.4f} (+/- {np.std(f1_scores):.4f})")
+        print(f"Average MCC Score: {np.mean(mcc_scores):.4f} (+/- {np.std(mcc_scores):.4f})")
+        
+        print("Average Confusion Matrix:")
+        average_confusion_matrix = np.mean(confusion_matrices, axis=0)
+        print(average_confusion_matrix)
+        plt.hist(scores, bins=10, edgecolor='black', alpha=0.7)
+        plt.title('Distribution of Model Prediction Probabilities')
+        plt.xlabel('Predicted Probability')
+        plt.ylabel('Frequency')
+        plt.savefig('scores_hist.png')
+
 
     def eval_with_k_fold_cross_validation(self, input_features, labels, weight_balancing="balanced_with_adjustment_for_high_quality", k=5, mask_high_quality_idxs=[], reference_file=HQ_AMPs_FILE, objective='focal_loss'):
         kf = KFold(n_splits=k, shuffle=True, random_state=42)

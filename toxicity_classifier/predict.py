@@ -14,8 +14,8 @@ with open('./toxicity_classifier/nonhemolytic.fasta', 'r', encoding='utf-8') as 
 final_df = pd.read_csv('./toxicity_classifier/hydramp.csv')
 print(final_df)
 hemolytic_classifier = c.HemolyticClassifier('hemolytic_model.xgb')
-features = hemolytic_classifier.get_input_features(final_df['sequence'].to_numpy())
+features = hemolytic_classifier.get_input_features(final_df['Sequence'].to_numpy())
 labels = final_df['nontoxicity'].to_numpy()
-mask_high_quality_idxs = final_df['weight'].to_numpy()
+mask_high_quality_idxs = final_df['nontoxicity'].to_numpy()
 hemolytic_classifier.eval_trained_classifier(features,labels, mask_high_quality_idxs=mask_high_quality_idxs)
 

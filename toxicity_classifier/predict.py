@@ -7,11 +7,12 @@ with open('./toxicity_classifier/hemolytic.fasta', 'r', encoding='utf-8') as f:
 with open('./toxicity_classifier/nonhemolytic.fasta', 'r', encoding='utf-8') as f:
     nonhemolytic_content = f.read()
 
-hemolytic_df = c.parse_fasta_to_df(hemolytic_content, 1, 0.8)
-nonhemolytic_df = c.parse_fasta_to_df(nonhemolytic_content, 0, 0.2)
+# hemolytic_df = c.parse_fasta_to_df(hemolytic_content, 1, 0.8)
+# nonhemolytic_df = c.parse_fasta_to_df(nonhemolytic_content, 0, 0.2)
 
-final_df = pd.concat([hemolytic_df, nonhemolytic_df], ignore_index=True)
-
+# final_df = pd.concat([hemolytic_df, nonhemolytic_df], ignore_index=True)
+final_df = pd.read_csv('./toxicity_classifier/hydramp.csv')
+print(final_df)
 hemolytic_classifier = c.HemolyticClassifier('hemolytic_model.xgb')
 features = hemolytic_classifier.get_input_features(final_df['sequence'].to_numpy())
 labels = final_df['nontoxicity'].to_numpy()

@@ -13,6 +13,7 @@ from sklearn.preprocessing import QuantileTransformer
 import sys
 sys.path.append('..')
 from model.constants import MIN_LENGTH, MAX_LENGTH
+import toxicity_classifier.classifier as c
 from torch.utils.data import TensorDataset, DataLoader, random_split
 from torch import tensor 
 
@@ -189,7 +190,7 @@ def normalize_dimension_to_0_1(tensor: torch.Tensor, dim: int = -1) -> torch.Ten
     normalized_tensor = (tensor - min_vals) / range_vals
     return normalized_tensor
 
-def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, reg_dim):
+def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, toxicity_flg, reg_dim):
     if 'positiv_negativ_AMPs' in data_type and 'uniprot' in data_type:
         data_manager = AMPDataManager(
             positive_filepath = data_dir / 'unlabelled_positive.csv',
@@ -208,6 +209,7 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, reg_dim):
             min_len=MIN_LENGTH,
             max_len=MAX_LENGTH,
             mic_flg = mic_flg,
+            toxicity_flg = toxicity_flg,
             data_dir = data_dir)
 
         amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
@@ -218,6 +220,7 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, reg_dim):
             min_len=MIN_LENGTH,
             max_len=MAX_LENGTH,
             mic_flg = mic_flg,
+            toxicity_flg = toxicity_flg,
             data_dir = data_dir)
 
         amp_x, amp_y, attributes_input, _ = data_manager.get_positive_data()
@@ -227,6 +230,7 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, reg_dim):
             min_len=MIN_LENGTH,
             max_len=MAX_LENGTH,
             mic_flg = mic_flg,
+            toxicity_flg = toxicity_flg,
             data_dir = data_dir)
         amp_x, amp_y, attributes_input, _ = data_manager.get_uniprot_data()
     attributes = normalize_attributes(attributes_input, reg_dim)
@@ -269,6 +273,7 @@ class AMPDataManager:
             min_len: int = 0,
             max_len: int = 25,
             mic_flg: bool = False,
+            toxicity_flg: bool = False,
             data_dir: str = ''
     ):
         if str(positive_filepath).endswith(".csv"):
@@ -279,6 +284,10 @@ class AMPDataManager:
 
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
+            if toxicity_flg:
+                hemolytic_classifier = c.HemolyticClassifier('hemolytic_model.xgb')
+                features = hemolytic_classifier.get_input_features(self.positive_data['Sequence'].to_numpy())
+                self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
             # print(self.positive_data)
         else:
             with open(positive_filepath) as fasta_file:  # Will close handle cleanly
@@ -300,9 +309,16 @@ class AMPDataManager:
 
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
-
+            if toxicity_flg:
+                hemolytic_classifier = c.HemolyticClassifier('hemolytic_model.xgb')
+                features = hemolytic_classifier.get_input_features(self.positive_data['Sequence'].to_numpy())
+                self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
         if str(negative_filepath).endswith(".csv"):
             self.negative_data = pd.read_csv(negative_filepath)
+            if toxicity_flg:
+                hemolytic_classifier = c.HemolyticClassifier('hemolytic_model.xgb')
+                features = hemolytic_classifier.get_input_features(self.negative_data['Sequence'].to_numpy())
+                self.negative_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
         else:
             self.negative_data = None
             # with open(negative_filepath) as fasta_file:  # Will close handle cleanly
@@ -465,8 +481,13 @@ class AMPDataManager:
             mic_e_cola = torch.Tensor(df['mic_e_cola'].tolist()).unsqueeze(1)
             # print(mic_e_cola)
             mic_s_aureus = torch.Tensor(df['mic_s_aureus'].tolist()).unsqueeze(1)
-            result_tensor = torch.cat([attributes, mic_e_cola, mic_s_aureus], dim=1)
-            return x_changed, y, result_tensor, x
+            if 'nontoxicity' in df.columns:
+                nontoxicity = torch.Tensor(df['nontoxicity'].tolist()).unsqueeze(1)
+                result_tensor = torch.cat([attributes, mic_e_cola, mic_s_aureus, nontoxicity], dim=1)
+                return x_changed, y, result_tensor, x
+            else:
+                result_tensor = torch.cat([attributes, mic_e_cola, mic_s_aureus], dim=1)
+                return x_changed, y, result_tensor, x
         return x_changed, y, attributes, x
 
     def get_data(self, balanced: bool = True):

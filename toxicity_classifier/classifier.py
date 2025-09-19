@@ -12,6 +12,7 @@ HQ_AMPs_FILE = DATA_DIR + "activity-data/curated-AMPs.fasta"
 import sys
 sys.path.append('..')
 from toxicity_classifier.seq_properties import calculate_physchem_prop, calculate_aa_frequency, calculate_positional_encodings, AMINO_ACIDS
+# from seq_properties import calculate_physchem_prop, calculate_aa_frequency, calculate_positional_encodings, AMINO_ACIDS
 from collections import Counter
 from Bio import SeqIO
 import io

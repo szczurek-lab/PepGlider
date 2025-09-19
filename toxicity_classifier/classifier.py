@@ -9,8 +9,9 @@ import pandas as pd
 from sklearn.model_selection import train_test_split, KFold
 DATA_DIR = "data/"
 HQ_AMPs_FILE = DATA_DIR + "activity-data/curated-AMPs.fasta"
-# from project.synthetic_data import generate_synthetic_sequences
-from seq_properties import calculate_physchem_prop, calculate_aa_frequency, calculate_positional_encodings, AMINO_ACIDS
+import sys
+sys.path.append('..')
+from toxicity_classifier.seq_properties import calculate_physchem_prop, calculate_aa_frequency, calculate_positional_encodings, AMINO_ACIDS
 from collections import Counter
 from Bio import SeqIO
 import io

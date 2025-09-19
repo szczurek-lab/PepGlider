@@ -9,10 +9,25 @@ from sklearn.model_selection import train_test_split, KFold
 DATA_DIR = "data/"
 HQ_AMPs_FILE = DATA_DIR + "activity-data/curated-AMPs.fasta"
 # from project.synthetic_data import generate_synthetic_sequences
-from seq_properties import calculate_physchem_prop, calculate_aa_frequency, calculate_positional_encodings
+from seq_properties import calculate_physchem_prop, calculate_aa_frequency, calculate_positional_encodings, AMINO_ACIDS
 from collections import Counter
+from Bio import SeqIO
+import io
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, matthews_corrcoef, precision_score
-    
+
+def parse_fasta_to_df(file_content, nontoxicity_label, weight_value):
+    sequences = []
+    for record in SeqIO.parse(io.StringIO(file_content), "fasta"):
+        try:
+            if all(char in AMINO_ACIDS for char in str(record.seq)):
+                sequences.append(str(record.seq))
+        except UnicodeDecodeError:
+            continue
+
+    df = pd.DataFrame(sequences, columns=['sequence'])
+    df['nontoxicity'] = nontoxicity_label
+    df['weight'] = weight_value
+    return df
 
 def focal_loss(predt: np.ndarray, dtrain: xgb.DMatrix, gamma=2.0):
     """
@@ -89,6 +104,27 @@ class PeptideClassifier(nn.Module):
     def train_classifier(self, input_features, labels, weight_balancing="balanced_with_adjustment_for_high_quality", mask_high_quality_idxs=[], return_feature_importances=False, verbose=True, objective='focal_loss'):
         """To be implemented by child classes"""
         raise NotImplementedError
+
+    def eval_trained_classifier(self, input_features, labels, mask_high_quality_idxs, ):
+        accuracies = []
+        f1_scores = []
+        mcc_scores = []
+        confusion_matrices = []
+
+        for train_index, test_index in kf.split(input_features):
+            train_features = [input_features[i] for i in train_index]
+            test_features = [input_features[i] for i in test_index]
+            train_labels = [labels[i] for i in train_index]
+            test_labels = [labels[i] for i in test_index]
+            train_mask_high_quality_idxs = [mask_high_quality_idxs[i] for i in train_index]
+            test_mask_high_quality_idxs = [mask_high_quality_idxs[i] for i in test_index]
+
+            predictions = self.predict_from_features(test_features)
+            scores = self.predict_from_features(test_features, proba=True)
+
+            accuracies.append(accuracy_score(test_labels, predictions))
+            f1_scores.append(f1_score(test_labels, predictions))
+            mcc_scores.append(matthews_corrcoef(test_labels, predictions))
 
     def eval_with_k_fold_cross_validation(self, input_features, labels, weight_balancing="balanced_with_adjustment_for_high_quality", k=5, mask_high_quality_idxs=[], reference_file=HQ_AMPs_FILE, objective='focal_loss'):
         kf = KFold(n_splits=k, shuffle=True, random_state=42)

@@ -239,7 +239,9 @@ class HemolyticClassifier(PeptideClassifier):
         positional_encodings = pd.DataFrame(calculate_positional_encodings(sequences))
         properties = pd.DataFrame(calculate_physchem_prop(sequences, all_scales=True))
         frequencies = pd.DataFrame(calculate_aa_frequency(sequences))
-        return pd.concat([properties, frequencies, positional_encodings], axis=1).to_numpy()
+        df = pd.concat([properties, frequencies, positional_encodings], axis=1)
+        df.to_csv('seqs_features.csv')
+        return df.to_numpy()
 
     def train_classifier(self, input_features, labels, weight_balancing="balanced_with_adjustment_for_high_quality", mask_high_quality_idxs=[], return_feature_importances=False, verbose=True, objective='focal_loss'):
         train_input, val_input, train_labels, val_labels, train_mask_high_quality_idxs, _ = train_test_split(#

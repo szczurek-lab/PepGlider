@@ -59,11 +59,11 @@ features = hemolytic_classifier.get_input_features(final_df['sequence'].to_numpy
 labels = final_df['nontoxicity'].to_numpy()
 mask_high_quality_idxs = final_df['weight'].to_numpy()
 print(f'features shape = {features.shape}, labels shape = {labels.shape}, mask_high_quality_idxs shape = {mask_high_quality_idxs.shape}')
-train_input, eval_input, train_labels, eval_labels, train_mask_high_quality_idxs, eval_mask_high_quality_idxs = train_test_split(
-    features, labels, mask_high_quality_idxs , test_size=0.03, random_state=42, stratify=labels
-)
-
-hemolytic_classifier.train_classifier(train_input, train_labels, train_mask_high_quality_idxs)
-hemolytic_classifier.save('')
+#train_input, eval_input, train_labels, eval_labels, train_mask_high_quality_idxs, eval_mask_high_quality_idxs = train_test_split(
+#    features, labels, mask_high_quality_idxs , test_size=0.03, random_state=42, stratify=labels
+#)
+#print(f'features shape = {train_input.shape}, train_labels shape = {train_labels.shape}, train_mask_high_quality_idxs shape = {train_mask_high_quality_idxs.shape}')
+hemolytic_classifier.train_classifier(features, labels, mask_high_quality_idxs = mask_high_quality_idxs)
+hemolytic_classifier.save('hemolytic_model.xgb')
 print('trained')
-hemolytic_classifier.eval_with_k_fold_cross_validation(eval_input,labels=eval_labels,mask_high_quality_idxs = eval_mask_high_quality_idxs)
+#hemolytic_classifier.eval_with_k_fold_cross_validation(eval_input,labels=eval_labels,mask_high_quality_idxs = eval_mask_high_quality_idxs)

@@ -276,6 +276,7 @@ class AMPDataManager:
             toxicity_flg: bool = False,
             data_dir: str = ''
     ):
+        self.fasta_flg = False
         if str(positive_filepath).endswith(".csv"):
             self.positive_data = pd.read_csv(positive_filepath)
             if mic_flg:
@@ -290,29 +291,30 @@ class AMPDataManager:
                 self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
             # print(self.positive_data)
         else:
-            with open(positive_filepath) as fasta_file:  # Will close handle cleanly
-                identifiers = []
-                sequences = []
-                for seq_record in SeqIO.parse(fasta_file, 'fasta'):  # (generator)
-                    seq_str = str(seq_record.seq)  # Convert Seq object to string
-                    if seq_str:  # Only add non-empty sequences
-                        sequences.append(seq_str)
-                        identifiers.append(seq_record.id)
-            
-            #converting lists to pandas Series    
-            s2 = pd.Series(sequences, name='Sequence')
-            #Gathering Series into a pandas DataFrame and rename index as ID column
-            self.positive_data = pd.DataFrame({'Sequence': s2})
-            if mic_flg:
-                new_data1 = pd.read_csv(data_dir / 'apex-ecoli.tsv', sep='\t')
-                new_data2 = pd.read_csv(data_dir / 'apex-saureus.tsv', sep='\t')
-
-                self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
-                self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
-            if toxicity_flg:
-                hemolytic_classifier = c.HemolyticClassifier('hemolytic_model.xgb')
-                features = hemolytic_classifier.get_input_features(self.positive_data['Sequence'].to_numpy())
-                self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
+            if positive_filepath is not None:
+                with open(positive_filepath) as fasta_file:  # Will close handle cleanly
+                    identifiers = []
+                    sequences = []
+                    for seq_record in SeqIO.parse(fasta_file, 'fasta'):  # (generator)
+                        seq_str = str(seq_record.seq)  # Convert Seq object to string
+                        if seq_str:  # Only add non-empty sequences
+                            sequences.append(seq_str)
+                            identifiers.append(seq_record.id)
+                
+                #converting lists to pandas Series    
+                s2 = pd.Series(sequences, name='Sequence')
+                #Gathering Series into a pandas DataFrame and rename index as ID column
+                self.positive_data = pd.DataFrame({'Sequence': s2})
+                if mic_flg:
+                    new_data1 = pd.read_csv(data_dir / 'apex-ecoli.tsv', sep='\t')
+                    new_data2 = pd.read_csv(data_dir / 'apex-saureus.tsv', sep='\t')
+    
+                    self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
+                    self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
+                if toxicity_flg:
+                    hemolytic_classifier = c.HemolyticClassifier('hemolytic_model.xgb')
+                    features = hemolytic_classifier.get_input_features(self.positive_data['Sequence'].to_numpy())
+                    self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
         if str(negative_filepath).endswith(".csv"):
             self.negative_data = pd.read_csv(negative_filepath)
             if toxicity_flg:
@@ -320,19 +322,37 @@ class AMPDataManager:
                 features = hemolytic_classifier.get_input_features(self.negative_data['Sequence'].to_numpy())
                 self.negative_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
         else:
-            self.negative_data = None
-            # with open(negative_filepath) as fasta_file:  # Will close handle cleanly
-            #     identifiers = []
-            #     sequences = []
-            #     for seq_record in SeqIO.parse(fasta_file, 'fasta'):  # (generator)
-            #         seq_str = str(seq_record.seq)  # Convert Seq object to string
-            #         if seq_str:  # Only add non-empty sequences
-            #             sequences.append(seq_str)
-            #             identifiers.append(seq_record.id)
-  
-            # s1 = pd.Series(identifiers, name='ID')
-            # s2 = pd.Series(sequences, name='Sequence')
-            # self.negative_data = pd.DataFrame({'ID': s1, 'Sequence': s2})
+            self.fasta_flg = True
+            if negative_filepath is not None:
+                with open(negative_filepath) as fasta_file:  # Will close handle cleanly
+                    identifiers = []
+                    sequences = []
+                    for seq_record in SeqIO.parse(fasta_file, 'fasta'):  # (generator)
+                        seq_str = str(seq_record.seq)  # Convert Seq object to string
+                        if seq_str:  # Only add non-empty sequences
+                            sequences.append(seq_str)
+                            identifiers.append(seq_record.id)
+                
+                #converting lists to pandas Series    
+                s2 = pd.Series(sequences, name='Sequence')
+                #Gathering Series into a pandas DataFrame and rename index as ID column
+                self.negative_data = pd.DataFrame({'Sequence': s2})
+                # if mic_flg:
+                #     new_data1 = pd.read_csv(data_dir / 'apex-ecoli.tsv', sep='\t')
+                #     new_data2 = pd.read_csv(data_dir / 'apex-saureus.tsv', sep='\t')
+    
+                #     self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
+                #     self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
+                # if toxicity_flg:
+                #     hemolytic_classifier = c.HemolyticClassifier('hemolytic_model.xgb')
+                #     features = hemolytic_classifier.get_input_features(self.positive_data['Sequence'].to_numpy())
+                #     self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
+        # if str(negative_filepath).endswith(".csv"):
+        #     self.negative_data = pd.read_csv(negative_filepath)
+        #     if toxicity_flg:
+        #         hemolytic_classifier = c.HemolyticClassifier('hemolytic_model.xgb')
+        #         features = hemolytic_classifier.get_input_features(self.negative_data['Sequence'].to_numpy())
+        #         self.negative_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
         if len(uniprot_filepath) != 0:
             dfs = [pd.read_csv(f) for f in uniprot_filepath]
             self.uniprot_data = pd.concat(dfs, ignore_index=True)
@@ -427,6 +447,31 @@ class AMPDataManager:
         new_df = pd.DataFrame(d)
         return new_df
 
+    @staticmethod
+    def _draw_subsequences_fasta(df, new_lengths):
+        new_lengths.sort(reverse=True)
+        df = df.sort_values(by="Sequence length", ascending=False)
+
+        d = []
+        for row, new_length in zip(df.itertuples(), new_lengths):
+            seq = row[1]
+            curr_length = row[2]
+            if new_length > curr_length:
+                new_seq = seq
+            elif new_length == curr_length:
+                new_seq = seq
+            else:
+                begin = random.randrange(0, int(curr_length) - new_length)
+                new_seq = seq[begin:begin + new_length]
+            d.append(
+                {
+                    'Name': row[1],
+                    'Sequence': new_seq,
+                }
+            )
+        new_df = pd.DataFrame(d)
+        return new_df
+        
     def _equalize_data(self, positive_data: pd.DataFrame, negative_data: pd.DataFrame, balanced_classes: bool = True):
         positive_seq = positive_data['Sequence'].tolist()
         positive_lengths = [len(seq) for seq in positive_seq]
@@ -439,7 +484,10 @@ class AMPDataManager:
         k = len(positive_lengths) if balanced_classes else len(negative_lengths)
 
         new_negative_lengths = random.choices(list(probs.keys()), probs.values(), k=k)
-        negative_data_distributed = self._draw_subsequences(self.negative_data, new_negative_lengths)
+        if self.fasta_flg:
+            negative_data_distributed = self._draw_subsequences_fasta(self.negative_data, new_negative_lengths)
+        else:
+            negative_data_distributed = self._draw_subsequences(self.negative_data, new_negative_lengths)
         return positive_data, negative_data_distributed
 
     def plot_distributions(self, equalize: bool = True):

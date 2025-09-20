@@ -25,17 +25,17 @@ if __name__ == '__main__':
     encoder_filepath = os.path.join(
         os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
         # os.sep, "home","gwiazale", "AR-VAE", "first_working_models",
-        "hyperparams_tuning_mic_only_delta_0.6_ar-vae_epoch1700_encoder.pt"
+        "hyperparams_tuning_mic_and_nontoxicity_ar-vae_epoch1600_encoder.pt"
     )
     decoder_filepath = os.path.join(
         os.sep, "net","tscratch","people","plggwiazale", "AR-VAE", "first_working_models",
         # os.sep, "home","gwiazale", "AR-VAE", "first_working_models",
-        "hyperparams_tuning_mic_only_delta_0.6_ar-vae_epoch1700_decoder.pt"
+        "hyperparams_tuning_mic_and_nontoxicity_ar-vae_epoch1600_decoder.pt"
     )
     # print('AMPs/nonAMPs')
     # run(['positiv_negativ_AMPs'])
-    # run(['positiv_AMPs'], encoder_filepath, decoder_filepath)
-    run(['positiv_AMPs'])
+    run(['positiv_AMPs'], encoder_filepath, decoder_filepath)
+    # run(['positiv_AMPs'])
     # run(['positiv_negativ_AMPs'], encoder_filepath, decoder_filepath)
     #run(['uniprot'], encoder_filepath, decoder_filepath)
     # print('merged data AMPs/nonAMPs + Uniprot')

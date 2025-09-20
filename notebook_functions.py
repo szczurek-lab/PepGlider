@@ -847,7 +847,7 @@ def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, at
                     src = outputs.permute(1, 2, 0) 
                     seq = src.argmax(dim=1)
                     modified_sequences = dataset_lib.decoded(seq, "")
-                    # save_sequences(modified_sequences, f"{model}_modified_{attr_name}_{shift_value}.csv")
+                    save_sequences(modified_sequences, f"{model}_modified_{attr_name}_{shift_value}.csv")
         
                     modified_sequences = [seq.strip().rstrip("0") for seq in modified_sequences]
                     modified_sequences = [seq for seq in modified_sequences if '0' not in seq]

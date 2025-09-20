@@ -24,14 +24,14 @@ def set_params(root_dir):
         "deeper_eval_every": 20,
         "save_model_every": 100,
         "ar_vae_flg": True,
-        "reg_dim": [3,4,5], # [length, charge, hydrophobicity_moment]
+        "reg_dim": [3,4], # [length, charge, hydrophobicity_moment]
         "gamma_schedule": (0.00001, 20, 8000),
         "gamma_multiplier": [1,1,1,1,1,1],
         "factor_multiplier": [0.1,0.1,0.1,0.6,0.6,0.6],
         "factor_schedule": (1,1,8000),
         'scale_factor_flg': False,
         'mic_flg': True,
-        'toxicity_flg': True
+        'toxicity_flg': False
     }
 
     if params["use_clearml"]:

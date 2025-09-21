@@ -135,7 +135,7 @@ def compute_modularity(latent_codes, attributes, attr_list):
             print(padded_mi_partly.shape)
             mi = np.column_stack((mi, padded_mi_partly))
         print(mi_partly.shape)
-        modularity = _modularity(mi_partly.reshape(-1, 64))
+        modularity = _modularity(mi_partly.reshape(-1, 56))
         print(modularity)
         scores[attr_name] = modularity.item()
     print(f'mi.shape = {mi.shape}')
@@ -250,7 +250,7 @@ def _compute_score_matrix(mus, ys, attr_list):
     return score_matrix
 
 def extract_relevant_attributes(labels, reg_dim): 
-    attr_list = ['Length', 'Charge', 'Hydrophobicity', 'MIC E.coli', 'MIC S.aureus', 'Nontoxicity']
+    attr_list = ['Length', 'Charge', 'Hydrophobicity'] #, 'MIC E.coli', 'MIC S.aureus', 'Nontoxicity']
     attr_final = []
     for i in reg_dim:
         attr_final.append(attr_list[i])

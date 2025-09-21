@@ -233,14 +233,14 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, toxicity_
             toxicity_flg = toxicity_flg,
             data_dir = data_dir)
         amp_x, amp_y, attributes_input, _ = data_manager.get_uniprot_data()
-    attributes = normalize_attributes(attributes_input, reg_dim)
+    #attributes = normalize_attributes(attributes_input, reg_dim)
     # print(f'attributes shape = {attributes.shape}')
     # for i in range(attributes_input.shape[1]):
         # print(f'{i} - min = {np.min(attributes_input[:,i].cpu().numpy())}, max = {np.max(attributes_input[:,i].cpu().numpy())}')
     #print(f'attributes_input shape = {attributes_input.shape}')
     # for i, attr_name in enumerate(['Length', 'Charge', 'Hydrophobic moment']):
     # plot_hist_lengths(attributes[:,5].cpu().numpy(), 'nontoxicity')
-    dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
+    dataset = TensorDataset(amp_x, tensor(amp_y), attributes_input, attributes_input)
     # print(f'dataset size = {len(dataset)}')
     train_size = int(0.8 * len(dataset))
     eval_size = len(dataset) - train_size

@@ -176,14 +176,14 @@ def normalize_attributes(physchem_tensor_original, reg_dim):
             # print(normalized_values)
             transformed_data_np[non_nan_mask] = normalized_values
         else:
-            # qt = QuantileTransformer(
-                        # output_distribution='uniform',
-                        # n_quantiles=10,                )
+            qt = QuantileTransformer(
+                        output_distribution='uniform',
+                        n_quantiles=10,                )
             # print(data_to_transform_np.shape)
-            # transformed_data_np = qt.fit_transform(data_to_transform_np)
+            transformed_data_np = qt.fit_transform(data_to_transform_np)
             # print(transformed_data_np)
-            # fitted_transformers[col_idx] = qt
-            transformed_data_np = z_score_normalize(data_to_transform_np)
+            fitted_transformers[col_idx] = qt
+            # transformed_data_np = z_score_normalize(data_to_transform_np)
         
         transformed_column_tensor_2d = torch.from_numpy(transformed_data_np).float()
         physchem_tensor_normalized[:, col_idx] = transformed_column_tensor_2d.squeeze(1) 
@@ -255,7 +255,7 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, toxicity_
     #print(f'attributes_input shape = {attributes_input.shape}')
     # for i, attr_name in enumerate(['Length', 'Charge', 'Hydrophobic moment']):
     # plot_hist_lengths(attributes[:,5].cpu().numpy(), 'nontoxicity')
-    dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
+    dataset = TensorDataset(amp_x, tensor(amp_y), attributes_input, attributes_input)
     # print(f'dataset size = {len(dataset)}')
     train_size = int(0.8 * len(dataset))
     eval_size = len(dataset) - train_size

@@ -14,7 +14,7 @@ import io
 # final_df = pd.concat([hemolytic_df], ignore_index=True)
 final_df = pd.read_csv('./toxicity_classifier/hydramp.csv')
 # print(final_df)
-hemolytic_classifier = c.HemolyticClassifier('hemolytic_model.xgb')
+hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
 features = hemolytic_classifier.get_input_features(final_df['Sequence'].to_numpy())
 labels = final_df['nontoxicity'].to_numpy()
 mask_high_quality_idxs = final_df['nontoxicity'].to_numpy()

@@ -250,8 +250,8 @@ def _compute_score_matrix(mus, ys, attr_list):
     return score_matrix
 
 def extract_relevant_attributes(labels, reg_dim): 
-    # attr_list = ['Length', 'Charge', 'Hydrophobicity', 'MIC E.coli', 'MIC S.aureus', 'Nontoxicity']
-    attr_list = ['MIC E.coli', 'MIC S.aureus']
+    attr_list = ['Length', 'Charge', 'Hydrophobicity', 'MIC E.coli', 'MIC S.aureus', 'Nontoxicity']
+    # attr_list = ['MIC E.coli', 'MIC S.aureus']
     attr_final = []
     for i in reg_dim:
         attr_final.append(attr_list[i])

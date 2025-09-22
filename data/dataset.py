@@ -148,16 +148,16 @@ def adaptive_range_normalize(data, roi_min=0, roi_max=32, roi_bins=7, out_bins=3
     
     return result
 
-def min_max_normalize(data: np.ndarray) -> np.ndarray:
-    """Normalizes a NumPy array to the [-1, 1] range."""
-    min_val = np.nanmin(data)
-    max_val = np.nanmax(data)
+def z_score_normalize(data: np.ndarray) -> np.ndarray:
+    """Normalizes a NumPy array to z-score."""
+    mean_val = np.nanmean(data)
+    std_val = np.nanstd(data)
     
     # Avoid division by zero if all values are the same
-    if max_val == min_val:
+    if std_val == 0:
         return np.zeros_like(data)
         
-    return 2 * (data - min_val) / (max_val - min_val) - 1
+    return (data - mean_val) / std_val
 
 def normalize_attributes(physchem_tensor_original, reg_dim):
     fitted_transformers: Dict[int, QuantileTransformer] = {}
@@ -183,7 +183,7 @@ def normalize_attributes(physchem_tensor_original, reg_dim):
             # transformed_data_np = qt.fit_transform(data_to_transform_np)
             # print(transformed_data_np)
             # fitted_transformers[col_idx] = qt
-            transformed_data_np = min_max_normalize(data_to_transform_np)
+            transformed_data_np = z_score_normalize(data_to_transform_np)
         
         transformed_column_tensor_2d = torch.from_numpy(transformed_data_np).float()
         physchem_tensor_normalized[:, col_idx] = transformed_column_tensor_2d.squeeze(1) 
@@ -250,8 +250,8 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, toxicity_
         amp_x, amp_y, attributes_input, _ = data_manager.get_uniprot_data()
     attributes = normalize_attributes(attributes_input, reg_dim)
     # print(f'attributes shape = {attributes.shape}')
-    for i in range(attributes_input.shape[1]):
-        print(f'{i} - min = {np.min(attributes_input[:,i].cpu().numpy())}, max = {np.max(attributes_input[:,i].cpu().numpy())}')
+    for i in range(attributes.shape[1]):
+        print(f'{i} - min = {np.min(attributes[:,i].cpu().numpy())}, max = {np.max(attributes[:,i].cpu().numpy())}')
     #print(f'attributes_input shape = {attributes_input.shape}')
     # for i, attr_name in enumerate(['Length', 'Charge', 'Hydrophobic moment']):
     # plot_hist_lengths(attributes[:,5].cpu().numpy(), 'nontoxicity')

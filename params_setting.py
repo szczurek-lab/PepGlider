@@ -31,7 +31,7 @@ def set_params(root_dir):
         "factor_schedule": (1,1,8000),
         'scale_factor_flg': False,
         'mic_flg': True,
-        'toxicity_flg': False
+        'toxicity_flg': True
     }
 
     if params["use_clearml"]:

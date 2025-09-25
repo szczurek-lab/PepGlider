@@ -1,24 +1,5 @@
-import torch
 import os
-from torch import optim, nn, logsumexp, cuda, save, backends, manual_seed, LongTensor, zeros_like, ones_like, tensor, cat
-from torch.distributions import Normal
-torch.autograd.set_detect_anomaly(True)
-from model.model import EncoderRNN, DecoderRNN
-import numpy as np
-from typing import Optional, Literal
-from torch.optim import Adam
-import itertools
-import random
-from pathlib import Path
-from tqdm import tqdm
-import data.dataset as dataset_lib
-from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
-import ar_vae_metrics as m
-import monitoring as mn
-import regularization as r
-import csv
-from training_functions import set_seed, get_model_arch_hash, save_model, run_epoch_iwae, run
-from params_setting import set_params
+from training_functions import set_seed, run
 
 if __name__ == '__main__':
     set_seed()

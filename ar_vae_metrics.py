@@ -2,7 +2,6 @@ from sklearn.feature_selection import mutual_info_regression
 from sklearn.linear_model import LinearRegression
 import numpy as np
 from tqdm import tqdm
-from sklearn.metrics import mutual_info_score
 from scipy.stats import spearmanr
 import torch
 
@@ -46,15 +45,12 @@ def compute_interpretability_metric(latent_codes_input, attributes, attr_list):
     total = 0
     latent_codes = latent_codes_input
     for i, attr_name in tqdm(enumerate(attr_list)):
-        # print(attr_name)
         if attr_name == 'MIC E.coli' or attr_name == 'MIC S.aureus':
             finite_mask = np.isfinite(attributes[:,i])
             latent_codes = latent_codes_input[finite_mask,:]
             attr_labels = attributes[finite_mask, i]
         else:
             attr_labels = attributes[:, i]
-        # print(f'latent_codes = {latent_codes.shape}')
-        # print(f'attr_labels = {attr_labels.shape}')
         mutual_info = mutual_info_regression(latent_codes, attr_labels)
         dim = np.argmax(mutual_info)
 
@@ -99,9 +95,7 @@ def compute_mig(latent_codes, attributes, attr_list):
         else:
             mig_scores = np.column_stack((mig_scores, padded_mig_partly))
         score_dict[attr_name] = padded_mig_partly
-    print(f'mig_scores.shape = {mig_scores.shape}')
     score_dict['mean'] = np.nanmean(mig_scores)
-    print(f'score_dict from mig = {score_dict}')
     return score_dict
 
 
@@ -131,16 +125,10 @@ def compute_modularity(latent_codes, attributes, attr_list):
         if mi is None:
             mi = mi_partly
         else:
-            print(mi.shape)
-            print(padded_mi_partly.shape)
             mi = np.column_stack((mi, padded_mi_partly))
-        print(mi_partly.shape)
         modularity = _modularity(mi_partly.reshape(-1, 56))
-        print(modularity)
         scores[attr_name] = modularity.item()
-    print(f'mi.shape = {mi.shape}')
     scores['mean'] = np.nanmean(_modularity(mi))
-    print(f'scores from modularity = {scores}')
     return scores
 
 
@@ -251,77 +239,8 @@ def _compute_score_matrix(mus, ys, attr_list):
 
 def extract_relevant_attributes(labels, reg_dim): 
     attr_list = ['Length', 'Charge', 'Hydrophobicity', 'MIC E.coli', 'MIC S.aureus', 'Nontoxicity']
-    # attr_list = ['MIC E.coli', 'MIC S.aureus']
     attr_final = []
     for i in reg_dim:
         attr_final.append(attr_list[i])
     attr_labels = labels[:, reg_dim]
-    return attr_labels, attr_final #kiedys do zmiany na bardziej uniwersalne
-
-# def calculate_metric(metric_name, latent_codes, attributes, *args):
-#     """Oblicza daną metrykę i zwraca ją w formie słownika."""
-#     if metric_name == "interpretability":
-#         result = compute_interpretability_metric(latent_codes, attributes, *args)
-#         return {"Interpretability": result}
-#     elif metric_name == "correlation":
-#         result = compute_correlation_score(latent_codes, attributes)
-#         return result
-#     elif metric_name == "modularity":
-#         result = compute_modularity(latent_codes, attributes)
-#         return result
-#     elif metric_name == "mig":
-#         result = compute_mig(latent_codes, attributes)
-#         return result
-#     elif metric_name == "sap_score":
-#         result = compute_sap_score(latent_codes, attributes)
-#         return result
-#     else:
-#         return {}
-
-# def calculate_metric_async(pool, name, latent_codes, attributes, *args):
-#     """Asynchronicznie oblicza pojedynczą metrykę."""
-#     return pool.apply_async(calculate_metric, (name, latent_codes, attributes, *args))
-
-# def compute_all_metrics_async(pool, latent_codes, attributes, attr_list):
-#     """Wysyła zadania obliczenia wszystkich metryk AR-VAE do puli procesów asynchronicznie."""
-#     metrics_to_calculate = [
-#         ("interpretability", latent_codes, attributes, attr_list),
-#         ("correlation", latent_codes, attributes),
-#         ("modularity", latent_codes, attributes),
-#         ("mig", latent_codes, attributes),
-#         ("sap_score", latent_codes, attributes),
-#     ]
-
-#     async_results = {}
-#     for name, lc, attr, *args in metrics_to_calculate:
-#         async_results[name] = calculate_metric_async(pool, name, lc, attr, *args)
-
-#     return async_results
-
-# def gather_metrics(async_results):
-#     """Zbiera wyniki obliczonych asynchronicznie metryk."""
-#     ar_vae_metrics = {}
-#     for name, async_result in async_results.items():
-#         result = async_result.get()
-#         #print(f"Przetworzono wynik dla {name}: {result}")
-#         ar_vae_metrics.update(result)
-#     return ar_vae_metrics
-
-def compute_representations(data_loader, encoder, reg_dim, device):
-    latent_codes = []
-    attributes = []
-    sample_id = 0
-    for batch, labels, physchem, attributes_input in data_loader:
-        peptides = batch.permute(1, 0).type(torch.LongTensor).to(device) # S x B
-        mu, std = encoder(peptides) #TODO zmierz czas
-        z_tilde = torch.distributions.Normal(mu, std)
-        latent_codes.append(z_tilde.rsample().cpu().detach().numpy())
-        attributes.append(physchem.cpu().numpy())
-        if sample_id == 200:
-            break
-        sample_id +=1
-    latent_codes = np.concatenate(latent_codes, 0)
-    attributes = np.concatenate(attributes, 0)
-    attributes, attr_list = extract_relevant_attributes(attributes, reg_dim)
-    return latent_codes, attributes, attr_list
-
+    return attr_labels, attr_final 

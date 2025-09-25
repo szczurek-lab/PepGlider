@@ -17,7 +17,6 @@ from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
 import ar_vae_metrics as m
 import monitoring as mn
 import regularization as r
-import datetime
 import csv
 from torch.utils.data import DataLoader
 from params_setting import set_params
@@ -94,13 +93,10 @@ def run_epoch_iwae(
 
             # reconstruction - cross entropy
             sampled_peptide_logits = decoder(z)
-            # print(f'sampled_peptide_logits shape = {sampled_peptide_logits.shape}')
             src = sampled_peptide_logits.permute(1, 2, 0)  # B x C x S
             all_srcs.append(src)
-            # print(f'src shape = {src.shape}')
             tgt = peptides.permute(1, 0)
             all_tgts.append(tgt)
-            # print(f'tgt shape = {tgt.shape}')
             if ar_vae_flg:
                 reg_loss = 0
                 reg_loss_with_gamma = 0
@@ -135,8 +131,7 @@ def run_epoch_iwae(
                 stacked_srcs,
                 stacked_tgts,
         ).sum(dim=2)
-        # print(f'cross_entropy shape = {cross_entropy.shape}')
-        stacked_kl_divs = torch.stack(all_kl_divs, dim=0)#.mean(dim=0)
+        stacked_kl_divs = torch.stack(all_kl_divs, dim=0)
         if ar_vae_flg and scale_factor_flg:
             loss = logsumexp(cross_entropy + kl_beta * stacked_kl_divs, dim=0).mean(dim=0) + total_reg_loss_with_gamma + total_scale_factor
         elif ar_vae_flg:
@@ -144,7 +139,6 @@ def run_epoch_iwae(
         else:
             loss = logsumexp(cross_entropy + kl_beta * stacked_kl_divs, dim=0).mean(dim=0)
         stacked_kl_divs = stacked_kl_divs.mean(dim=0)
-        # stacked_cross_entropies = torch.stack(all_cross_entropies, dim=0).mean(dim=0)
         # stats
         stat_sum["kl_mean"] += stacked_kl_divs.mean(dim=0).item()
         stat_sum["ce_sum"] += cross_entropy.mean(dim=0).sum(dim=0).item()
@@ -153,7 +147,6 @@ def run_epoch_iwae(
             stat_sum["reg_loss_gamma"] = total_reg_loss_with_gamma
             if scale_factor_flg:
                 stat_sum["scale_factor"] = total_scale_factor
-            # print(f'total_reg_loss_with_gamma = {total_reg_loss_with_gamma}')
         stat_sum["total"] += loss.item() * len(batch)   
 
         if optimizer:
@@ -175,8 +168,6 @@ def run_epoch_iwae(
     if mode == 'test':
         latent_codes = np.concatenate(latent_codes, 0)
         attributes = cat(attributes, dim=0).numpy()
-        # print(f'latent_codes shape = {latent_codes.shape}')
-        # print(f'attributes shape = {attributes.shape}')
         attributes, attr_list = m.extract_relevant_attributes(attributes, reg_dim)
         ar_vae_metrics = {}
         ar_vae_metrics["Interpretability"] = m.compute_interpretability_metric(latent_codes, attributes, attr_list)
@@ -184,7 +175,6 @@ def run_epoch_iwae(
         ar_vae_metrics["Modularity"] = m.compute_modularity(latent_codes, attributes, attr_list)
         ar_vae_metrics["MIG"] = m.compute_mig(latent_codes, attributes,attr_list)
         ar_vae_metrics["SAP_score"] = m.compute_sap_score(latent_codes, attributes, attr_list)
-        # print(ar_vae_metrics)
     if eval_mode == "deep": 
         metrics_list = mn.report_sequence_char_test(
                 logger,
@@ -388,7 +378,6 @@ def run(data_type, encoder_filepath=None, decoder_filepath=None):
                         f"{params['task_name']}_{params['model_name']}_epoch{epoch}_decoder.pt",
                         with_hash=False,
                 )
-    # eval_model() -> probably to do
 
 def set_seed(seed: int = 42) -> None:
     """

@@ -2,28 +2,17 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 import numpy as np
-import io
 import csv
 import glob
 import re
-import copy
-import matplotlib.patches as mpatches
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import torch
-from torch.utils.data import TensorDataset, DataLoader, random_split
 from model.model import EncoderRNN, DecoderRNN
 import random
-from pathlib import Path
-from scipy import stats
 from torch import optim, nn, logsumexp, cuda, save, backends, manual_seed, LongTensor, zeros_like, ones_like, tensor, cat, transpose
-from torch.distributions import Normal
 torch.autograd.set_detect_anomaly(True)
-import itertools
-import seaborn as sns
 from tqdm import tqdm
 import data.dataset as dataset_lib
-from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
-import ar_vae_metrics as m
 from itertools import combinations
 from math import ceil
 import sys
@@ -36,21 +25,11 @@ from utils import *
 from sklearn.preprocessing import QuantileTransformer
 
 def find_files_with_matching_epochs(grouped_files):
-    """
-    Znajduje pliki z tym samym numerem epoki i grupuje je według sufiksu.
-
-    Args:
-        grouped_files (dict): Zagnieżdżony słownik z prefiksami, sufiksami i listą plików.
-    
-    Returns:
-        dict: Słownik z kluczem epoki.
-    """
     epochs_to_files = {}
 
     for prefix, groups in grouped_files.items():
         for suffix, file_list in groups.items():
             for filename in file_list:
-                # Używamy wyrażenia regularnego, aby znaleźć numer epoki
                 match = re.search(r'epoch(\d+)', filename)
                 if match:
                     epoch_number = int(match.group(1))
@@ -59,29 +38,11 @@ def find_files_with_matching_epochs(grouped_files):
                         epochs_to_files[epoch_number] = {}
                     if prefix not in epochs_to_files[epoch_number]:
                         epochs_to_files[epoch_number][prefix] = {'_encoder': '', '_decoder': ''}
-                    # print(epochs_to_files)
-                    # print(f'\n')
-                    # print(epoch_number)
-                    # print(prefix)
-                    # print(f'\n')
-                    # Dodajemy plik do odpowiedniej listy na podstawie sufiksu
                     epochs_to_files[epoch_number][prefix][suffix] = filename
     
     return epochs_to_files
 
 def find_and_group_model_files(prefixes_to_compare, suffixes_to_group=['_encoder', '_decoder'], directory="./first_working_models"):
-    """
-    Wyszukuje pliki .pt dla danych prefiksów i grupuje je według sufiksów.
-
-    Args:
-        prefixes_to_compare (list): Lista prefiksów do porównania.
-        suffixes_to_group (list): Lista sufiksów do grupowania (np. ['_encoder', '_decoder']).
-        directory (str): Ścieżka do folderu, w którym szukamy plików.
-    
-    Returns:
-        dict: Zagnieżdżony słownik z pogrupowanymi plikami.
-              Przykład: {'prefix_name': {'_encoder': [...], '_decoder': [...]}}
-    """
     found_files = {}
     unique_prefixes = sorted(list(set(prefixes_to_compare)))
 
@@ -104,22 +65,10 @@ def find_and_group_model_files(prefixes_to_compare, suffixes_to_group=['_encoder
     return found_files
 
 def clean_row(row):
-    """Removes '[' and ']' characters from a list of strings."""
     return [item.replace('[', '').replace(']', '') for item in row if isinstance(item, str)]
 
 
 def read_and_fix_csv(file_path, all_expected_columns):
-    """
-    Wczytuje plik CSV, ręcznie uzupełnia wiersze o brakujące kolumny
-    i zwraca DataFrame z danymi.
-    
-    Args:
-        file_path (str): Ścieżka do pliku CSV.
-        all_expected_columns (list): Lista nazw wszystkich oczekiwanych kolumn.
-    
-    Returns:
-        pd.DataFrame: Naprawiony DataFrame z danymi.
-    """
     if not isinstance(all_expected_columns, list):
         print("Błąd: 'all_expected_columns' musi być listą.")
         return None
@@ -181,23 +130,9 @@ def convert_rgba_to_rgb(rgba):
     return np.asarray(rgb)
 
 def truncate_to_shortest(list_of_arrays):
-    """
-    Przycinanie wszystkich tablic NumPy w liście do wymiaru
-    najkrótszej tablicy.
-    
-    Args:
-        list_of_arrays (list): Lista tablic NumPy.
-
-    Returns:
-        list: Nowa lista tablic, wszystkie o tej samej długości.
-    """
     if not list_of_arrays:
         return []
-
-    # 1. Znajdź najkrótszy wymiar (np. liczbę wierszy)
     shortest_dim = min(arr.shape[0] for arr in list_of_arrays)
-
-    # 2. Utwórz nową listę z przyciętymi tablicami
     truncated_arrays = [arr[:shortest_dim] for arr in list_of_arrays]
 
     return truncated_arrays
@@ -357,11 +292,6 @@ def MIC_calc(seq_list):
         processed_data[mode] = np.mean(AMP_pred[:, mode_indices], axis=1)
     combined_array = np.column_stack(list(processed_data.values()))
     return torch.from_numpy(combined_array)
-    # df_raw = pd.DataFrame(data=AMP_pred, columns=col, index=seq_list)
-    # df = pd.DataFrame()
-    # for mode in modes:
-    #     df[mode] = df_raw[bact_columns[mode]].mean(axis=1).reset_index()
-    # return df
     
 def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1, grid_res=0.05, z_dim = 56, params = {},attr = ['Length', 'Charge' , 'Hydrophobic moment'], mode = 'calc', range_value=5):
     all_final_z_points = []
@@ -415,8 +345,6 @@ def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1
                         labels = dataset_lib.calculate_physchem_test(filtered_list)
                         mics = MIC_calc(filtered_list)
                         attrs = torch.cat((labels, mics), dim=1)
-                    # print(f'attributes_input shape = {attributes_input.shape}')
-                    # print(f'labels shape = {labels.shape}')
                     if params['mae_flg']:
                         diff_tensors = []
 
@@ -474,23 +402,16 @@ def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1
             all_final_attr_labels.append(aggregated_attr)
             if params['mae_flg']:
                 all_final_mae.append(aggregated_mae)
-                # print(f'all_final_mae shapes = {all_final_mae[i].shape}')
-        # print(f'final_z_points shape = {len(all_final_z_points)}')
-        # print(f'final_attr_labels shape = {len(all_final_attr_labels)}')
     final_z_points = truncate_to_shortest(all_final_z_points)
     final_attr_labels = truncate_to_shortest(all_final_attr_labels)
     if params['mae_flg']:
         final_mae = truncate_to_shortest(all_final_mae)
     aggregated_z_points = np.stack(final_z_points)
     aggregated_attr_labels = np.stack(final_attr_labels)
-    # print(f'aggregated_attr_labels shape = {aggregated_attr_labels.shape}')
     if params['mae_flg']:
         aggregated_mae = np.stack(final_mae)
-        # print(f'aggregated_mae shape = {aggregated_mae.shape}')
         aggregated_attr_labels_and_mae = np.stack([aggregated_attr_labels, aggregated_mae], axis=3)
         print(f'aggregated_attr_labels_and_mae shape = {aggregated_attr_labels_and_mae.shape}')
-    # print(f'aggregated_z_points shape = {aggregated_z_points.shape}')
-    # print(f'aggregated_attr_labels shape = {aggregated_attr_labels.shape}')
     save_filename = os.path.join(
             os.getcwd(),
             f'latent_surface_{dim2}dim.png'
@@ -502,7 +423,6 @@ def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1
         return aggregated_z_points, aggregated_attr_labels_and_mae, epoch_number, save_filename, dim2, 
     else:
         return aggregated_z_points, aggregated_attr_labels, epoch_number, save_filename, dim2
-    # plot_dim(aggregated_z_points, aggregated_attr_labels, save_filename, dim2=dim2)
 
 def save_sequences(seqs, filename):
     with open(filename, "w", newline="") as file:

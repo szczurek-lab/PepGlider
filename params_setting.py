@@ -24,14 +24,14 @@ def set_params(root_dir):
         "deeper_eval_every": 20,
         "save_model_every": 20,
         "ar_vae_flg": True,
-        "reg_dim": [0,1,2], 
+        "reg_dim": [3,4,5], 
         "gamma_schedule": (0.00001, 20, 8000),
         "gamma_multiplier": [1,1,1,1,1,1],
         "factor_multiplier": [0.1,0.1,0.1,0.6,0.6,0.6],
         "factor_schedule": (1,1,8000),
         'scale_factor_flg': False,
-        'mic_flg': False,
-        'toxicity_flg': False
+        'mic_flg': True,
+        'toxicity_flg': True
     }
 
     if params["use_clearml"]:

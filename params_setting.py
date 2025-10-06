@@ -15,23 +15,23 @@ def set_params(root_dir):
         "lr": 0.001,
         "kl_beta_schedule": (0.00001, 0.1, 8000),
         "train_size": None,
-        "epochs": 9100,
+        "epochs": 10000,
         "iwae_samples": 10,
         "model_name": os.getenv("CLEARML_PROJECT_NAME", 'ar-vae-v4'),
         "use_clearml": False,
         "task_name": os.getenv("CLEARML_TASK_NAME", "ar-vae 3 dims"),
         "device": "cuda",
         "deeper_eval_every": 20,
-        "save_model_every": 100,
+        "save_model_every": 20,
         "ar_vae_flg": True,
-        "reg_dim": [0,1,2,3,4,5], 
+        "reg_dim": [0,1,2], 
         "gamma_schedule": (0.00001, 20, 8000),
         "gamma_multiplier": [1,1,1,1,1,1],
         "factor_multiplier": [0.1,0.1,0.1,0.6,0.6,0.6],
         "factor_schedule": (1,1,8000),
         'scale_factor_flg': False,
-        'mic_flg': True,
-        'toxicity_flg': True
+        'mic_flg': False,
+        'toxicity_flg': False
     }
 
     if params["use_clearml"]:

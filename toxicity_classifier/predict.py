@@ -25,7 +25,7 @@ final_df = pd.concat([hemolytic_df, nonhemolytic_df, signal_nonhemolytic_df, met
 # final_df = pd.read_csv('./toxicity_classifier/hydramp.csv')
 print(hemolytic_df['sequence'].to_numpy().shape)
 print(final_df['sequence'].to_numpy().shape)
-hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
+hemolytic_classifier = c.HemolyticClassifier('/AR-VAE/new_hemolytic_model.xgb')
 features = hemolytic_classifier.get_input_features(final_df['sequence'].to_numpy())
 labels = final_df['nontoxicity'].to_numpy()
 mask_high_quality_idxs = final_df['nontoxicity'].to_numpy()

@@ -297,8 +297,8 @@ class AMPDataManager:
         if str(negative_filepath).endswith(".csv"):
             self.negative_data = pd.read_csv(negative_filepath)
             if toxicity_flg:
-                hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
-                # hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
+                # hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
+                hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
                 features = hemolytic_classifier.get_input_features(self.negative_data['Sequence'].to_numpy())
                 self.negative_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
         else:

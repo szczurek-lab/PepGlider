@@ -169,14 +169,28 @@ def single_plot_dim(data, target, epoch_number, models_prefixs_to_compare, filen
 
     if 'Length' in attr:
         j = 0
+        # ymin = 1
+        # ymax = 25
     elif 'Charge' in attr:
         j = 1
+        # ymin = -9
+        # ymax = 18
     elif 'Hydrophobicity' in attr:
         j = 2
+        # ymin = -2.5
+        # ymax = 1.4
     elif 'MIC E.coli' in attr:
         j = 3
+        # ymin = 1.66
+        # ymax = 167.6
     elif 'MIC S.aureus' in attr:
         j = 4
+        # ymin = 1.14
+        # ymax = 207.6
+    elif 'Nontoxicity' in attr:
+        j = 5
+        # ymin = 0
+        # ymax = 1
     plt.figure(figsize=(5, 5), dpi=300)
     plt.scatter(
         x=data[:, j],
@@ -185,17 +199,19 @@ def single_plot_dim(data, target, epoch_number, models_prefixs_to_compare, filen
         s=24,
         linewidths=0,
         cmap="viridis",
-        alpha=0.5,
-        vmin=min_row[0],
-        vmax=max_row[0]
+        alpha=0.5
+        # vmin=ymin,
+        # vmax=ymax
     )
+    ax = plt.gca()
+    ax.set_xlim(-2.0,2.0)
     # plt.title(f'{models_prefixs_to_compare[0].split("_ar-vae")[0]}', fontsize=16)
     plt.xlabel(f'dimension: {attr[0]}', fontsize=14)
     plt.ylabel(f'not regularized dimension', fontsize=14)
     
     # --- Colorbar for the single plot ---
     # Note: You need a single axes object to attach a colorbar.
-    ax = plt.gca()
+    # ax = plt.gca()
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.1)
     cbar = plt.colorbar(
@@ -206,7 +222,6 @@ def single_plot_dim(data, target, epoch_number, models_prefixs_to_compare, filen
         aspect=20
     )
     cbar.ax.set_ylabel('')
-    
     # --- Finalizing the figure ---
     plt.suptitle(f"Epoch {epoch_number}", fontsize=20, fontweight='bold')
     plt.tight_layout(rect=[0, 0, 1, 0.96])

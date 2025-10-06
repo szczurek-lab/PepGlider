@@ -221,6 +221,12 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, toxicity_
             data_dir = data_dir)
         amp_x, amp_y, attributes_input, _ = data_manager.get_uniprot_data()
     attributes = normalize_attributes(attributes_input, reg_dim)
+    print(f'attributes shape = {attributes.shape}')
+    for i in range(attributes_input.shape[1]):
+        print(f'{i} - min = {np.min(attributes_input[:,i].cpu().numpy())}, max = {np.max(attributes_input[:,i].cpu().numpy())}')
+    #print(f'attributes_input shape = {attributes_input.shape}')
+    # for i, attr_name in enumerate(['Length', 'Charge', 'Hydrophobic moment']):
+    # plot_hist_lengths(attributes[:,5].cpu().numpy(), 'nontoxicity')
     dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
     train_size = int(0.8 * len(dataset))
     eval_size = len(dataset) - train_size
@@ -259,8 +265,8 @@ class AMPDataManager:
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
             if toxicity_flg:
-                # hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
-                hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
+                hemolytic_classifier = c.HemolyticClassifier('/home/gwiazale/AR-VAE/new_hemolytic_model.xgb')
+                # hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
                 features = hemolytic_classifier.get_input_features(self.positive_data['Sequence'].to_numpy())
                 self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
         else:
@@ -284,15 +290,15 @@ class AMPDataManager:
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
             if toxicity_flg:
-                # hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
-                hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
+                hemolytic_classifier = c.HemolyticClassifier('/home/gwiazale/AR-VAE/new_hemolytic_model.xgb')
+                # hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
                 features = hemolytic_classifier.get_input_features(self.positive_data['Sequence'].to_numpy())
                 self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
         if str(negative_filepath).endswith(".csv"):
             self.negative_data = pd.read_csv(negative_filepath)
             if toxicity_flg:
-                # hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
-                hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
+                hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
+                # hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
                 features = hemolytic_classifier.get_input_features(self.negative_data['Sequence'].to_numpy())
                 self.negative_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
         else:

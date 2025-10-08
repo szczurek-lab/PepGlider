@@ -24,7 +24,7 @@ def set_params(root_dir):
         "deeper_eval_every": 20,
         "save_model_every": 20,
         "ar_vae_flg": True,
-        "reg_dim": [3,4,5], 
+        "reg_dim": [0,1,2,3,4,5], 
         "gamma_schedule": (0.00001, 20, 8000),
         "gamma_multiplier": [1,1,1,1,1,1],
         "factor_multiplier": [0.1,0.1,0.1,0.6,0.6,0.6],

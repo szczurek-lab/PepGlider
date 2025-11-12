@@ -259,14 +259,16 @@ class AMPDataManager:
         if str(positive_filepath).endswith(".csv"):
             self.positive_data = pd.read_csv(positive_filepath)
             if mic_flg:
-                new_data1 = pd.read_csv(data_dir / 'new_e_coli.tsv', sep='\t')
-                new_data2 = pd.read_csv(data_dir / 'new_s_aureus.tsv', sep='\t')
+                new_data1 = pd.read_csv('escherichiacoliatcc25922_mic.csv')
+                new_data2 = pd.read_csv('staphylococcusaureusatcc25923_mic.csv')
+                # new_data1 = pd.read_csv(data_dir / 'new_e_coli.tsv', sep='\t')
+                # new_data2 = pd.read_csv(data_dir / 'new_s_aureus.tsv', sep='\t')
 
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
             if toxicity_flg:
-                # hemolytic_classifier = c.HemolyticClassifier('/home/gwiazale/AR-VAE/new_hemolytic_model.xgb')
-                hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
+                hemolytic_classifier = c.HemolyticClassifier('/home/gwiazale/AR-VAE/new_hemolytic_model.xgb')
+                # hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
                 features = hemolytic_classifier.get_input_features(self.positive_data['Sequence'].to_numpy())
                 self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
         else:
@@ -290,15 +292,15 @@ class AMPDataManager:
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
             if toxicity_flg:
-                # hemolytic_classifier = c.HemolyticClassifier('/home/gwiazale/AR-VAE/new_hemolytic_model.xgb')
-                hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
+                hemolytic_classifier = c.HemolyticClassifier('/home/gwiazale/AR-VAE/new_hemolytic_model.xgb')
+                # hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
                 features = hemolytic_classifier.get_input_features(self.positive_data['Sequence'].to_numpy())
                 self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
         if str(negative_filepath).endswith(".csv"):
             self.negative_data = pd.read_csv(negative_filepath)
             if toxicity_flg:
-                # hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
-                hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
+                hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
+                # hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
                 features = hemolytic_classifier.get_input_features(self.negative_data['Sequence'].to_numpy())
                 self.negative_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
         else:

@@ -14,8 +14,8 @@ if __name__ == '__main__':
         "hyperparams_tuning_mic_only_delta_0.6_ar-vae_epoch900_decoder.pt"
     )
     # run(['positiv_negativ_AMPs'])
-    # run(['positiv_AMPs'], encoder_filepath, decoder_filepath)
-    run(['positiv_AMPs'])
+    run(['positiv_AMPs'], encoder_filepath, decoder_filepath)
+    # run(['positiv_AMPs'])
     # run(['positiv_negativ_AMPs'], encoder_filepath, decoder_filepath)
     #run(['uniprot'], encoder_filepath, decoder_filepath)
     # run(['uniprot','positiv_negativ_AMPs'], encoder_filepath, decoder_filepath)

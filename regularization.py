@@ -31,5 +31,5 @@ def reg_loss_sign(latent_code, attribute, device, factor=1.0, factor_multiplier=
     loss_fn = nn.L1Loss()
     lc_tanh = tanh(lc_dist_mat * factor * factor_multiplier)
     attribute_sign = sign(attribute_dist_mat)
-    sign_loss = loss_fn(lc_tanh, attribute_dist_mat.float())
+    sign_loss = loss_fn(lc_tanh, attribute_sign.float())
     return sign_loss.to(device)

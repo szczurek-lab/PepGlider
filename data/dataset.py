@@ -177,7 +177,7 @@ def normalize_dimension_to_0_1(tensor: torch.Tensor, dim: int = -1) -> torch.Ten
     normalized_tensor = (tensor - min_vals) / range_vals
     return normalized_tensor
 
-def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, toxicity_flg, reg_dim):
+def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, toxicity_flg, reg_dim, normalize_properties_flg):
     if 'positiv_negativ_AMPs' in data_type and 'uniprot' in data_type:
         data_manager = AMPDataManager(
             positive_filepath = data_dir / 'unlabelled_positive.csv',
@@ -227,7 +227,11 @@ def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, toxicity_
     #print(f'attributes_input shape = {attributes_input.shape}')
     # for i, attr_name in enumerate(['Length', 'Charge', 'Hydrophobic moment']):
     # plot_hist_lengths(attributes[:,5].cpu().numpy(), 'nontoxicity')
-    dataset = TensorDataset(amp_x, tensor(amp_y), attributes_input, attributes_input)
+    if normalize_properties_flg:
+        dataset = TensorDataset(amp_x, tensor(amp_y), attributes, attributes_input)
+    else:
+        dataset = TensorDataset(amp_x, tensor(amp_y), attributes_input, attributes_input)
+
     train_size = int(0.8 * len(dataset))
     eval_size = len(dataset) - train_size
     train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size])
@@ -267,7 +271,7 @@ class AMPDataManager:
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
             if toxicity_flg:
-                hemolytic_classifier = c.HemolyticClassifier('/home/gwiazale/AR-VAE/new_hemolytic_model.xgb')
+                hemolytic_classifier = c.HemolyticClassifier('./new_hemolytic_model.xgb')
                 # hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
                 features = hemolytic_classifier.get_input_features(self.positive_data['Sequence'].to_numpy())
                 self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
@@ -292,7 +296,7 @@ class AMPDataManager:
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
             if toxicity_flg:
-                hemolytic_classifier = c.HemolyticClassifier('/home/gwiazale/AR-VAE/new_hemolytic_model.xgb')
+                hemolytic_classifier = c.HemolyticClassifier('./new_hemolytic_model.xgb')
                 # hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
                 features = hemolytic_classifier.get_input_features(self.positive_data['Sequence'].to_numpy())
                 self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)

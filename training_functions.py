@@ -41,7 +41,8 @@ def run_epoch_iwae(
     gamma_multiplier,
     factor,
     factor_multiplier,
-    scale_factor_flg
+    scale_factor_flg,
+    signum_modification_of_dist_matrix_flg
 ):
     print(f'Epoch {epoch}')
     ce_loss_fun = nn.CrossEntropyLoss(reduction="none")
@@ -109,7 +110,7 @@ def run_epoch_iwae(
                         z_reshaped = z.reshape(-1,z.shape[1])
                     if z_reshaped.shape[0] != 0:
                         reg_loss_with_gamma_partly, reg_loss_partly = r.compute_reg_loss(
-                        z_reshaped, physchem_torch[finite_mask, dim], dim, gamma, gamma_multiplier[dim], device, factor, factor_multiplier[dim] #gamma i delta z papera
+                        z_reshaped, physchem_torch[finite_mask, dim], dim, gamma, gamma_multiplier[dim], device, factor, factor_multiplier[dim], signum_modification_of_dist_matrix_flg 
                         )
                         if scale_factor_flg:
                             scale_factor += 0.02 * torch.mean(torch.square(z_reshaped[:,reg_dim]))
@@ -307,7 +308,7 @@ def run(data_type, encoder_filepath=None, decoder_filepath=None):
         betas=(0.9, 0.999),
     )
 
-    train_loader, eval_loader = dataset_lib.prepare_data_for_training(DATA_DIR, params['batch_size'], data_type, params['mic_flg'], params['toxicity_flg'], params['reg_dim'])
+    train_loader, eval_loader = dataset_lib.prepare_data_for_training(DATA_DIR, params['batch_size'], data_type, params['mic_flg'], params['toxicity_flg'], params['reg_dim'], params['normalize_properties_flg'])
 
     for epoch in tqdm(range(params["epochs"])):
         epoch = epoch + (10000-params['epochs'])
@@ -341,7 +342,8 @@ def run(data_type, encoder_filepath=None, decoder_filepath=None):
                 gamma_multiplier = params['gamma_multiplier'],
                 factor = delta,
                 factor_multiplier = params['factor_multiplier'],
-                scale_factor_flg = params['scale_factor_flg']
+                scale_factor_flg = params['scale_factor_flg'],
+                signum_modification_of_dist_matrix_flg = params['signum_modification_of_dist_matrix_flg']
         )
         if eval_mode == "deep":
             loss = run_epoch_iwae(
@@ -364,7 +366,8 @@ def run(data_type, encoder_filepath=None, decoder_filepath=None):
                     gamma_multiplier = params['gamma_multiplier'],
                     factor = delta,
                     factor_multiplier = params['factor_multiplier'],
-                    scale_factor_flg = params['scale_factor_flg']
+                    scale_factor_flg = params['scale_factor_flg'],
+                    signum_modification_of_dist_matrix_flg = params['signum_modification_of_dist_matrix_flg']
             )
 
             if epoch > 0 and epoch % params["save_model_every"] == 0:

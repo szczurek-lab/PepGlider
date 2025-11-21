@@ -31,7 +31,9 @@ def set_params(root_dir):
         "factor_schedule": (1,1,8000),
         'scale_factor_flg': False,
         'mic_flg': True,
-        'toxicity_flg': True
+        'toxicity_flg': True,
+        'normalize_properties_flg':True,
+        'signum_modification_of_dist_matrix_flg': False
     }
 
     if params["use_clearml"]:
@@ -76,6 +78,26 @@ def set_params(root_dir):
                             "MIG - length", "MIG - charge", "MIG - hydrophobicity moment","MIG - mean",
                             "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity","SAP_score - mean"
                         ] 
+                if params['mic_flg'] and params['toxicity_flg'] and (1 not in params['reg_dim'] or 2 not in params['reg_dim'] or 3 not in params['reg_dim']):
+                    header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta", 
+                            "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
+                            "MAE length", "MAE charge", "MAE hydrophobicity moment", 
+                            "Interpretability - mic_e_cola", "Interpretability - mic_s_aureus", "Interpretability - nontoxicity", "Interpretability - mean",
+                            "Corr_score - mic_e_cola", "Corr_score - mic_s_aureus", "Corr_score - nontoxicity","Corr_score - mean",
+                            "Modularity - mic_e_cola", "Modularity - mic_s_aureus", "Modularity - nontoxicity","Modularity - mean",
+                            "MIG - mic_e_cola", "MIG - mic_s_aureus", "MIG - nontoxicity","MIG - mean",
+                            "SAP_score - mic_e_cola", "SAP_score - mic_s_aureus", "SAP_score - nontoxicity","SAP_score - mean"
+                            ] 
+                if params['mic_flg'] and (1 not in params['reg_dim'] or 2 not in params['reg_dim'] or 3 not in params['reg_dim']):
+                    header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta", 
+                            "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
+                            "MAE length", "MAE charge", "MAE hydrophobicity moment", 
+                            "Interpretability - mic_e_cola", "Interpretability - mic_s_aureus","Interpretability - mean",
+                            "Corr_score - mic_e_cola", "Corr_score - mic_s_aureus","Corr_score - mean",
+                            "Modularity - mic_e_cola", "Modularity - mic_s_aureus","Modularity - mean",
+                            "MIG - mic_e_cola", "MIG - mic_s_aureus","MIG - mean",
+                            "SAP_score - mic_e_cola", "SAP_score - mic_s_aureus","SAP_score - mean"
+                            ] 
                 if params['mic_flg']:
                     header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta","Reg Loss", "Reg Loss * Gamma", "Delta", 
                             "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
@@ -96,6 +118,26 @@ def set_params(root_dir):
                           "MIG - length", "MIG - charge", "MIG - hydrophobicity moment","MIG - mean",
                           "SAP_score - length", "SAP_score - charge", "SAP_score - hydrophobicity","SAP_score - mean"
                           ] 
+                if params['mic_flg'] and params['toxicity_flg'] and (1 not in params['reg_dim'] or 2 not in params['reg_dim'] or 3 not in params['reg_dim']):
+                    header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta",
+                            "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
+                            "MAE length", "MAE charge", "MAE hydrophobicity moment", 
+                            "Interpretability - mic_e_cola", "Interpretability - mic_s_aureus", "Interpretability - nontoxicity", "Interpretability - mean",
+                            "Corr_score - mic_e_cola", "Corr_score - mic_s_aureus", "Corr_score - nontoxicity","Corr_score - mean",
+                            "Modularity - mic_e_cola", "Modularity - mic_s_aureus", "Modularity - nontoxicity","Modularity - mean",
+                            "MIG - mic_e_cola", "MIG - mic_s_aureus", "MIG - nontoxicity","MIG - mean",
+                            "SAP_score - mic_e_cola", "SAP_score - mic_s_aureus", "SAP_score - nontoxicity","SAP_score - mean"
+                            ] 
+                if params['mic_flg'] and (1 not in params['reg_dim'] or 2 not in params['reg_dim'] or 3 not in params['reg_dim']):
+                    header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta", 
+                            "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 
+                            "MAE length", "MAE charge", "MAE hydrophobicity moment", 
+                            "Interpretability - mic_e_cola", "Interpretability - mic_s_aureus","Interpretability - mean",
+                            "Corr_score - mic_e_cola", "Corr_score - mic_s_aureus","Corr_score - mean",
+                            "Modularity - mic_e_cola", "Modularity - mic_s_aureus","Modularity - mean",
+                            "MIG - mic_e_cola", "MIG - mic_s_aureus","MIG - mean",
+                            "SAP_score - mic_e_cola", "SAP_score - mic_s_aureus","SAP_score - mean"
+                            ] 
                 if params['mic_flg']:
                     header = ["Mode", "Epoch", "Total Loss", "Cross Entropy Loss","KL Div","KL Div * Beta",
                             "Length Pred Acc", "Length Loss [mae]", "Token Pre Acc", "Amino Acc", "Empty Acc", 

@@ -235,7 +235,11 @@ def plot_one_dim(data, target, epoch_number, models_prefixs_to_compare, filename
             figsize=(5 * 3, 5),
             dpi=150
         )
-    
+    for ax in np.atleast_1d(axes).flatten():
+        # Iterujemy po wszystkich czterech ramkach
+        for spine in ax.spines.values():
+            spine.set_linewidth(0.5)  # Ustawienie cieńszej linii
+            spine.set_color('gray')
     if isinstance(axes, np.ndarray):
         axes = axes.flatten()
     elif not isinstance(axes, list):
@@ -294,6 +298,12 @@ def plot_one_dim(data, target, epoch_number, models_prefixs_to_compare, filename
                     
                     cbar = fig.colorbar(im, cax=cax1) 
                     cbar.ax.tick_params(labelsize=12)
+                    # Po utworzeniu paska kolorów (i zapisaniu go do zmiennej 'cb'):
+                    if cbar:
+                        # Colorbar jest również obiektem Axes (axes to jego wewnętrzny atrybut)
+                        for spine in cbar.ax.spines.values():
+                            spine.set_linewidth(0.5)
+                            spine.set_color('gray')
                     z += 1
     
     # fig.suptitle(f'{models_prefixs_to_compare}', fontsize=20, fontweight='bold')
@@ -1079,8 +1089,6 @@ def generate_fixed_sequences(encoder_name, decoder_name, dim_to_shift, shifts, d
     return clean_seq
 
 def create_ridgeline_plot(df, title, s1='low activity (high MIC)', s2='high activity (low MIC)', e=40, x_min=None, x_max = None, ylabel = 'non-toxic', flip_axis=False):
-    
-    # 1. Obliczenie zakresu
     min_x = df['Score'].min() if x_min is None else x_min
     max_x = df['Score'].max() if x_max is None else x_max
     x_range_margin = (max_x - min_x) * 0.05
@@ -1092,10 +1100,8 @@ def create_ridgeline_plot(df, title, s1='low activity (high MIC)', s2='high acti
     keys.sort()
     num_keys = len(keys)
     
-    # Tworzymy figurę i osie (dodajemy lewy margines, by zrobić miejsce na etykietę 'activity')
     fig, axes = plt.subplots(nrows=num_keys, ncols=1, figsize=(8,2/3 * num_keys), 
-                             sharex=True) 
-                             
+                             sharex=True)                      
     if num_keys == 1:
         axes = [axes]
     if num_keys > 0:
@@ -1122,7 +1128,7 @@ def create_ridgeline_plot(df, title, s1='low activity (high MIC)', s2='high acti
         if end_index == -1:
             end_index = len(ylabel)
         ax.text(
-            x=0.0,  # Changed from 0.75 to move closer to right edge
+            x=0.0,
             y=0.1,   
             s = rf'$\alpha_{{{ylabel[:end_index]}}} = {new_key}$',
             transform=ax.transAxes, 
@@ -1136,7 +1142,6 @@ def create_ridgeline_plot(df, title, s1='low activity (high MIC)', s2='high acti
         ax.spines['right'].set_visible(False) 
         ax.spines['top'].set_visible(False) 
 
-        # Obsługa osi X (tylko na dole)
         if i < num_keys - 1:
             ax.set_xlabel('')
             ax.tick_params(axis='x', length=0, width=0, labelbottom=False)
@@ -1149,7 +1154,7 @@ def create_ridgeline_plot(df, title, s1='low activity (high MIC)', s2='high acti
 
             ax.text(
                 x=x_range_min + e, 
-                y=-0.002,  # Changed from 0.0 to move text lower
+                y=-0.002,
                 s=s1, 
                 fontsize=12,
                 ha='left', 
@@ -1158,7 +1163,7 @@ def create_ridgeline_plot(df, title, s1='low activity (high MIC)', s2='high acti
             )
             ax.text(
                 x=x_range_max - e, 
-                y=-0.002,  # Changed from 0.0 to move text lower
+                y=-0.002, 
                 s=s2, 
                 fontsize=12,
                 ha='right', 
@@ -1166,7 +1171,7 @@ def create_ridgeline_plot(df, title, s1='low activity (high MIC)', s2='high acti
                 transform=ax.transData
             )
 
-    fig.supylabel(ylabel + ' →', fontsize=14, fontweight='bold', x=0.95)  # Changed from 0.9 to move further right
+    fig.supylabel(ylabel + ' →', fontsize=14, fontweight='bold', x=0.95) 
     # fig.suptitle(title, fontsize=16, y=1.02)
     plt.subplots_adjust(hspace=-0.5) 
 
@@ -1177,35 +1182,23 @@ def create_ridgeline_plot(df, title, s1='low activity (high MIC)', s2='high acti
     plt.show()
     
 def autolabel(rects, ax, threshold=500):
-    """
-    Dołączanie numerycznych etykiet: wewnątrz słupka, jeśli jest wysoki, 
-    lub na zewnątrz, jeśli jest za niski (poniżej threshold).
-    """
-    # Znajdź maksymalną wartość na osi Y, aby ustalić kontekst koloru
-    # ymax = ax.get_ylim()[1] # (Niepotrzebne, bazujemy na progu bezwzględnym)
-    
     for rect in rects:
         height = rect.get_height()
         if np.isnan(height):
             continue
-
-        # Warunek 1: Wybór koloru tekstu
-        # Prosta heurystyka: jeśli kolor słupka jest ciemny, użyj białego tekstu
+            
         bar_color = rect.get_facecolor()
         is_dark_bar = bar_color[0] < 0.5 
         
-        # Warunek 2: Sprawdzenie, czy słupek jest "za niski"
         if height <= threshold:
-            # --- POZYCJA ZEWNĘTRZNA (NAD SŁUPKIEM) ---
-            y_position = height # Ustawia pozycję na górnej krawędzi słupka
-            y_offset = 3        # Odsunięcie w górę
-            v_align = 'bottom'  # Wyrównanie do dołu (tekst jest nad słupkiem)
-            text_color = 'black' # Zawsze czarny tekst na zewnątrz
+            y_position = height
+            y_offset = 3
+            v_align = 'bottom' 
+            text_color = 'black'
         else:
-            # --- POZYCJA WEWNĘTRZNA (W SŁUPKU) ---
-            y_position = height * 0.98 # Pozycja Y wewnątrz (98% wysokości)
-            y_offset = -5       # Odsunięcie w dół
-            v_align = 'top'     # Wyrównanie do góry (tekst "wisi" na górze)
+            y_position = height * 0.98
+            y_offset = -5
+            v_align = 'top'
             text_color = 'white' if is_dark_bar else 'black'
 
         ax.annotate(f'{int(height)}',
@@ -1245,11 +1238,6 @@ def sequences_counts_bar_plots(df, cols, title = 'MIC E.coli for Nontoxicity con
     fig, ax = plt.subplots(figsize=(12.5,3), dpi=300)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
-    # Jeśli chcesz zachować osie X i Y, pozostaw poniższe jako True:
-    # ax.spines['left'].set_visible(True)
-    # ax.spines['bottom'].set_visible(True)
-    
-    # 🎯 Jeśli chcesz usunąć CAŁE obramowanie:
     ax.spines['left'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
     rocket_colors = sns.color_palette("rocket", 9)
@@ -1270,9 +1258,9 @@ def sequences_counts_bar_plots(df, cols, title = 'MIC E.coli for Nontoxicity con
     ax.legend(
             facecolor='white', 
             fontsize=12, 
-            loc='upper center',            # Punkt odniesienia: górny środek
-            bbox_to_anchor=(0.5, -0.15),   # Pozycja: 0.5 (środek X), -0.15 (poniżej osi Y=0)
-            ncol=4                         # Rozmieść elementy w 3 kolumnach
+            loc='upper center',
+            bbox_to_anchor=(0.5, -0.15),
+            ncol=4
         )    
     autolabel(rects1,ax)
     autolabel(rects2,ax)

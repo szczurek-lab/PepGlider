@@ -35,6 +35,7 @@ from benchmark_utils import (
 from utils import *
 from sklearn.preprocessing import QuantileTransformer
 from toxicity_classifier import classifier as c
+import joypy
 
 def find_files_with_matching_epochs(grouped_files):
     epochs_to_files = {}
@@ -42,7 +43,6 @@ def find_files_with_matching_epochs(grouped_files):
     for prefix, groups in grouped_files.items():
         for suffix, file_list in groups.items():
             for filename in file_list:
-                # Używamy wyrażenia regularnego, aby znaleźć numer epoki
                 match = re.search(r'epoch(\d+)', filename)
                 if match:
                     epoch_number = int(match.group(1))
@@ -51,12 +51,6 @@ def find_files_with_matching_epochs(grouped_files):
                         epochs_to_files[epoch_number] = {}
                     if prefix not in epochs_to_files[epoch_number]:
                         epochs_to_files[epoch_number][prefix] = {'_encoder': '', '_decoder': ''}
-                    # print(epochs_to_files)
-                    # print(f'\n')
-                    # print(epoch_number)
-                    # print(prefix)
-                    # print(f'\n')
-                    # Dodajemy plik do odpowiedniej listy na podstawie sufiksu
                     epochs_to_files[epoch_number][prefix][suffix] = filename
     
     return epochs_to_files
@@ -88,37 +82,24 @@ def clean_row(row):
 
 
 def read_and_fix_csv(file_path, all_expected_columns):
-    if not isinstance(all_expected_columns, list):
-        print("Błąd: 'all_expected_columns' musi być listą.")
-        return None
-
     fixed_rows = []
-    
-    try:
-        with open(file_path, 'r', newline='', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            header = next(reader)
-            num_cols_in_header = len(header)
-            num_expected_cols = len(all_expected_columns)
-            
-            for row in reader:
-                cleaned_row = clean_row(row)
-                if len(cleaned_row) != num_cols_in_header:
-                    
-                    if len(cleaned_row) > num_expected_cols:
-                        cleaned_row = cleaned_row[:num_expected_cols]
-                    
-                    if len(cleaned_row) < num_expected_cols:
-                        cleaned_row.extend([None] * (num_expected_cols - len(cleaned_row)))
-
-                fixed_rows.append(cleaned_row)
+    with open(file_path, 'r', newline='', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        header = next(reader)
+        num_cols_in_header = len(header)
+        num_expected_cols = len(all_expected_columns)
+        
+        for row in reader:
+            cleaned_row = clean_row(row)
+            if len(cleaned_row) != num_cols_in_header:
                 
-    except FileNotFoundError:
-        print(f"Błąd: Plik '{file_path}' nie został znaleziony.")
-        return None
-    except Exception as e:
-        print(f"Wystąpił nieoczekiwany błąd podczas przetwarzania pliku '{file_path}': {e}")
-        return None
+                if len(cleaned_row) > num_expected_cols:
+                    cleaned_row = cleaned_row[:num_expected_cols]
+                
+                if len(cleaned_row) < num_expected_cols:
+                    cleaned_row.extend([None] * (num_expected_cols - len(cleaned_row)))
+
+            fixed_rows.append(cleaned_row)
     
     df = pd.DataFrame(fixed_rows, columns=all_expected_columns)
     if 'MAE length' in df:
@@ -151,13 +132,8 @@ def convert_rgba_to_rgb(rgba):
 def truncate_to_shortest(list_of_arrays):
     if not list_of_arrays:
         return []
-
-    # 1. Znajdź najkrótszy wymiar (np. liczbę wierszy)
     shortest_dim = min(arr.shape[0] for arr in list_of_arrays)
-
-    # 2. Utwórz nową listę z przyciętymi tablicami
     truncated_arrays = [arr[:shortest_dim] for arr in list_of_arrays]
-
     return truncated_arrays
     
 def single_plot_dim(data, target, epoch_number, models_prefixs_to_compare, filename, dim2=1, attr = ['Length', 'Charge' , 'Hydrophobic moment'], xlim=None, ylim=None):
@@ -228,72 +204,99 @@ def single_plot_dim(data, target, epoch_number, models_prefixs_to_compare, filen
     plt.savefig(filename, format='png', dpi=300)
     plt.show()
 
-def plot_one_dim(data, target, epoch_number, models_prefixs_to_compare, filename, dim2=1, attr = ['Length', 'Charge' , 'Hydrophobic moment'], attr_to_print = [0,1,2], xlim=None, ylim=None):
-    n_rows = int(data.shape[0]/len(attr))
+def plot_one_dim(data, target, epoch_number, models_prefixs_to_compare, filename, 
+                 dim2=1, attr=['Length', 'Charge', 'Hydrophobic moment'], 
+                 attr_to_print=[0, 1, 2], xlim=None, ylim=None, 
+                 color_limits=None, 
+                 half_y_range=False,
+                 lower_figure=False): # <--- 1. Dodano nowy argument logiczny
+    
+    n_rows = int(data.shape[0] / len(attr))
     n_cols = len(attr)
     n_real_cols = len(attr_to_print)
-    n_plots = n_rows * n_cols
-    n_sets = target.ndim
+    if half_y_range:
+        fig, axes = plt.subplots(
+            nrows=n_rows,
+            ncols=n_real_cols,
+            figsize=(5 * 3, 3),
+            dpi=150
+        )
+    elif lower_figure:
+        fig, axes = plt.subplots(
+            nrows=n_rows,
+            ncols=n_real_cols,
+            figsize=(5 * 3, 3),
+            dpi=150
+        )
+    else:
+        fig, axes = plt.subplots(
+            nrows=n_rows,
+            ncols=n_real_cols,
+            figsize=(5 * 3, 5),
+            dpi=150
+        )
     
-    min_row = []
-    max_row = []
-    # for i in range(len(attr)):
-        # if target.shape[2] >= i+1:
-            # min_row.append(np.nanmin(target[i*n_rows:(i*n_rows)+n_rows,:,i]))
-            # max_row.append(np.nanmax(target[i*n_rows:(i*n_rows)+n_rows,:,i]))
-        
-    fig, axes = plt.subplots(
-        nrows=n_rows,
-        ncols=n_real_cols,
-        figsize=(5*3,5),
-        dpi=150           
-    )
-    z=0
+    if isinstance(axes, np.ndarray):
+        axes = axes.flatten()
+    elif not isinstance(axes, list):
+        axes = [axes]
+
+    z = 0
     for i in range(n_cols):
         if i in attr_to_print:
+            current_vmin = None
+            current_vmax = None
+            if color_limits is not None and i < len(color_limits):
+                if color_limits[i] is not None:
+                    current_vmin, current_vmax = color_limits[i]
+
             for j in range(n_rows):
-                if target.shape[2] >= j+1:
-                    axes[z].scatter(
-                                x=data[(i*n_rows)+j,:, i],
-                                y=data[(i*n_rows)+j,:, dim2],
-                                c=target[(i*n_rows)+j,:,i],
-                                s=24,
-                                linewidths=0,
-                                cmap="viridis",
-                                alpha=0.5,
-                                # vmin=min_row[j],  
-                                # # vmax=max_row[j]  
+                if target.shape[2] >= j + 1:
+                    im = axes[z].scatter(
+                        x=data[(i * n_rows) + j, :, i],
+                        y=data[(i * n_rows) + j, :, dim2],
+                        c=target[(i * n_rows) + j, :, i],
+                        s=24,
+                        linewidths=0,
+                        cmap="viridis",
+                        alpha=0.5,
+                        vmin=current_vmin,
+                        vmax=current_vmax
                     )
-                    # # axes[i].set_title(f'{models_prefixs_to_compare}', fontsize = 16)
+                    
+                    if xlim:
+                        axes[z].set_xlim(xlim)
+                    if ylim:
+                        axes[z].set_ylim(ylim)
+
+                    if half_y_range:
+                        curr_xmin, curr_xmax = axes[z].get_xlim()
+                        x_span = curr_xmax - curr_xmin
+                        
+                        target_y_span = x_span / 2.0
+                        
+                        curr_ymin, curr_ymax = axes[z].get_ylim()
+                        y_center = (curr_ymax + curr_ymin) / 2.0
+                        
+                        axes[z].set_ylim(
+                            y_center - (target_y_span / 2.0), 
+                            y_center + (target_y_span / 2.0)
+                        )
+
                     axes[z].set_xlabel(f'dimension: {attr[i]}', fontsize=14)
                     axes[z].tick_params(axis='both', which='major', labelsize=12)
-                    axes[0].set_ylabel(f'not regularized dimension', fontsize=12)
+                    
+                    if z % n_real_cols == 0:
+                        axes[z].set_ylabel(f'not regularized dimension', fontsize=12)
+                    
                     divider1 = make_axes_locatable(axes[z])
                     cax1 = divider1.append_axes("right", size="5%", pad=0.1)
-                    fig.colorbar(axes[z].collections[0] , cax=cax1)
-                    z+=1
-                    # fig.colorbar(scatter, ax=axes[i])
-                    # divider = make_axes_locatable(axes[i])
-                    # cax = divider.append_axes("right", size="5%", pad=0.1)
                     
-                    # fig.colorbar(
-                        # scatter,
-                        # cax=cax,
-                        # label='',
-                    # )
-                    # cbar_ax_row.ax.set_ylabel('')
-        # for i in range(n_cols):
-        #     divider = make_axes_locatable(axes[i])
-        #     cax = divider.append_axes("right", size="5%", pad=0.1)
-        #     cbar_ax_row = fig.colorbar(
-        #         axes[len(attr)-1].collections[0], 
-        #         cax=cax,
-        #         label='Length',
-        #         shrink=0.8,
-        #         aspect=20 
-        #     )
+                    cbar = fig.colorbar(im, cax=cax1) 
+                    cbar.ax.tick_params(labelsize=12)
+                    z += 1
     
-    fig.suptitle(f'{models_prefixs_to_compare}', fontsize=20, fontweight='bold')
+    # fig.suptitle(f'{models_prefixs_to_compare}', fontsize=20, fontweight='bold')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.savefig(filename, format='png', dpi=150)
     plt.show()
@@ -376,7 +379,6 @@ def MIC_calc(seq_list):
         'abaumannii': abaumannii_cols,
         'kpneumoniae': kpneumoniae_cols,
     }
-
 
     max_len = 52  # maximun peptide length
 
@@ -633,430 +635,169 @@ def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1
         return aggregated_z_points, aggregated_attr_labels_and_mae, epoch_number, save_filename, dim2, 
     else:
         return aggregated_z_points, aggregated_attr_labels, epoch_number, save_filename, dim2
-    # plot_dim(aggregated_z_points, aggregated_attr_labels, save_filename, dim2=dim2)
+    plot_dim(aggregated_z_points, aggregated_attr_labels, save_filename, dim2=dim2)
 
 def save_sequences(seqs, filename):
     with open(filename, "w", newline="") as file:
-        writer = csv.writer(file)
-        for seq in seqs:
-            writer.writerow([seq])
+        csv.writer(file).writerows([[s] for s in seqs])
 
+def clean_sequences(raw_sequences):
+    decoded = [seq.strip().rstrip("0") for seq in raw_sequences]
+    return [seq for seq in decoded if seq and '0' not in seq]
 
-def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, attr_dict, mode = '', submode = '', val=None):
+def calculate_metric_stats(sequences, attr_name, device, classifiers=None):
+    if not sequences:
+        return "nan ± nan"
+
+    val = None
+    try:
+        if 'Length' in attr_name:
+            val = dataset_lib.calculate_length_test(sequences)
+        elif 'Charge' in attr_name:
+            val = dataset_lib.calculate_charge(sequences)
+        elif 'Hydrophobicity' in attr_name:
+            val = dataset_lib.calculate_hydrophobicity(sequences)
+        elif 'MIC E.coli' in attr_name:
+            val = MIC_calc(sequences)[:, 0].cpu().numpy()
+        elif 'MIC S.aureus' in attr_name:
+            val = MIC_calc(sequences)[:, 1].cpu().numpy()
+        elif 'Nontoxicity' in attr_name and classifiers:
+            features = classifiers['hemolytic'].get_input_features(np.array(sequences))
+            nontoxicity = classifiers['hemolytic'].predict_from_features(features, proba=True)
+            val = torch.from_numpy(nontoxicity).cpu().numpy()
+    except Exception as e:
+        print(f"Error calculating {attr_name}: {e}")
+        return "nan ± nan"
+
+    if val is not None:
+        return f"{np.mean(val):.2f} ± {np.std(val):.2f}"
+    return "nan ± nan"
+
+def load_model_pair(enc_name, dec_name, params, device):
+    encoder = EncoderRNN(params["num_heads"],
+                    params["num_layers"],
+                    params["latent_dim"],
+                    params["encoding"],
+                    params["dropout"],
+                    params["layer_norm"],).to(device)
+    decoder = DecoderRNN(params["num_heads"],
+                    params["num_layers"],
+                    params["latent_dim"],
+                    params["encoding"],
+                    params["dropout"],
+                    params["layer_norm"],).to(device)
+    
+    enc_path = f"./first_working_models/{enc_name}"
+    dec_path = f"./first_working_models/{dec_name}"
+    
+    encoder.load_state_dict(torch.load(enc_path, map_location=device))
+    decoder.load_state_dict(torch.load(dec_path, map_location=device))
+    return encoder.eval(), decoder.eval()
+    
+def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, attr_dict, mode='', submode='', val=None):
     DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
+    classifiers = {}
     generated = {}
     generated_analog = {}
-    shifts_list = [0]
-    for i in shifts:
-        shifts_list.append(i)
-        shifts_list.append(-i)
-    shifts_list = sorted(shifts_list)
     tmp_dict = {}
     tmp_analog_dict = {}
+    combinations_keys = []
+    combinations_dims = []
+    
+    if any('Nontoxicity' in k for k in attr_dict.keys()):
+        classifiers['hemolytic'] = c.HemolyticClassifier('new_hemolytic_model.xgb')
+        
+    shifts_list = sorted([0] + [s for i in shifts for s in (i, -i)])
+    
     if mode == 'multi':
-        all_combinations_keys = []
-        all_combinations_dims = []
         if submode == 'chosen':
-            all_combinations_keys.append([k  for k in attr_dict.keys()])
-            all_combinations_dims.append([attr_dict[k]  for k in attr_dict.keys()])
-                
+            combinations_keys.append(list(attr_dict.keys()))
+            combinations_dims.append(list(attr_dict.values()))
         else:
             keys = list(attr_dict.keys())
             for i in range(2, len(keys) + 1):
-                all_combinations_keys.extend(list(combinations(keys, i)))
-            # print(all_combinations_keys)
-            
-            for combo in all_combinations_keys:
-                dims = [attr_dict[key] for key in combo]
-                all_combinations_dims.append(dims)   
-            # print(all_combinations_dims)
-        
-        for attr_name, attr_dim in zip(all_combinations_keys, all_combinations_dims):
-            unconstrained_dfs_all_attrs = {}
-            unconstrained_dfs_analog_all_attrs = {}
-            unconstrained_dfs_dict_combo = {}
-            unconstrained_dfs_analog_dict_combo = {}
-            for attr in attr_name:
-                unconstrained_dfs_dict_combo[attr] = {}
-                unconstrained_dfs_analog_dict_combo[attr] = {}
-            models_list = []
-
-            for encoder_name, decoder_name in zip(encoders_list, decoders_list):
-                encoder = EncoderRNN(
-                    params["num_heads"],
-                    params["num_layers"],
-                    params["latent_dim"],
-                    params["encoding"],
-                    params["dropout"],
-                    params["layer_norm"],
-                )
-                decoder = DecoderRNN(
-                    params["num_heads"],
-                    params["num_layers"],
-                    params["latent_dim"],
-                    params["encoding"],
-                    params["dropout"],
-                    params["layer_norm"],
-                )
-                # print(encoder_name)
-                encoder.load_state_dict(torch.load(f"./first_working_models/{encoder_name}", map_location=DEVICE))
-                encoder = encoder.to(DEVICE)
-                decoder.load_state_dict(torch.load(f"./first_working_models/{decoder_name}", map_location=DEVICE))
-                decoder = decoder.to(DEVICE)
-                encoder = encoder.eval()
-                decoder = decoder.eval()      
-                model = encoder_name.split("_ar-vae")[0]
-                models_list.append(model)
-                for attr in attr_name:
-                    unconstrained_dfs_dict_combo[attr][model] = []
-                    unconstrained_dfs_analog_dict_combo[attr][model] = []
-
-                    
-                if submode == 'chosen':
-                    seq = decoder.generate_from(1000, params["latent_dim"], attr_dim, shifts)
-                    generated_sequences = dataset_lib.decoded(dataset_lib.from_one_hot(transpose(seq, 0,1)), "0")
-                    generated_sequences = [seq.strip().rstrip("0") for seq in generated_sequences]
-                    generated_sequences = [seq for seq in generated_sequences if '0' not in seq]
-                    cleaned_sequences = [seq for seq in generated_sequences if seq]
-                    generated[model+'_'+str(attr_name)] = cleaned_sequences
-    
-                    if 'Length' in attr_name:
-                        if len(cleaned_sequences) == 0:
-                            unconstrained_dfs_dict_combo['Length'][model].append(f'nan ± nan')
-                        else:
-                            attr = dataset_lib.calculate_length_test(cleaned_sequences)
-                            unconstrained_dfs_dict_combo['Length'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                    if 'Charge' in attr_name:
-                        if len(cleaned_sequences) == 0:
-                            unconstrained_dfs_dict_combo['Charge'][model].append(f'nan ± nan')
-                        else:
-                            attr = dataset_lib.calculate_charge(cleaned_sequences)
-                            unconstrained_dfs_dict_combo['Charge'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                    if 'Hydrophobicity' in attr_name:
-                        if len(cleaned_sequences) == 0:
-                            unconstrained_dfs_dict_combo['Hydrophobicity'][model].append(f'nan ± nan')
-                        else:
-                            attr = dataset_lib.calculate_hydrophobicity(cleaned_sequences)
-                            unconstrained_dfs_dict_combo['Hydrophobicity'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                    if 'MIC E.coli' in attr_name:
-                        if len(cleaned_sequences) == 0:
-                            unconstrained_dfs_dict_combo['MIC E.coli'][model].append(f'nan ± nan')
-                        else:
-                            attr = MIC_calc(cleaned_modified_sequences)[:,0].cpu().numpy()
-                            unconstrained_dfs_dict_combo['MIC E.coli'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                    if 'MIC S.aureus' in attr_name:
-                        if len(cleaned_sequences) == 0:
-                            unconstrained_dfs_dict_combo['MIC S.aureus'][model].append(f'nan ± nan')
-                        else:
-                            attr = MIC_calc(cleaned_modified_sequences)[:,1].cpu().numpy()
-                            unconstrained_dfs_dict_combo['MIC S.aureus'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                    if 'Nontoxicity' in attr_name:
-                        if len(cleaned_sequences) == 0:
-                            unconstrained_dfs_dict_combo['Nontoxicity'][model].append(f'nan ± nan')
-                        else:
-                            hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
-                            features = hemolytic_classifier.get_input_features(np.array(cleaned_sequences))
-                            nontoxicity = hemolytic_classifier.predict_from_features(features, proba=True)
-                            attr = torch.from_numpy(nontoxicity).cpu().numpy()
-                            unconstrained_dfs_dict_combo['Nontoxicity'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                    # Generate analog
-                    batch, _, _, _ = next(iter(data_loader))
-                    peptides = batch.permute(1, 0).type(LongTensor).to(DEVICE)
-                    mu, std = encoder(peptides)
-                    mod_mu = mu.clone().detach()
-                    for i, dim in enumerate(attr_dim):
-                        mod_mu[:, dim] = mod_mu[:, dim] + shifts[i]
-                    outputs = decoder(mod_mu)
-                    src = outputs.permute(1, 2, 0) 
-                    seq = src.argmax(dim=1)
-                    modified_sequences = dataset_lib.decoded(seq, "")
-        
-                    modified_sequences = [seq.strip().rstrip("0") for seq in modified_sequences]
-                    modified_sequences = [seq for seq in modified_sequences if '0' not in seq]
-                    cleaned_modified_sequences = [seq for seq in modified_sequences if seq]
-                    generated_analog[model+'_'+str(attr_name)+"_"] = cleaned_modified_sequences
-    
-                    if 'Length' in attr_name:
-                        if len(cleaned_modified_sequences) == 0:
-                            unconstrained_dfs_analog_dict_combo['Length'][model].append(f'nan ± nan')
-                        else:
-                            attr = dataset_lib.calculate_length_test(cleaned_modified_sequences)
-                            unconstrained_dfs_analog_dict_combo['Length'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                    if 'Charge' in attr_name:
-                        if len(cleaned_modified_sequences) == 0:
-                            unconstrained_dfs_analog_dict_combo['Charge'][model].append(f'nan ± nan')
-                        else:
-                            attr = dataset_lib.calculate_charge(cleaned_modified_sequences)
-                            unconstrained_dfs_analog_dict_combo['Charge'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                    if 'Hydrophobicity' in attr_name:
-                        if len(cleaned_modified_sequences) == 0:
-                            unconstrained_dfs_analog_dict_combo['Hydrophobicity'][model].append(f'nan ± nan')
-                        else:
-                            attr = dataset_lib.calculate_hydrophobicity(cleaned_modified_sequences)
-                            unconstrained_dfs_analog_dict_combo['Hydrophobicity'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                    if 'MIC E.coli' in attr_name:
-                        if len(cleaned_modified_sequences) == 0:
-                            unconstrained_dfs_analog_dict_combo['MIC E.coli'][model].append(f'nan ± nan')
-                        else:
-                            attr = MIC_calc(cleaned_modified_sequences)[:,0].cpu().numpy()
-                            unconstrained_dfs_analog_dict_combo['MIC E.coli'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                    if 'MIC S.aureus' in attr_name:
-                        if len(cleaned_modified_sequences) == 0:
-                            unconstrained_dfs_analog_dict_combo['MIC S.aureus'][model].append(f'nan ± nan')
-                        else:
-                            attr = MIC_calc(cleaned_modified_sequences)[:,1].cpu().numpy()
-                            unconstrained_dfs_analog_dict_combo['MIC S.aureus'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                    if 'Nontoxicity' in attr_name:
-                        if len(cleaned_modified_sequences) == 0:
-                            unconstrained_dfs_analog_dict_combo['Nontoxicity'][model].append(f'nan ± nan')
-                        else:
-                            hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
-                            features = hemolytic_classifier.get_input_features(np.array(cleaned_modified_sequences))
-                            nontoxicity = hemolytic_classifier.predict_from_features(features, proba=True)
-                            attr = torch.from_numpy(nontoxicity).cpu().numpy()
-                            unconstrained_dfs_analog_dict_combo['Nontoxicity'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                    # mics = MIC_calc(filtered_list)
-                    # attrs = torch.cat((labels, mics), dim=1)
-                else:
-                    for shift_value in shifts_list:
-                        # print(attr_name)
-                        # Generate unconstrained
-                        if val is not None:
-                            seq = decoder.generate_from(1000, params["latent_dim"], attr_dim, [shift_value for _ in range(len(attr_dim))], val)
-                        else:
-                            seq = decoder.generate_from(1000, params["latent_dim"], attr_dim, [shift_value for _ in range(len(attr_dim))])
-                        generated_sequences = dataset_lib.decoded(dataset_lib.from_one_hot(transpose(seq, 0,1)), "0")
-                        # save_sequences(generated_sequences, f"generated_sequences/{model}_unconstrained_{attr_name}_{shift_value}.csv")
-                        generated_sequences = [seq.strip().rstrip("0") for seq in generated_sequences]
-                        generated_sequences = [seq for seq in generated_sequences if '0' not in seq]
-                        cleaned_sequences = [seq for seq in generated_sequences if seq]
-                        generated[model+'_'+str(attr_name)+"_"+str(shift_value)] = cleaned_sequences
-                        # print(len(cleaned_sequences))
-        
-                        if 'Length' in attr_name:
-                            if len(cleaned_sequences) == 0:
-                                unconstrained_dfs_dict_combo['Length'][model].append(f'nan ± nan')
-                            else:
-                                attr = dataset_lib.calculate_length_test(cleaned_sequences)
-                                unconstrained_dfs_dict_combo['Length'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                        if 'Charge' in attr_name:
-                            if len(cleaned_sequences) == 0:
-                                unconstrained_dfs_dict_combo['Charge'][model].append(f'nan ± nan')
-                            else:
-                                attr = dataset_lib.calculate_charge(cleaned_sequences)
-                                unconstrained_dfs_dict_combo['Charge'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                        if 'Hydrophobicity' in attr_name:
-                            if len(cleaned_sequences) == 0:
-                                unconstrained_dfs_dict_combo['Hydrophobicity'][model].append(f'nan ± nan')
-                            else:
-                                attr = dataset_lib.calculate_hydrophobicity(cleaned_sequences)
-                                unconstrained_dfs_dict_combo['Hydrophobicity'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                        if 'MIC E.coli' in attr_name:
-                            if len(cleaned_sequences) == 0:
-                                unconstrained_dfs_dict_combo['MIC E.coli'][model].append(f'nan ± nan')
-                            else:
-                                attr = MIC_calc(cleaned_sequences)[:,0].cpu().numpy()
-                                unconstrained_dfs_dict_combo['MIC E.coli'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                        if 'MIC S.aureus' in attr_name:
-                            if len(cleaned_sequences) == 0:
-                                unconstrained_dfs_dict_combo['MIC S.aureus'][model].append(f'nan ± nan')
-                            else:
-                                attr = MIC_calc(cleaned_sequences)[:,1].cpu().numpy()
-                                unconstrained_dfs_dict_combo['MIC S.aureus'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                        if 'Nontoxicity' in attr_name:
-                            if len(cleaned_sequences) == 0:
-                                unconstrained_dfs_dict_combo['Nontoxicity'][model].append(f'nan ± nan')
-                            else:
-                                hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
-                                features = hemolytic_classifier.get_input_features(np.array(cleaned_sequences))
-                                nontoxicity = hemolytic_classifier.predict_from_features(features, proba=True)
-                                attr = torch.from_numpy(nontoxicity).cpu().numpy()
-                                unconstrained_dfs_dict_combo['Nontoxicity'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                        # Generate analog
-                        batch, _, _, _ = next(iter(data_loader))
-                        peptides = batch.permute(1, 0).type(LongTensor).to(DEVICE)
-                        mu, std = encoder(peptides)
-                        mod_mu = mu.clone().detach()
-                        for i, dim in enumerate(attr_dim):
-                            mod_mu[:, dim] = mod_mu[:, dim] + shift_value
-                        outputs = decoder(mod_mu)
-                        src = outputs.permute(1, 2, 0) 
-                        seq = src.argmax(dim=1)
-                        modified_sequences = dataset_lib.decoded(seq, "")
-                        # save_sequences(modified_sequences, f"{model}_modified_{attr_name}_{shift_value}.csv")
-            
-                        modified_sequences = [seq.strip().rstrip("0") for seq in modified_sequences]
-                        modified_sequences = [seq for seq in modified_sequences if '0' not in seq]
-                        cleaned_modified_sequences = [seq for seq in modified_sequences if seq]
-                        generated_analog[model+'_'+str(attr_name)+"_"+str(shift_value)] = cleaned_modified_sequences
-                        # print(len(cleaned_modified_sequences))
-        
-                        if 'Length' in attr_name:
-                            if len(cleaned_modified_sequences) == 0:
-                                unconstrained_dfs_analog_dict_combo['Length'][model].append(f'nan ± nan')
-                            else:
-                                attr = dataset_lib.calculate_length_test(cleaned_modified_sequences)
-                                unconstrained_dfs_analog_dict_combo['Length'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                        if 'Charge' in attr_name:
-                            if len(cleaned_modified_sequences) == 0:
-                                unconstrained_dfs_analog_dict_combo['Charge'][model].append(f'nan ± nan')
-                            else:
-                                attr = dataset_lib.calculate_charge(cleaned_modified_sequences)
-                                unconstrained_dfs_analog_dict_combo['Charge'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                        if 'Hydrophobicity' in attr_name:
-                            if len(cleaned_modified_sequences) == 0:
-                                unconstrained_dfs_analog_dict_combo['Hydrophobicity'][model].append(f'nan ± nan')
-                            else:
-                                attr = dataset_lib.calculate_hydrophobicity(cleaned_modified_sequences)
-                                unconstrained_dfs_analog_dict_combo['Hydrophobicity'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                        if 'MIC E.coli' in attr_name:
-                            if len(cleaned_modified_sequences) == 0:
-                                unconstrained_dfs_analog_dict_combo['MIC E.coli'][model].append(f'nan ± nan')
-                            else:
-                                attr = MIC_calc(cleaned_modified_sequences)[:,0].cpu().numpy()
-                                unconstrained_dfs_analog_dict_combo['MIC E.coli'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                        if 'MIC S.aureus' in attr_name:
-                            if len(cleaned_modified_sequences) == 0:
-                                unconstrained_dfs_analog_dict_combo['MIC S.aureus'][model].append(f'nan ± nan')
-                            else:
-                                attr = MIC_calc(cleaned_modified_sequences)[:,1].cpu().numpy()
-                                unconstrained_dfs_analog_dict_combo['MIC S.aureus'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-                        if 'Nontoxicity' in attr_name:
-                            if len(cleaned_modified_sequences) == 0:
-                                unconstrained_dfs_analog_dict_combo['Nontoxicity'][model].append(f'nan ± nan')
-                            else:
-                                hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
-                                features = hemolytic_classifier.get_input_features(np.array(cleaned_modified_sequences))
-                                nontoxicity = hemolytic_classifier.predict_from_features(features, proba=True)
-                                attr = torch.from_numpy(nontoxicity).cpu().numpy()
-                                unconstrained_dfs_analog_dict_combo['Nontoxicity'][model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-            # print(f'unconstrained_dfs_dict_combo = {unconstrained_dfs_dict_combo}')
-            for attr in attr_name:
-                row_data = np.array(list(unconstrained_dfs_dict_combo[attr].values()))
-                if submode == 'chosen':
-                    unconstrained_df = pd.DataFrame(row_data, index=models_list)
-                else:
-                    unconstrained_df = pd.DataFrame(row_data, columns=shifts_list, index=models_list)
-                unconstrained_dfs_all_attrs[attr] = unconstrained_df
-            tmp_dict[str(attr_name)] = unconstrained_dfs_all_attrs
-            
-            for attr in attr_name:
-                row_data = np.array(list(unconstrained_dfs_analog_dict_combo[attr].values()))
-                if submode == 'chosen':
-                    unconstrained_df = pd.DataFrame(row_data, index=models_list)
-                else:
-                    unconstrained_df = pd.DataFrame(row_data, columns=shifts_list, index=models_list)
-                unconstrained_dfs_analog_all_attrs[attr] = unconstrained_df
-            tmp_analog_dict[str(attr_name)] = unconstrained_dfs_analog_all_attrs
-        return tmp_dict, tmp_analog_dict, generated, generated_analog
+                for combo in combinations(keys, i):
+                    combinations_keys.append(combo)
+                    combinations_dims.append([attr_dict[k] for k in combo])
     else:
-        for attr_name, attr_dim in attr_dict.items():
-            unconstrained_dfs_dict = {}
-            unconstrained_dfs_analog_dict = {}
-            models_list = []
+        combinations_keys = [[k] for k in attr_dict.keys()]
+        combinations_dims = [[v] for v in attr_dict.values()]
+
+    for target_attrs, target_dims in zip(combinations_keys, combinations_dims):
+        dfs_data = {attr: {} for attr in target_attrs}
+        dfs_analog_data = {attr: {} for attr in target_attrs}
+        models_list = []
+
+        for enc_name, dec_name in zip(encoders_list, decoders_list):
+            model_name = enc_name.split("_ar-vae")[0]
+            models_list.append(model_name)
+            encoder, decoder = load_model_pair(enc_name, dec_name, params, DEVICE)
+
+            for attr in target_attrs:
+                if model_name not in dfs_data[attr]: dfs_data[attr][model_name] = []
+                if model_name not in dfs_analog_data[attr]: dfs_analog_data[attr][model_name] = []
+
+            current_shifts = [shifts] if (mode == 'multi' and submode == 'chosen') else shifts_list
+            for shift_val in current_shifts:
+                if isinstance(shift_val, list):
+                    s_arg = shift_val
+                    suffix = str(target_attrs)
+                else:
+                    s_arg = [shift_val for _ in range(len(target_dims))]
+                    suffix = f"{target_attrs[0]}_{shift_val}" if len(target_attrs) == 1 else f"{target_attrs}_{shift_val}"
+
+                # UNCONSTRAINED
+                if val is not None:
+                    raw_seq = decoder.generate_from(1000, params["latent_dim"], target_dims, s_arg, dim, val)
+                else:
+                    raw_seq = decoder.generate_from(1000, params["latent_dim"], target_dims, s_arg)
+                decoded_seq = dataset_lib.decoded(dataset_lib.from_one_hot(raw_seq.permute(1, 0, 2)), "0")
+                clean_seq = clean_sequences(decoded_seq)
+                generated[f"{model_name}_{suffix}"] = clean_seq
+                for attr in target_attrs:
+                    stats = calculate_metric_stats(clean_seq, attr, DEVICE, classifiers)
+                    dfs_data[attr][model_name].append(stats)
+
+                # ANALOG 
+                batch = next(iter(data_loader))
+                peptides = batch[0].permute(1, 0).type(torch.LongTensor).to(DEVICE)
+                mu, _ = encoder(peptides)
+                mod_mu = mu.clone().detach()
+                for i, dim in enumerate(target_dims):
+                    shift_increment = shift_val[i] if isinstance(shift_val, list) else shift_val
+                    mod_mu[:, dim] += shift_increment
             
-            for i, (encoder_name, decoder_name) in enumerate(zip(encoders_list, decoders_list)):
-                encoder = EncoderRNN(
-                    params["num_heads"],
-                    params["num_layers"],
-                    params["latent_dim"],
-                    params["encoding"],
-                    params["dropout"],
-                    params["layer_norm"],
-                )
-                decoder = DecoderRNN(
-                    params["num_heads"],
-                    params["num_layers"],
-                    params["latent_dim"],
-                    params["encoding"],
-                    params["dropout"],
-                    params["layer_norm"],
-                )
-                # print(encoder_name)
-                encoder.load_state_dict(torch.load(f"./first_working_models/{encoder_name}", map_location=DEVICE))
-                encoder = encoder.to(DEVICE)
-                decoder.load_state_dict(torch.load(f"./first_working_models/{decoder_name}", map_location=DEVICE))
-                decoder = decoder.to(DEVICE)
-                encoder = encoder.eval()
-                decoder = decoder.eval()      
-                model = encoder_name.split("_ar-vae")[0]
-                models_list.append(model)
-    
-                unconstrained_dfs_dict[model] = []
-                unconstrained_dfs_analog_dict[model] = []
-              
-                for shift_value in shifts_list:
-                    # Generate unconstrained
-                    if val is not None:
-                        seq = decoder.generate_from(1000, params["latent_dim"], [attr_dim], [shift_value], val)
-                    else:
-                        seq = decoder.generate_from(1000, params["latent_dim"], [attr_dim], [shift_value])
-                    generated_sequences = dataset_lib.decoded(dataset_lib.from_one_hot(transpose(seq, 0,1)), "0")
-                    save_sequences(generated_sequences, f"generated_sequences/{model}_unconstrained_{attr_name}_{shift_value}.csv")
-                    generated_sequences = [seq.strip().rstrip("0") for seq in generated_sequences]
-                    generated_sequences = [seq for seq in generated_sequences if '0' not in seq]
-                    cleaned_sequences = [seq for seq in generated_sequences if seq]
-                    generated[model+'_'+attr_name+"_"+str(shift_value)] = cleaned_sequences
-    
-                    if attr_name == 'Length':
-                        attr = dataset_lib.calculate_length_test(cleaned_sequences)
-                    elif attr_name == 'Charge':
-                        attr = dataset_lib.calculate_charge(cleaned_sequences)
-                    elif attr_name == 'Hydrophobicity':
-                        attr = dataset_lib.calculate_hydrophobicity(cleaned_sequences)
-                    elif attr_name == 'MIC E.coli':
-                        attr = MIC_calc(cleaned_sequences)[:,0].cpu().numpy()
-                    elif attr_name == 'MIC S.aureus':
-                        attr = MIC_calc(cleaned_sequences)[:,1].cpu().numpy()
-                    elif attr_name == 'Nontoxicity':
-                        hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
-                        features = hemolytic_classifier.get_input_features(np.array(cleaned_sequences))
-                        nontoxicity = hemolytic_classifier.predict_from_features(features, proba=True)
-                        attr = torch.from_numpy(nontoxicity).cpu().numpy()
-                    unconstrained_dfs_dict[model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-        
-                    # Generate analog
-                    batch, _, _, _ = next(iter(data_loader))
-                    peptides = batch.permute(1, 0).type(LongTensor).to(DEVICE)
-                    mu, std = encoder(peptides)
-                    mod_mu = mu.clone().detach()
-                    mod_mu[:, attr_dim] = mod_mu[:, attr_dim] + shift_value
-                    outputs = decoder(mod_mu)
-                    src = outputs.permute(1, 2, 0) 
-                    seq = src.argmax(dim=1)
-                    modified_sequences = dataset_lib.decoded(seq, "")
-                    # save_sequences(modified_sequences, f"{model}_modified_{attr_name}_{shift_value}.csv")
-        
-                    modified_sequences = [seq.strip().rstrip("0") for seq in modified_sequences]
-                    modified_sequences = [seq for seq in modified_sequences if '0' not in seq]
-                    cleaned_modified_sequences = [seq for seq in modified_sequences if seq]
-                    generated_analog[model+'_'+attr_name+"_"+str(shift_value)] = cleaned_modified_sequences
-    
-                    if attr_name == 'Length':
-                        attr = dataset_lib.calculate_length_test(cleaned_modified_sequences)
-                    elif attr_name == 'Charge':
-                        attr = dataset_lib.calculate_charge(cleaned_modified_sequences)
-                    elif attr_name == 'Hydrophobicity':
-                        attr = dataset_lib.calculate_hydrophobicity(cleaned_modified_sequences)
-                    elif attr_name == 'MIC E.coli':
-                        attr = MIC_calc(cleaned_modified_sequences)[:,0].cpu().numpy()
-                    elif attr_name == 'MIC S.aureus':
-                        attr = MIC_calc(cleaned_modified_sequences)[:,1].cpu().numpy()
-                    elif attr_name == 'Nontoxicity':
-                        hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
-                        features = hemolytic_classifier.get_input_features(np.array(cleaned_modified_sequences))
-                        nontoxicity = hemolytic_classifier.predict_from_features(features, proba=True)
-                        attr = torch.from_numpy(nontoxicity).cpu().numpy()
-                    unconstrained_dfs_analog_dict[model].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-    
-            row_data = np.array(list(unconstrained_dfs_dict.values()))
-            unconstrained_df = pd.DataFrame(row_data, columns= shifts_list, index = models_list)
-            tmp_dict[attr_name] = unconstrained_df
-            
-            row_data = np.array(list(unconstrained_dfs_analog_dict.values()))
-            unconstrained_df_analog = pd.DataFrame(row_data, columns= shifts_list, index =models_list)
-            tmp_analog_dict[attr_name] = unconstrained_df_analog
-        return tmp_dict, tmp_analog_dict, generated, generated_analog
+                outputs = decoder(mod_mu)
+                seq_idx = outputs.permute(1, 2, 0).argmax(dim=1)
+                mod_decoded_seq = dataset_lib.decoded(seq_idx, "")
+                clean_mod_seq = clean_sequences(mod_decoded_seq)
+                generated_analog[f"{model_name}_{suffix}"] = clean_mod_seq
+                for attr in target_attrs:
+                    stats = calculate_metric_stats(clean_mod_seq, attr, DEVICE, classifiers)
+                    dfs_analog_data[attr][model_name].append(stats)
+
+        col_names = shifts_list if not (mode == 'multi' and submode == 'chosen') else None
+        for attr in target_attrs:
+            data_rows = list(dfs_data[attr].values())
+            df = pd.DataFrame(data_rows, index=models_list, columns=col_names)
+            if mode == 'multi':
+                combo_key = str(target_attrs)
+                if combo_key not in tmp_dict:
+                    tmp_dict[combo_key] = {}
+                tmp_dict[combo_key][attr] = df
+            else:
+                tmp_dict[attr] = df
+            analog_rows = list(dfs_analog_data[attr].values())
+            df_analog = pd.DataFrame(analog_rows, index=models_list, columns=col_names)
+            if mode == 'multi':
+                combo_key = str(target_attrs)
+                if combo_key not in tmp_analog_dict:
+                    tmp_analog_dict[combo_key] = {}
+                tmp_analog_dict[combo_key][attr] = df_analog
+            else:
+                tmp_analog_dict[attr] = df_analog
+
+    return tmp_dict, tmp_analog_dict, generated, generated_analog
         
 def levenshtein_distance(s1, s2):
     rows = len(s1) + 1
@@ -1317,3 +1058,226 @@ def hobbit(fitted_transformers, encoder_name, decoder_name, data_loader, params,
                               var_name='Metric',
                               value_name='Value')
     return tmp_dict, normalized_tmp_dict, df_melted, df_normalized_melted, generated_analog  
+
+def transform_string_to_filename(original_string, segment_name):
+    replacement_with_shift = fr'\1_{segment_name}\2\3.csv'
+    pattern_with_shift = r'(.*)(_[A-Za-z0-9\.\s]+)(_[-+]?\d+)$'
+    transformed_string = re.sub(pattern_with_shift, replacement_with_shift, original_string)
+
+    if transformed_string == original_string:
+        replacement_only_attr = fr'\1_{segment_name}\2.csv'
+        pattern_only_attr = r'(.*)(_[A-Za-z0-9\.\s]+)$'
+        transformed_string = re.sub(pattern_only_attr, replacement_only_attr, original_string)
+    return transformed_string
+
+def generate_fixed_sequences(encoder_name, decoder_name, dim_to_shift, shifts, dim_to_const_val , const_val, params):
+    DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
+    encoder, decoder = load_model_pair(encoder_name, decoder_name, params, DEVICE)
+    raw_seq = decoder.generate_from(5000, params["latent_dim"], dim_to_shift, shifts, dim_to_const_val=dim_to_const_val, val=const_val)
+    decoded_seq = dataset_lib.decoded(dataset_lib.from_one_hot(raw_seq.permute(1, 0, 2)), "0")
+    clean_seq = clean_sequences(decoded_seq)
+    return clean_seq
+
+def create_ridgeline_plot(df, title, s1='low activity (high MIC)', s2='high activity (low MIC)', e=40, x_min=None, x_max = None, ylabel = 'non-toxic', flip_axis=False):
+    
+    # 1. Obliczenie zakresu
+    min_x = df['Score'].min() if x_min is None else x_min
+    max_x = df['Score'].max() if x_max is None else x_max
+    x_range_margin = (max_x - min_x) * 0.05
+    x_range_min = min_x - x_range_margin 
+    x_range_max = max_x + x_range_margin 
+
+    sns.set_theme(style="white", rc={"axes.facecolor": (0, 0, 0, 0)})
+    keys = df['Key'].unique()
+    keys.sort()
+    num_keys = len(keys)
+    
+    # Tworzymy figurę i osie (dodajemy lewy margines, by zrobić miejsce na etykietę 'activity')
+    fig, axes = plt.subplots(nrows=num_keys, ncols=1, figsize=(8,2/3 * num_keys), 
+                             sharex=True) 
+                             
+    if num_keys == 1:
+        axes = [axes]
+    if num_keys > 0:
+        axes[0].set_xlim(x_range_min, x_range_max)
+    palette = sns.color_palette("viridis", num_keys)
+    
+    for i, key in enumerate(keys):
+        subset = df[df['Key'] == key]
+        ax = axes[i]
+        
+        sns.kdeplot(
+            data=subset, 
+            x="Score", 
+            fill=True, 
+            alpha=0.8, 
+            linewidth=1.5, 
+            color=palette[i],
+            ax=ax
+        )
+        ax.axhline(0, color='black', linewidth=1, linestyle='-')
+        start_index = key.find('=')
+        new_key = key[start_index+1:]
+        end_index = ylabel.find("\n")
+        if end_index == -1:
+            end_index = len(ylabel)
+        ax.text(
+            x=0.0,  # Changed from 0.75 to move closer to right edge
+            y=0.1,   
+            s = rf'$\alpha_{{{ylabel[:end_index]}}} = {new_key}$',
+            transform=ax.transAxes, 
+            fontsize=12, 
+            ha='left'
+        )
+        
+        ax.set_ylabel('')
+        ax.set_yticks([])  
+        ax.spines['left'].set_visible(False)
+        ax.spines['right'].set_visible(False) 
+        ax.spines['top'].set_visible(False) 
+
+        # Obsługa osi X (tylko na dole)
+        if i < num_keys - 1:
+            ax.set_xlabel('')
+            ax.tick_params(axis='x', length=0, width=0, labelbottom=False)
+        else:
+            ax.tick_params(axis='x', direction='in', length=5, width=1, 
+                            labelbottom=False, color='black') 
+            
+            ax.set_xlabel('') 
+            ax.set_xticks([])
+
+            ax.text(
+                x=x_range_min + e, 
+                y=-0.002,  # Changed from 0.0 to move text lower
+                s=s1, 
+                fontsize=12,
+                ha='left', 
+                va='top',
+                transform=ax.transData
+            )
+            ax.text(
+                x=x_range_max - e, 
+                y=-0.002,  # Changed from 0.0 to move text lower
+                s=s2, 
+                fontsize=12,
+                ha='right', 
+                va='top',
+                transform=ax.transData
+            )
+
+    fig.supylabel(ylabel + ' →', fontsize=14, fontweight='bold', x=0.95)  # Changed from 0.9 to move further right
+    # fig.suptitle(title, fontsize=16, y=1.02)
+    plt.subplots_adjust(hspace=-0.5) 
+
+    if flip_axis:
+        if num_keys > 0:
+            axes[0].invert_xaxis()
+            
+    plt.show()
+    
+def autolabel(rects, ax, threshold=500):
+    """
+    Dołączanie numerycznych etykiet: wewnątrz słupka, jeśli jest wysoki, 
+    lub na zewnątrz, jeśli jest za niski (poniżej threshold).
+    """
+    # Znajdź maksymalną wartość na osi Y, aby ustalić kontekst koloru
+    # ymax = ax.get_ylim()[1] # (Niepotrzebne, bazujemy na progu bezwzględnym)
+    
+    for rect in rects:
+        height = rect.get_height()
+        if np.isnan(height):
+            continue
+
+        # Warunek 1: Wybór koloru tekstu
+        # Prosta heurystyka: jeśli kolor słupka jest ciemny, użyj białego tekstu
+        bar_color = rect.get_facecolor()
+        is_dark_bar = bar_color[0] < 0.5 
+        
+        # Warunek 2: Sprawdzenie, czy słupek jest "za niski"
+        if height <= threshold:
+            # --- POZYCJA ZEWNĘTRZNA (NAD SŁUPKIEM) ---
+            y_position = height # Ustawia pozycję na górnej krawędzi słupka
+            y_offset = 3        # Odsunięcie w górę
+            v_align = 'bottom'  # Wyrównanie do dołu (tekst jest nad słupkiem)
+            text_color = 'black' # Zawsze czarny tekst na zewnątrz
+        else:
+            # --- POZYCJA WEWNĘTRZNA (W SŁUPKU) ---
+            y_position = height * 0.98 # Pozycja Y wewnątrz (98% wysokości)
+            y_offset = -5       # Odsunięcie w dół
+            v_align = 'top'     # Wyrównanie do góry (tekst "wisi" na górze)
+            text_color = 'white' if is_dark_bar else 'black'
+
+        ax.annotate(f'{int(height)}',
+                    xy=(rect.get_x() + rect.get_width() / 2, y_position),
+                    xytext=(0, y_offset),
+                    textcoords="offset points",
+                    ha='center', 
+                    va=v_align,  # Ustawienie warunkowe
+                    color=text_color,
+                    fontsize=14,
+                    fontweight='bold')
+
+def format_name_alpha(name):
+    pattern = r'alpha_([a-zA-Z-]+)\s*=\s*(-?\d+)'
+    
+    def change(match):
+        alpha_key = match.group(1)
+        alpha_value = match.group(2)
+        return rf'$\alpha_{{\text{{{alpha_key}}}}} = {alpha_value}$'
+    match_start = re.search(pattern, name)
+    
+    if match_start:
+        before = name[:match_start.start()].strip()
+        formula = change(match_start)
+        return f"{before} {formula}"
+    return name 
+    
+def sequences_counts_bar_plots(df, cols, title = 'MIC E.coli for Nontoxicity const val'):
+    labels = sorted(np.unique(df['Key'].values), reverse=True)
+    labels = [format_name_alpha(name) for name in labels]
+    x = np.arange(len(labels))
+    width = 0.3
+    shift_1 = -width   
+    shift_2 = 0
+    shift_3 = width
+    
+    fig, ax = plt.subplots(figsize=(12.5,3), dpi=300)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    # Jeśli chcesz zachować osie X i Y, pozostaw poniższe jako True:
+    # ax.spines['left'].set_visible(True)
+    # ax.spines['bottom'].set_visible(True)
+    
+    # 🎯 Jeśli chcesz usunąć CAŁE obramowanie:
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    rocket_colors = sns.color_palette("rocket", 9)
+    
+    rects1 = ax.bar(x + shift_1, df[cols[0]], width, 
+                    label=cols[0], color=[rocket_colors[i] for i in [1,1,1]])
+    rects2 = ax.bar(x + shift_2, df[cols[1]], width, 
+                    label=cols[1], color=[rocket_colors[i] for i in [4,4,4]])
+    rects3 = ax.bar(x + shift_3, df[cols[2]], width, 
+                    label=cols[2],  color=[rocket_colors[i] for i in [7,7,7]])
+    
+    
+    ax.set_ylabel('Sample count', fontsize = 16)
+    # ax.set_title(title, pad=20, fontsize=18)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=0, ha='center', fontsize=14) 
+    ax.tick_params(axis='y', labelsize=14)
+    ax.legend(
+            facecolor='white', 
+            fontsize=12, 
+            loc='upper center',            # Punkt odniesienia: górny środek
+            bbox_to_anchor=(0.5, -0.15),   # Pozycja: 0.5 (środek X), -0.15 (poniżej osi Y=0)
+            ncol=4                         # Rozmieść elementy w 3 kolumnach
+        )    
+    autolabel(rects1,ax)
+    autolabel(rects2,ax)
+    autolabel(rects3,ax)
+    
+    fig.tight_layout()
+    plt.show()
+    

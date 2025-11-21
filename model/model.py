@@ -156,7 +156,7 @@ class DecoderRNN(nn.Module):
         #(batch_size, latent_dim) -> (seq_len, batch_size, vocab_size)
         return self.forward(input)
     
-    def generate_from(self, batch_size, latent_dim, dim1, shift_value, val=None):
+    def generate_from(self, batch_size, latent_dim, dim1, shift_value, dim_to_const_val = None, val=None):
         # shift_value = 2.0 # Wartość przesunięcia (średnia będzie 2)
         std_dev = 1.0     # Odchylenie standardowe (jak w standardowym rozkładzie normalnym)
         # x1 = (torch.randn(200) * std_dev + shift_value).to(DEVICE)
@@ -174,7 +174,7 @@ class DecoderRNN(nn.Module):
             z[:, dim] = (z[:, dim] + shift_value[i]).to(DEVICE)
         # print('-2')
         if val is not None:
-            z[:, 5] = val
+            z[:, dim_to_const_val] = val
         # z = z.repeat(num_points, 1).to(DEVICE) # Powielenie go do rozmiaru num_points x z_dim
         # z[:, dim1] = z1.to(DEVICE).contiguous().view(-1) # Spłaszcz z1 do 1D i przypisz do kolumny d
         # z[:, dim2] = z2.to(DEVICE).contiguous().view(-1)

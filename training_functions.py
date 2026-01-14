@@ -59,8 +59,8 @@ def run_epoch_iwae(
     }
     seq_true, all_physchem, model_out_sampled = [], [], []
     len_data = len(dataloader.dataset)
-    latent_codes = []
-    attributes = []
+    latent_codes, latent_codes_reg = [], []
+    attributes, attributes_reg = [], []
     ar_vae_metrics = {}
 
     K = iwae_samples
@@ -108,6 +108,12 @@ def run_epoch_iwae(
                         z_reshaped = z[finite_mask].reshape(-1,z.shape[1])
                     else:
                         z_reshaped = z.reshape(-1,z.shape[1])
+                    if mode == 'test':
+                        latent_codes_reg.append(z_reshaped.reshape(-1, z_reshaped.shape[1]).cpu().detach().numpy())
+                        attributes_reg.append(cat(
+                            (attributes_input[finite_mask], labels_torch[finite_mask]), dim=1
+                        ))
+
                     if z_reshaped.shape[0] != 0:
                         reg_loss_with_gamma_partly, reg_loss_partly = r.compute_reg_loss(
                         z_reshaped, physchem_torch[finite_mask, dim], dim, gamma, gamma_multiplier[dim], device, factor, factor_multiplier[dim], signum_modification_of_dist_matrix_flg 
@@ -168,14 +174,18 @@ def run_epoch_iwae(
 
     if mode == 'test':
         latent_codes = np.concatenate(latent_codes, 0)
+        latent_codes_reg = np.concatenate(latent_codes_reg, 0)
         attributes = cat(attributes, dim=0).numpy()
-        attributes, attr_list = m.extract_relevant_attributes(attributes, reg_dim)
+        attributes_reg = cat(attributes_reg, dim=0).numpy()
+        attributes, attr_list = m.extract_relevant_attributes(attributes_reg, reg_dim)
+        print(f'latent_codes_reg shape = {latent_codes_reg.shape}')
+        print(f'attributes shape = {attributes.shape}')
         ar_vae_metrics = {}
-        ar_vae_metrics["Interpretability"] = m.compute_interpretability_metric(latent_codes, attributes, attr_list)
-        ar_vae_metrics["Corr_score"] = m.compute_correlation_score(latent_codes, attributes, attr_list)
-        ar_vae_metrics["Modularity"] = m.compute_modularity(latent_codes, attributes, attr_list)
-        ar_vae_metrics["MIG"] = m.compute_mig(latent_codes, attributes,attr_list)
-        ar_vae_metrics["SAP_score"] = m.compute_sap_score(latent_codes, attributes, attr_list)
+        ar_vae_metrics["Interpretability"] = m.compute_interpretability_metric(latent_codes_reg, attributes, attr_list)
+        ar_vae_metrics["Corr_score"] = m.compute_correlation_score(latent_codes_reg, attributes, attr_list)
+        ar_vae_metrics["Modularity"] = m.compute_modularity(latent_codes_reg, attributes, attr_list)
+        ar_vae_metrics["MIG"] = m.compute_mig(latent_codes_reg, attributes,attr_list)
+        ar_vae_metrics["SAP_score"] = m.compute_sap_score(latent_codes_reg, attributes, attr_list)
     if eval_mode == "deep": 
         metrics_list = mn.report_sequence_char_test(
                 logger,

@@ -263,8 +263,8 @@ class AMPDataManager:
         if str(positive_filepath).endswith(".csv"):
             self.positive_data = pd.read_csv(positive_filepath)
             if mic_flg:
-                new_data1 = pd.read_csv('escherichiacoliatcc25922_mic.csv')
-                new_data2 = pd.read_csv('staphylococcusaureusatcc25923_mic.csv')
+                new_data1 = pd.read_csv(data_dir / 'escherichiacoliatcc25922_mic.csv')
+                new_data2 = pd.read_csv(data_dir / 'staphylococcusaureusatcc25923_mic.csv')
                 # new_data1 = pd.read_csv(data_dir / 'new_e_coli.tsv', sep='\t')
                 # new_data2 = pd.read_csv(data_dir / 'new_s_aureus.tsv', sep='\t')
 
@@ -286,12 +286,12 @@ class AMPDataManager:
                         identifiers.append(seq_record.id)
             
             #converting lists to pandas Series    
-            s2 = pd.Series(sequences, name='Sequence')
+            s2 = pd.Series(sequences, name='sequence')
             #Gathering Series into a pandas DataFrame and rename index as ID column
-            self.positive_data = pd.DataFrame({'Sequence': s2})
+            self.positive_data = pd.DataFrame({'sequence': s2})
             if mic_flg:
-                new_data1 = pd.read_csv('escherichiacoliatcc25922_mic.csv')
-                new_data2 = pd.read_csv('staphylococcusaureusatcc25923_mic.csv')
+                new_data1 = pd.read_csv(data_dir / 'escherichiacoliatcc25922_mic.csv')
+                new_data2 = pd.read_csv(data_dir / 'staphylococcusaureusatcc25923_mic.csv')
                 # new_data1 = pd.read_csv(data_dir / 'new_e_coli.tsv', sep='\t')
                 # new_data2 = pd.read_csv(data_dir / 'new_s_aureus.tsv', sep='\t')
 
@@ -300,7 +300,7 @@ class AMPDataManager:
             if toxicity_flg:
                 hemolytic_classifier = c.HemolyticClassifier('./new_hemolytic_model.xgb')
                 # hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
-                features = hemolytic_classifier.get_input_features(self.positive_data['Sequence'].to_numpy())
+                features = hemolytic_classifier.get_input_features(self.positive_data['sequence'].to_numpy())
                 self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
         if str(negative_filepath).endswith(".csv"):
             self.negative_data = pd.read_csv(negative_filepath)
@@ -353,11 +353,11 @@ class AMPDataManager:
     @staticmethod
     def update_and_add_sequences(df_main: pd.DataFrame, new_df: pd.DataFrame, new_label: str = 'MIC') -> pd.DataFrame:
         new_df = new_df.rename(columns={'MIC': new_label})
-        updated_df = pd.merge(df_main, new_df, on='Sequence', how='left')
+        updated_df = pd.merge(df_main, new_df, on='sequence', how='left')
         return updated_df
     
     def _filter_by_length(self, df: pd.DataFrame) -> pd.DataFrame:
-        mask = (df['Sequence'].str.len() >= self.min_len) & (df['Sequence'].str.len() <= self.max_len)
+        mask = (df['sequence'].str.len() >= self.min_len) & (df['sequence'].str.len() <= self.max_len)
         return df.loc[mask]
 
     def _filter_data(self):
@@ -452,7 +452,7 @@ class AMPDataManager:
         return merged
     
     def output_data(self, df):
-        x = np.asarray(df['Sequence'].tolist())
+        x = np.asarray(df['sequence'].tolist())
         if 'Label' in df.columns:
             y = np.asarray(df['Label'].tolist())
         else:

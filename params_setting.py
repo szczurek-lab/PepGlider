@@ -29,10 +29,10 @@ def set_params(root_dir):
         "gamma_multiplier": [1,1,1,1,1,1],
         "factor_multiplier": [0.1,0.1,0.1,0.6,0.6,0.6],
         "factor_schedule": (1,1,8000),
-        'scale_factor_flg': False,
+        'scale_factor_flg': True,
         'mic_flg': True,
         'toxicity_flg': True,
-        'normalize_properties_flg':True,
+        'normalize_properties_flg':False,
         'signum_modification_of_dist_matrix_flg': False
     }
 

@@ -287,9 +287,9 @@ class AMPDataManager:
                         identifiers.append(seq_record.id)
             
             #converting lists to pandas Series    
-            s2 = pd.Series(sequences, name='sequence')
+            s2 = pd.Series(sequences, name='Sequence')
             #Gathering Series into a pandas DataFrame and rename index as ID column
-            self.positive_data = pd.DataFrame({'sequence': s2})
+            self.positive_data = pd.DataFrame({'Sequence': s2})
             if mic_flg:
                 # new_data1 = pd.read_csv(data_dir / 'escherichiacoliatcc25922_mic.csv')
                 # new_data2 = pd.read_csv(data_dir / 'staphylococcusaureusatcc25923_mic.csv')
@@ -301,7 +301,7 @@ class AMPDataManager:
             if toxicity_flg:
                 hemolytic_classifier = c.HemolyticClassifier('./new_hemolytic_model.xgb')
                 # hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
-                features = hemolytic_classifier.get_input_features(self.positive_data['sequence'].to_numpy())
+                features = hemolytic_classifier.get_input_features(self.positive_data['Sequence'].to_numpy())
                 self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
         if str(negative_filepath).endswith(".csv"):
             self.negative_data = pd.read_csv(negative_filepath)
@@ -354,11 +354,11 @@ class AMPDataManager:
     @staticmethod
     def update_and_add_sequences(df_main: pd.DataFrame, new_df: pd.DataFrame, new_label: str = 'MIC') -> pd.DataFrame:
         new_df = new_df.rename(columns={'MIC': new_label})
-        updated_df = pd.merge(df_main, new_df, on='sequence', how='left')
+        updated_df = pd.merge(df_main, new_df, on='Sequence', how='left')
         return updated_df
     
     def _filter_by_length(self, df: pd.DataFrame) -> pd.DataFrame:
-        mask = (df['sequence'].str.len() >= self.min_len) & (df['sequence'].str.len() <= self.max_len)
+        mask = (df['Sequence'].str.len() >= self.min_len) & (df['Sequence'].str.len() <= self.max_len)
         return df.loc[mask]
 
     def _filter_data(self):
@@ -453,7 +453,7 @@ class AMPDataManager:
         return merged
     
     def output_data(self, df):
-        x = np.asarray(df['sequence'].tolist())
+        x = np.asarray(df['Sequence'].tolist())
         if 'Label' in df.columns:
             y = np.asarray(df['Label'].tolist())
         else:

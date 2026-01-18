@@ -147,7 +147,8 @@ def normalize_attributes(physchem_tensor_original, reg_dim):
         data_to_transform_np = column_tensor.cpu().numpy().reshape(-1, 1)
         if col_idx ==3 or col_idx==4:
             non_nan_mask = ~np.isnan(data_to_transform_np)
-            normalized_values = adaptive_range_normalize(data_to_transform_np[non_nan_mask])
+#             normalized_values = adaptive_range_normalize(data_to_transform_np[non_nan_mask])
+            normalized_values = z_score_normalize(data_to_transform_np[non_nan_mask])
             transformed_data_np = np.full_like(data_to_transform_np, np.nan)
             transformed_data_np[non_nan_mask] = normalized_values
         else:

@@ -32,7 +32,7 @@ def set_params(root_dir):
         'scale_factor_flg': True,
         'mic_flg': True,
         'toxicity_flg': True,
-        'normalize_properties_flg':True,
+        'normalize_properties_flg':False,
         'signum_modification_of_dist_matrix_flg': False
     }
 

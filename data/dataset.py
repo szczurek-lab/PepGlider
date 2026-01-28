@@ -156,6 +156,7 @@ def normalize_attributes(physchem_tensor_original, reg_dim):
                         output_distribution='uniform',
                         n_quantiles=10,                )
             transformed_data_np = qt.fit_transform(data_to_transform_np)
+            transformed_data_np = (transformed_data_np * 2) - 1
             fitted_transformers[col_idx] = qt
         
         transformed_column_tensor_2d = torch.from_numpy(transformed_data_np).float()

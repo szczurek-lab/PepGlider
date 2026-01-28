@@ -24,7 +24,7 @@ def set_params(root_dir):
         "deeper_eval_every": 20,
         "save_model_every": 100,
         "ar_vae_flg": True,
-        "reg_dim": [3,4,5], 
+        "reg_dim": [0,1,2], 
         "gamma_schedule": (0.00001, 20, 8000),
         "gamma_multiplier": [1,1,1,1,1,1],
         "factor_multiplier": [0.1,0.1,0.1,0.6,0.6,0.6],
@@ -32,8 +32,8 @@ def set_params(root_dir):
         'scale_factor_flg': True,
         'mic_flg': True,
         'toxicity_flg': True,
-        'normalize_properties_flg':False,
-        'signum_modification_of_dist_matrix_flg': True
+        'normalize_properties_flg':True,
+        'signum_modification_of_dist_matrix_flg': False
     }
 
     if params["use_clearml"]:

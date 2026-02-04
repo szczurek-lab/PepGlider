@@ -117,14 +117,16 @@ def adaptive_range_normalize(data, roi_min=0, roi_max=32, roi_bins=7, out_bins=3
         cdf = np.zeros(len(bins))
         cdf[1:] = np.cumsum(hist) / np.sum(hist)
         roi_normalized = np.interp(roi_data, bins, cdf)
-        result[roi_mask] = -(-1 + 1.4 * roi_normalized)
+        # result[roi_mask] = -(-1 + 1.4 * roi_normalized)
+        result[roi_mask] = -(0 + -0.7 * roi_normalized)
     if np.any(out_mask):
         out_data = data[out_mask]
         hist, bins = np.histogram(out_data, bins=out_bins)
         cdf = np.zeros(len(bins))
         cdf[1:] = np.cumsum(hist) / np.sum(hist)
         out_normalized = np.interp(out_data, bins, cdf)
-        result[out_mask] = -(0.4 + 0.6 * out_normalized)
+        # result[out_mask] = -(0.4 + 0.6 * out_normalized)
+        result[out_mask] = -(-0.3 + 0.3 * out_normalized)
     
     return result
 
@@ -146,18 +148,27 @@ def normalize_attributes(physchem_tensor_original, reg_dim):
         column_tensor = physchem_tensor_original[:, col_idx]
         data_to_transform_np = column_tensor.cpu().numpy().reshape(-1, 1)
         if col_idx ==3 or col_idx==4:
+            qt = QuantileTransformer(
+                        output_distribution='uniform',
+                        n_quantiles=10,                )
             non_nan_mask = ~np.isnan(data_to_transform_np)
-            normalized_values = adaptive_range_normalize(data_to_transform_np[non_nan_mask])
-#             normalized_values = z_score_normalize(data_to_transform_np[non_nan_mask])
+            # normalized_values = adaptive_range_normalize(data_to_transform_np[non_nan_mask])
+            normalized_values_input = np.log2(data_to_transform_np)
+            normalized_values = qt.fit_transform(normalized_values_input)
+            # normalized_values = z_score_normalize(data_to_transform_np[non_nan_mask])
             transformed_data_np = np.full_like(data_to_transform_np, np.nan)
-            transformed_data_np[non_nan_mask] = normalized_values
+            transformed_data_np = normalized_values
         else:
             qt = QuantileTransformer(
                         output_distribution='uniform',
                         n_quantiles=10,                )
             transformed_data_np = qt.fit_transform(data_to_transform_np)
-            transformed_data_np = (transformed_data_np * 2) - 1
+            # transformed_data_np = (transformed_data_np * 2) - 1
             fitted_transformers[col_idx] = qt
+            # non_nan_mask = ~np.isnan(data_to_transform_np)
+            # normalized_values = z_score_normalize(data_to_transform_np[non_nan_mask])
+            # transformed_data_np = np.full_like(data_to_transform_np, np.nan)
+            # transformed_data_np[non_nan_mask] = normalized_values
         
         transformed_column_tensor_2d = torch.from_numpy(transformed_data_np).float()
         physchem_tensor_normalized[:, col_idx] = transformed_column_tensor_2d.squeeze(1) 
@@ -300,7 +311,8 @@ class AMPDataManager:
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data1, new_label='mic_e_cola')
                 self.positive_data = self.update_and_add_sequences(self.positive_data, new_data2, new_label='mic_s_aureus')
             if toxicity_flg:
-                hemolytic_classifier = c.HemolyticClassifier('./new_hemolytic_model.xgb')
+                # hemolytic_classifier = c.HemolyticClassifier('./new_hemolytic_model.xgb')
+                hemolytic_classifier = c.HemolyticClassifier('/home/gwiazale/AR-VAE/new_hemolytic_model.xgb')
                 # hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
                 features = hemolytic_classifier.get_input_features(self.positive_data['Sequence'].to_numpy())
                 self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)

@@ -209,7 +209,8 @@ def plot_one_dim(data, target, epoch_number, models_prefixs_to_compare, filename
                  attr_to_print=[0, 1, 2], xlim=None, ylim=None, 
                  color_limits=None, 
                  half_y_range=False,
-                 lower_figure=False): # <--- 1. Dodano nowy argument logiczny
+                 lower_figure=False,
+                 invert_x=False): 
     
     n_rows = int(data.shape[0] / len(attr))
     n_cols = len(attr)
@@ -256,18 +257,32 @@ def plot_one_dim(data, target, epoch_number, models_prefixs_to_compare, filename
 
             for j in range(n_rows):
                 if target.shape[2] >= j + 1:
-                    im = axes[z].scatter(
-                        x=data[(i * n_rows) + j, :, i],
-                        y=data[(i * n_rows) + j, :, dim2],
-                        c=target[(i * n_rows) + j, :, i],
-                        s=24,
-                        linewidths=0,
-                        cmap="viridis",
-                        alpha=0.5,
-                        vmin=current_vmin,
-                        vmax=current_vmax
-                    )
-                    
+                    if invert_x:
+                        im = axes[z].scatter(
+                            x=-data[(i * n_rows) + j, :, i],
+                            y=data[(i * n_rows) + j, :, dim2],
+                            c=target[(i * n_rows) + j, :, i],
+                            s=24,
+                            linewidths=0,
+                            cmap="viridis",
+                            alpha=0.5,
+                            vmin=current_vmin,
+                            vmax=current_vmax
+                        )
+                    else:
+                        im = axes[z].scatter(
+                            x=data[(i * n_rows) + j, :, i],
+                            y=data[(i * n_rows) + j, :, dim2],
+                            c=target[(i * n_rows) + j, :, i],
+                            s=24,
+                            linewidths=0,
+                            cmap="viridis",
+                            alpha=0.5,
+                            vmin=current_vmin,
+                            vmax=current_vmax
+                        )
+                    # if invert_x:
+                            # axes[z].invert_xaxis()
                     if xlim:
                         axes[z].set_xlim(xlim)
                     if ylim:
@@ -286,8 +301,10 @@ def plot_one_dim(data, target, epoch_number, models_prefixs_to_compare, filename
                             y_center - (target_y_span / 2.0), 
                             y_center + (target_y_span / 2.0)
                         )
-
-                    axes[z].set_xlabel(f'dimension: {attr[i]}', fontsize=14)
+                    if attr[i] == 'Nontoxicity':
+                        axes[z].set_xlabel(f'dimension: Non-toxicity', fontsize=14)
+                    else:
+                        axes[z].set_xlabel(f'dimension: {attr[i]}', fontsize=14)
                     axes[z].tick_params(axis='both', which='major', labelsize=12)
                     
                     if z % n_real_cols == 0:
@@ -471,7 +488,7 @@ def MIC_calc(seq_list):
     #     df[mode] = df_raw[bact_columns[mode]].mean(axis=1).reset_index()
     # return df
     
-def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1, grid_res=0.05, z_dim = 56, params = {},attr = ['Length', 'Charge' , 'Hydrophobic moment'], mode = 'calc', range_value=5):
+def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1, grid_res=0.05, z_dim = 56, params = {},attr = ['Length', 'Charge' , 'Hydrophobic moment'], mode = 'calc', range_value=8):
     all_final_z_points = []
     all_final_attr_labels = []
     all_final_mae = []
@@ -808,7 +825,111 @@ def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, at
                 tmp_analog_dict[attr] = df_analog
 
     return tmp_dict, tmp_analog_dict, generated, generated_analog
+
+def latent_explore_test(encoders_list, decoders_list, shifts, data_loader, params, attr_dict, mode='', submode='', val=None):
+    DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
+    
+    # 1. Setup Classifiers and Direction Logic
+    classifiers = {}
+    if any('Nontoxicity' in k for k in attr_dict.keys()):
+        classifiers['hemolytic'] = c.HemolyticClassifier('new_hemolytic_model.xgb')
+
+    inverted_attrs = ['MIC E.coli', 'MIC S.aureus']
+    
+    # 2. Determine Combinations
+    combinations_keys = []
+    combinations_dims = []
+    
+    if mode == 'multi':
+        keys = list(attr_dict.keys())
+        if submode == 'chosen':
+            combinations_keys.append(keys)
+            combinations_dims.append([attr_dict[k] for k in keys])
+        else:
+            for i in range(2, len(keys) + 1):
+                for combo in combinations(keys, i):
+                    combinations_keys.append(list(combo))
+                    combinations_dims.append([attr_dict[k] for k in combo])
+    else:
+        combinations_keys = [[k] for k in attr_dict.keys()]
+        combinations_dims = [[v] for v in attr_dict.values()]
+
+    # 3. Process Shifts
+    shifts_list = sorted([0] + [s for i in shifts for s in (i, -i)])
+    generated, generated_analog = {}, {}
+    tmp_dict, tmp_analog_dict = {}, {}
+
+    for target_attrs, target_dims in zip(combinations_keys, combinations_dims):
+        # Create a clean string for the attribute segment (e.g., "MIC E.coli-Nontoxicity")
+        attr_str = "-".join(target_attrs).replace(" ", "")
         
+        dfs_data = {attr: {} for attr in target_attrs}
+        dfs_analog_data = {attr: {} for attr in target_attrs}
+        models_list = []
+
+        for enc_name, dec_name in zip(encoders_list, decoders_list):
+            model_name = enc_name.split("_ar-vae")[0]
+            models_list.append(model_name)
+            encoder, decoder = load_model_pair(enc_name, dec_name, params, DEVICE)
+
+            current_shifts = [shifts] if (mode == 'multi' and submode == 'chosen') else shifts_list
+            
+            for shift_val in current_shifts:
+                # --- CALC DIRECTIONAL SHIFTS ---
+                if isinstance(shift_val, list):
+                    s_arg = [s * (-1 if attr in inverted_attrs else 1) for s, attr in zip(shift_val, target_attrs)]
+                    shift_label = "_".join(map(str, shift_val)) # For multi-shift lists
+                else:
+                    s_arg = [shift_val * (-1 if attr in inverted_attrs else 1) for attr in target_attrs]
+                    shift_label = str(shift_val)
+
+                # NEW CLEAN SUFFIX: modelname_attributes_shift
+                # Matches regex: r'(.*)(_[A-Za-z0-9\.\s]+)(_[-+]?\d+)$'
+                key_suffix = f"{model_name}_{attr_str}_{shift_label}"
+                
+                # 4. UNCONSTRAINED GENERATION
+                gen_args = [1000, params["latent_dim"], target_dims, s_arg]
+                raw_seq = decoder.generate_from(*gen_args) if val is None else decoder.generate_from(*gen_args, dim, val)
+                
+                clean_seq = clean_sequences(dataset_lib.decoded(dataset_lib.from_one_hot(raw_seq.permute(1, 0, 2)), "0"))
+                generated[key_suffix] = clean_seq
+                
+                for attr in target_attrs:
+                    if model_name not in dfs_data[attr]: dfs_data[attr][model_name] = []
+                    dfs_data[attr][model_name].append(calculate_metric_stats(clean_seq, attr, DEVICE, classifiers))
+
+                # 5. ANALOG GENERATION
+                batch = next(iter(data_loader))
+                peptides = batch[0].permute(1, 0).type(torch.LongTensor).to(DEVICE)
+                mu, _ = encoder(peptides)
+                mod_mu = mu.clone().detach()
+                
+                for i, dim in enumerate(target_dims):
+                    mod_mu[:, dim] += s_arg[i]
+            
+                outputs = decoder(mod_mu)
+                seq_idx = outputs.permute(1, 2, 0).argmax(dim=1)
+                clean_mod_seq = clean_sequences(dataset_lib.decoded(seq_idx, ""))
+                generated_analog[key_suffix] = clean_mod_seq
+                
+                for attr in target_attrs:
+                    if model_name not in dfs_analog_data[attr]: dfs_analog_data[attr][model_name] = []
+                    dfs_analog_data[attr][model_name].append(calculate_metric_stats(clean_mod_seq, attr, DEVICE, classifiers))
+
+        # 6. Formatting Output DataFrames (Remains same logic)
+        col_names = shifts_list if not (mode == 'multi' and submode == 'chosen') else None
+        for attr in target_attrs:
+            combo_key = str(target_attrs)
+            for d_dict, t_dict in [(dfs_data, tmp_dict), (dfs_analog_data, tmp_analog_dict)]:
+                df = pd.DataFrame(list(d_dict[attr].values()), index=models_list, columns=col_names)
+                if mode == 'multi':
+                    if combo_key not in t_dict: t_dict[combo_key] = {}
+                    t_dict[combo_key][attr] = df
+                else:
+                    t_dict[attr] = df
+
+    return tmp_dict, tmp_analog_dict, generated, generated_analog
+    
 def levenshtein_distance(s1, s2):
     rows = len(s1) + 1
     cols = len(s2) + 1

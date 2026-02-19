@@ -672,6 +672,20 @@ def clean_sequences(raw_sequences):
     decoded = [seq.strip().rstrip("0") for seq in raw_sequences]
     return [seq for seq in decoded if seq and '0' not in seq]
 
+def clean_unique_sequences(raw_sequences):
+    decoded = [seq.strip().rstrip("0") for seq in raw_sequences]
+    
+    seen = set()
+    unique_sequences = []
+    
+    for seq in decoded:
+        # Check if valid (not empty and no '0') AND not already seen
+        if seq and '0' not in seq and seq not in seen:
+            unique_sequences.append(seq)
+            seen.add(seq)
+            
+    return unique_sequences
+    
 def calculate_metric_stats(sequences, attr_name, device, classifiers=None):
     if not sequences:
         return "nan ± nan"

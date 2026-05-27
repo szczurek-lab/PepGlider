@@ -157,27 +157,11 @@ class DecoderRNN(nn.Module):
         return self.forward(input)
     
     def generate_from(self, batch_size, latent_dim, dim1, shift_value, dim_to_const_val = None, val=None):
-        # shift_value = 2.0 # Wartość przesunięcia (średnia będzie 2)
-        std_dev = 1.0     # Odchylenie standardowe (jak w standardowym rozkładzie normalnym)
-        # x1 = (torch.randn(200) * std_dev + shift_value).to(DEVICE)
-        # x2 = (torch.randn(200) * std_dev + shift_value).to(DEVICE)
-        # z1, z2 = torch.meshgrid([x1, x2], indexing='ij')
-        # num_points = z1.size(0) * z1.size(1) 
-        # mod_dim = torch.randn(batch_size, 1) + shift_value
-
-        # print(f"Kształt z1 po meshgrid (przed view): {z1.shape}")
-        # print(f"Kształt z2 po meshgrid (przed view): {z2.shape}")
-        # print(f"Przykładowa średnia z1: {z1.mean().item():.2f}")
-        # print(f"Przykładowa średnia z2: {z2.mean().item():.2f}")
-        z = torch.randn(batch_size, latent_dim).to(DEVICE) # Generowanie losowego wektora z
+        std_dev = 1.0    
+        z = torch.randn(batch_size, latent_dim).to(DEVICE) 
         for i, dim in enumerate(dim1):
-            z[:, dim] = (z[:, dim] + shift_value[i]).to(DEVICE)
-        # print('-2')
+            z[:, dim] = shift_value[i]
         if val is not None:
             z[:, dim_to_const_val] = val
-        # z = z.repeat(num_points, 1).to(DEVICE) # Powielenie go do rozmiaru num_points x z_dim
-        # z[:, dim1] = z1.to(DEVICE).contiguous().view(-1) # Spłaszcz z1 do 1D i przypisz do kolumny d
-        # z[:, dim2] = z2.to(DEVICE).contiguous().view(-1)
-        #(batch_size, latent_dim) -> (seq_len, batch_size, vocab_size)
         return self.forward(z)
     

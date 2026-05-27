@@ -22,6 +22,7 @@ import itertools
 import seaborn as sns
 from tqdm import tqdm
 import data.dataset as dataset_lib
+import data.data_describe as data_describe
 from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
 import ar_vae_metrics as m
 from itertools import combinations
@@ -29,10 +30,11 @@ from math import ceil
 import sys
 new_path = '/raid/BattleAMP-apex'
 sys.path.append(new_path)
+sys.path.insert(0, new_path)
 from benchmark_utils import (
     extract_minimal_predictions, extract_species_predictions, read_fasta
 )
-from utils import *
+from utils import make_vocab, AAindex, onehot_encoding
 from sklearn.preprocessing import QuantileTransformer
 from toxicity_classifier import classifier as c
 import joypy
@@ -77,57 +79,22 @@ def find_and_group_model_files(prefixes_to_compare, suffixes_to_group=['_encoder
     
     return found_files
 
-def clean_row(row):
-    return [item.replace('[', '').replace(']', '') for item in row if isinstance(item, str)]
+# def convert_rgba_to_rgb(rgba):
+#     row, col, ch = rgba.shape
+#     if rgba.dtype == 'uint8':
+#         rgba = rgba.astype('float32') / 255.0
+#     if ch == 3:
+#         return rgba
+#     assert ch == 4
+#     rgb = np.zeros((row, col, 3), dtype='float32')
+#     r, g, b, a = rgba[:, :, 0], rgba[:, :, 1], rgba[:, :, 2], rgba[:, :, 3]
+#     a = np.asarray(a, dtype='float32')
 
+#     rgb[:, :, 0] = r * a + (1.0 - a)
+#     rgb[:, :, 1] = g * a + (1.0 - a)
+#     rgb[:, :, 2] = b * a + (1.0 - a)
 
-def read_and_fix_csv(file_path, all_expected_columns):
-    fixed_rows = []
-    with open(file_path, 'r', newline='', encoding='utf-8') as f:
-        reader = csv.reader(f)
-        header = next(reader)
-        num_cols_in_header = len(header)
-        num_expected_cols = len(all_expected_columns)
-        
-        for row in reader:
-            cleaned_row = clean_row(row)
-            if len(cleaned_row) != num_cols_in_header:
-                
-                if len(cleaned_row) > num_expected_cols:
-                    cleaned_row = cleaned_row[:num_expected_cols]
-                
-                if len(cleaned_row) < num_expected_cols:
-                    cleaned_row.extend([None] * (num_expected_cols - len(cleaned_row)))
-
-            fixed_rows.append(cleaned_row)
-    
-    df = pd.DataFrame(fixed_rows, columns=all_expected_columns)
-    if 'MAE length' in df:
-        df['MAE length'] = pd.to_numeric(df['MAE length'], errors='coerce')
-    if 'MAE charge' in df:
-        df['MAE charge'] = pd.to_numeric(df['MAE charge'], errors='coerce')
-    if 'MAE hydrophobicity moment' in df:
-        df['MAE hydrophobicity moment'] = pd.to_numeric(df['MAE hydrophobicity moment'], errors='coerce')
-    df = df.fillna(0)
-    
-    return df
-
-def convert_rgba_to_rgb(rgba):
-    row, col, ch = rgba.shape
-    if rgba.dtype == 'uint8':
-        rgba = rgba.astype('float32') / 255.0
-    if ch == 3:
-        return rgba
-    assert ch == 4
-    rgb = np.zeros((row, col, 3), dtype='float32')
-    r, g, b, a = rgba[:, :, 0], rgba[:, :, 1], rgba[:, :, 2], rgba[:, :, 3]
-    a = np.asarray(a, dtype='float32')
-
-    rgb[:, :, 0] = r * a + (1.0 - a)
-    rgb[:, :, 1] = g * a + (1.0 - a)
-    rgb[:, :, 2] = b * a + (1.0 - a)
-
-    return np.asarray(rgb)
+#     return np.asarray(rgb)
 
 def truncate_to_shortest(list_of_arrays):
     if not list_of_arrays:
@@ -136,73 +103,73 @@ def truncate_to_shortest(list_of_arrays):
     truncated_arrays = [arr[:shortest_dim] for arr in list_of_arrays]
     return truncated_arrays
     
-def single_plot_dim(data, target, epoch_number, models_prefixs_to_compare, filename, dim2=1, attr = ['Length', 'Charge' , 'Hydrophobic moment'], xlim=None, ylim=None):
-    min_row = []
-    max_row = []
-    for i in range(len(attr)):
-        min_row.append(np.nanmin(target))
-        max_row.append(np.nanmax(target))
+# def single_plot_dim(data, target, epoch_number, models_prefixs_to_compare, filename, dim2=1, attr = ['Length', 'Charge' , 'Hydrophobic moment'], xlim=None, ylim=None):
+#     min_row = []
+#     max_row = []
+#     for i in range(len(attr)):
+#         min_row.append(np.nanmin(target))
+#         max_row.append(np.nanmax(target))
 
-    if 'Length' in attr:
-        j = 0
-        # ymin = 1
-        # ymax = 25
-    elif 'Charge' in attr:
-        j = 1
-        # ymin = -9
-        # ymax = 18
-    elif 'Hydrophobicity' in attr:
-        j = 2
-        # ymin = -2.5
-        # ymax = 1.4
-    elif 'MIC E.coli' in attr:
-        j = 3
-        # ymin = 1.66
-        # ymax = 167.6
-    elif 'MIC S.aureus' in attr:
-        j = 4
-        # ymin = 1.14
-        # ymax = 207.6
-    elif 'Nontoxicity' in attr:
-        j = 5
-        # ymin = 0
-        # ymax = 1
-    plt.figure(figsize=(5, 5), dpi=300)
-    plt.scatter(
-        x=data[:, j],
-        y=data[:, dim2],
-        c=target,
-        s=24,
-        linewidths=0,
-        cmap="viridis",
-        alpha=0.5
-        # vmin=ymin,
-        # vmax=ymax
-    )
-    ax = plt.gca()
-    ax.set_xlim(-2.0,2.0)
-    # plt.title(f'{models_prefixs_to_compare[0].split("_ar-vae")[0]}', fontsize=16)
-    plt.xlabel(f'dimension: {attr[0]}', fontsize=14)
-    plt.ylabel(f'not regularized dimension', fontsize=14)
+#     if 'Length' in attr:
+#         j = 0
+#         # ymin = 1
+#         # ymax = 25
+#     elif 'Charge' in attr:
+#         j = 1
+#         # ymin = -9
+#         # ymax = 18
+#     elif 'Hydrophobicity' in attr:
+#         j = 2
+#         # ymin = -2.5
+#         # ymax = 1.4
+#     elif 'MIC E.coli' in attr:
+#         j = 3
+#         # ymin = 1.66
+#         # ymax = 167.6
+#     elif 'MIC S.aureus' in attr:
+#         j = 4
+#         # ymin = 1.14
+#         # ymax = 207.6
+#     elif 'Nontoxicity' in attr:
+#         j = 5
+#         # ymin = 0
+#         # ymax = 1
+#     plt.figure(figsize=(5, 5), dpi=300)
+#     plt.scatter(
+#         x=data[:, j],
+#         y=data[:, dim2],
+#         c=target,
+#         s=24,
+#         linewidths=0,
+#         cmap="viridis",
+#         alpha=0.5
+#         # vmin=ymin,
+#         # vmax=ymax
+#     )
+#     ax = plt.gca()
+#     ax.set_xlim(-2.0,2.0)
+#     # plt.title(f'{models_prefixs_to_compare[0].split("_ar-vae")[0]}', fontsize=16)
+#     plt.xlabel(f'dimension: {attr[0]}', fontsize=14)
+#     plt.ylabel(f'not regularized dimension', fontsize=14)
     
-    # --- Colorbar for the single plot ---
-    # Note: You need a single axes object to attach a colorbar.
-    # ax = plt.gca()
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.1)
-    cbar = plt.colorbar(
-        ax.collections[0],
-        cax=cax,
-        label=attr[0],
-        shrink=0.8,
-        aspect=20
-    )
-    cbar.ax.set_ylabel('')
-    # --- Finalizing the figure ---
-    plt.suptitle(f"Epoch {epoch_number}", fontsize=20, fontweight='bold')
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig(filename, format='png', dpi=300)
-    plt.show()
+#     # --- Colorbar for the single plot ---
+#     # Note: You need a single axes object to attach a colorbar.
+#     # ax = plt.gca()
+#     divider = make_axes_locatable(ax)
+#     cax = divider.append_axes("right", size="5%", pad=0.1)
+#     cbar = plt.colorbar(
+#         ax.collections[0],
+#         cax=cax,
+#         label=attr[0],
+#         shrink=0.8,
+#         aspect=20
+#     )
+#     cbar.ax.set_ylabel('')
+#     # --- Finalizing the figure ---
+#     plt.suptitle(f"Epoch {epoch_number}", fontsize=20, fontweight='bold')
+#     plt.tight_layout(rect=[0, 0, 1, 0.96])
+#     plt.savefig(filename, format='png', dpi=300)
+#     plt.show()
 
 def plot_one_dim(data, target, epoch_number, models_prefixs_to_compare, filename, 
                  dim2=1, attr=['Length', 'Charge', 'Hydrophobic moment'], 
@@ -328,58 +295,58 @@ def plot_one_dim(data, target, epoch_number, models_prefixs_to_compare, filename
     plt.savefig(filename, format='png', dpi=150)
     plt.show()
     
-def plot_dim(data, target, epoch_number, models_prefixs_to_compare, filename, dim2=1, attr = ['Length', 'Charge' , 'Hydrophobic moment'], xlim=None, ylim=None):
-    n_rows = len(attr)
-    n_cols = int(data.shape[0]/len(attr))
-    n_plots = n_rows * n_cols
-    n_sets = target.ndim
+# def plot_dim(data, target, epoch_number, models_prefixs_to_compare, filename, dim2=1, attr = ['Length', 'Charge' , 'Hydrophobic moment'], xlim=None, ylim=None):
+#     n_rows = len(attr)
+#     n_cols = int(data.shape[0]/len(attr))
+#     n_plots = n_rows * n_cols
+#     n_sets = target.ndim
     
-    min_row = []
-    max_row = []
-    for i in range(len(attr)):
-        if target.shape[2] >= i+1:
-            min_row.append(np.nanmin(target[i*n_cols:(i*n_cols)+n_cols,:,i]))
-            max_row.append(np.nanmax(target[i*n_cols:(i*n_cols)+n_cols,:,i]))
+#     min_row = []
+#     max_row = []
+#     for i in range(len(attr)):
+#         if target.shape[2] >= i+1:
+#             min_row.append(np.nanmin(target[i*n_cols:(i*n_cols)+n_cols,:,i]))
+#             max_row.append(np.nanmax(target[i*n_cols:(i*n_cols)+n_cols,:,i]))
         
-    fig, axes = plt.subplots(
-        nrows=n_rows,
-        ncols=n_cols,
-        figsize=(5*n_cols, 5*n_rows),
-        dpi=150           
-    )
+#     fig, axes = plt.subplots(
+#         nrows=n_rows,
+#         ncols=n_cols,
+#         figsize=(5*n_cols, 5*n_rows),
+#         dpi=150           
+#     )
 
-    for i in range(n_cols):
-        for j in range(n_rows):
-            if target.shape[2] >= j+1:
-                axes[j,i].scatter(
-                            x=data[(j*n_cols)+i,:, j],
-                            y=data[(j*n_cols)+i,:, dim2],
-                            c=target[(j*n_cols)+i,:,j],
-                            s=24,
-                            linewidths=0,
-                            cmap="viridis",
-                            alpha=0.5,
-                            vmin=min_row[j],  
-                            vmax=max_row[j]  
-                )
-                axes[j,i].set_title(f'{models_prefixs_to_compare[i].split("_ar-vae")[0]}', fontsize = 16)
-                axes[j,i].set_xlabel(f'dimension: {attr[j]}', fontsize=14)
-                axes[j,i].set_ylabel(f'not regularized dimension', fontsize=14)
-    for i in range(n_rows):
-        divider = make_axes_locatable(axes[i, n_cols-1])
-        cax = divider.append_axes("right", size="5%", pad=0.1)
-        cbar_ax_row = fig.colorbar(
-            axes[i, n_cols-1].collections[0], 
-            cax=cax,
-            label='Length',
-            shrink=0.8,
-            aspect=20 
-        )
-        cbar_ax_row.ax.set_ylabel('')
-    fig.suptitle(f"Epoch {epoch_number}", fontsize=20, fontweight='bold')
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig(filename, format='png', dpi=150)
-    plt.show()
+#     for i in range(n_cols):
+#         for j in range(n_rows):
+#             if target.shape[2] >= j+1:
+#                 axes[j,i].scatter(
+#                             x=data[(j*n_cols)+i,:, j],
+#                             y=data[(j*n_cols)+i,:, dim2],
+#                             c=target[(j*n_cols)+i,:,j],
+#                             s=24,
+#                             linewidths=0,
+#                             cmap="viridis",
+#                             alpha=0.5,
+#                             vmin=min_row[j],  
+#                             vmax=max_row[j]  
+#                 )
+#                 axes[j,i].set_title(f'{models_prefixs_to_compare[i].split("_ar-vae")[0]}', fontsize = 16)
+#                 axes[j,i].set_xlabel(f'dimension: {attr[j]}', fontsize=14)
+#                 axes[j,i].set_ylabel(f'not regularized dimension', fontsize=14)
+#     for i in range(n_rows):
+#         divider = make_axes_locatable(axes[i, n_cols-1])
+#         cax = divider.append_axes("right", size="5%", pad=0.1)
+#         cbar_ax_row = fig.colorbar(
+#             axes[i, n_cols-1].collections[0], 
+#             cax=cax,
+#             label='Length',
+#             shrink=0.8,
+#             aspect=20 
+#         )
+#         cbar_ax_row.ax.set_ylabel('')
+#     fig.suptitle(f"Epoch {epoch_number}", fontsize=20, fontweight='bold')
+#     plt.tight_layout(rect=[0, 0, 1, 0.96])
+#     plt.savefig(filename, format='png', dpi=150)
+#     plt.show()
 
 def MIC_calc(seq_list):
     col = ['E. coli ATCC11775', 'P. aeruginosa PAO1', 'P. aeruginosa PA14', 'S. aureus ATCC12600', 'E. coli AIG221',
@@ -550,13 +517,13 @@ def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1
                     outputs = decoder(z)
                     src = outputs.permute(1, 2, 0)  # B x C x S
                     src_decoded = src.argmax(dim=1) # B x S
-                    decoded = dataset_lib.decoded(src_decoded, "") 
+                    decoded = data_describe.decoded(src_decoded, "") 
                     filtered_list = [item for item in decoded if item.strip()]
                     indexes = [index for index, item in enumerate(decoded) if item.strip()]
                     if mode == 'real':
                         attrs = attributes_input
                     else:
-                        labels = dataset_lib.calculate_physchem_test(filtered_list)
+                        labels = data_describe.calculate_physchem_test(filtered_list)
                         mics = MIC_calc(filtered_list)
                         hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
                         features = hemolytic_classifier.get_input_features(np.array(filtered_list))
@@ -599,10 +566,10 @@ def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1
                     outputs = decoder(z_batch)
                     src = outputs.permute(1, 2, 0)  # B x C x S
                     src_decoded = src.argmax(dim=1) # B x S
-                    decoded = dataset_lib.decoded(src_decoded, "") 
+                    decoded = data_describe.decoded(src_decoded, "") 
                     filtered_list = [item for item in decoded if item.strip()]
                     indexes = [index for index, item in enumerate(decoded) if item.strip()]
-                    labels = dataset_lib.calculate_physchem_test(filtered_list)
+                    labels = data_describe.calculate_physchem_test(filtered_list)
                     mics = MIC_calc(filtered_list)
                     hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
                     features = hemolytic_classifier.get_input_features(np.array(filtered_list))
@@ -662,7 +629,7 @@ def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1
         return aggregated_z_points, aggregated_attr_labels_and_mae, epoch_number, save_filename, dim2, 
     else:
         return aggregated_z_points, aggregated_attr_labels, epoch_number, save_filename, dim2
-    plot_dim(aggregated_z_points, aggregated_attr_labels, save_filename, dim2=dim2)
+    # plot_dim(aggregated_z_points, aggregated_attr_labels, save_filename, dim2=dim2)
 
 def save_sequences(seqs, filename):
     with open(filename, "w", newline="") as file:
@@ -693,11 +660,11 @@ def calculate_metric_stats(sequences, attr_name, device, classifiers=None):
     val = None
     try:
         if 'Length' in attr_name:
-            val = dataset_lib.calculate_length_test(sequences)
+            val = data_describe.calculate_length_test(sequences)
         elif 'Charge' in attr_name:
-            val = dataset_lib.calculate_charge(sequences)
+            val = data_describe.calculate_charge(sequences)
         elif 'Hydrophobicity' in attr_name:
-            val = dataset_lib.calculate_hydrophobicity(sequences)
+            val = data_describe.calculate_hydrophobicity(sequences)
         elif 'MIC E.coli' in attr_name:
             val = MIC_calc(sequences)[:, 0].cpu().numpy()
         elif 'MIC S.aureus' in attr_name:
@@ -792,7 +759,7 @@ def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, at
                     raw_seq = decoder.generate_from(1000, params["latent_dim"], target_dims, s_arg, dim, val)
                 else:
                     raw_seq = decoder.generate_from(1000, params["latent_dim"], target_dims, s_arg)
-                decoded_seq = dataset_lib.decoded(dataset_lib.from_one_hot(raw_seq.permute(1, 0, 2)), "0")
+                decoded_seq = data_describe.decoded(data_describe.from_one_hot(raw_seq.permute(1, 0, 2)), "0")
                 clean_seq = clean_sequences(decoded_seq)
                 generated[f"{model_name}_{suffix}"] = clean_seq
                 for attr in target_attrs:
@@ -810,7 +777,7 @@ def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, at
             
                 outputs = decoder(mod_mu)
                 seq_idx = outputs.permute(1, 2, 0).argmax(dim=1)
-                mod_decoded_seq = dataset_lib.decoded(seq_idx, "")
+                mod_decoded_seq = data_describe.decoded(seq_idx, "")
                 clean_mod_seq = clean_sequences(mod_decoded_seq)
                 generated_analog[f"{model_name}_{suffix}"] = clean_mod_seq
                 for attr in target_attrs:
@@ -897,16 +864,18 @@ def latent_explore_test(encoders_list, decoders_list, shifts, data_loader, param
                     s_arg = [shift_val * (-1 if attr in inverted_attrs else 1) for attr in target_attrs]
                     shift_label = str(shift_val)
 
-                # NEW CLEAN SUFFIX: modelname_attributes_shift
-                # Matches regex: r'(.*)(_[A-Za-z0-9\.\s]+)(_[-+]?\d+)$'
-                key_suffix = f"{model_name}_{attr_str}_{shift_label}"
+                # Instead of one key_suffix, use a base string
+                base_name = f"{model_name}_{attr_str}"
                 
                 # 4. UNCONSTRAINED GENERATION
                 gen_args = [1000, params["latent_dim"], target_dims, s_arg]
                 raw_seq = decoder.generate_from(*gen_args) if val is None else decoder.generate_from(*gen_args, dim, val)
                 
-                clean_seq = clean_sequences(dataset_lib.decoded(dataset_lib.from_one_hot(raw_seq.permute(1, 0, 2)), "0"))
-                generated[key_suffix] = clean_seq
+                clean_seq = clean_sequences(data_describe.decoded(data_describe.from_one_hot(raw_seq.permute(1, 0, 2)), "0"))
+                
+                # ADD 'unconstrained' TO THE KEY HERE
+                unconstrained_key = f"{base_name}_unconstrained_{shift_label}"
+                generated[unconstrained_key] = clean_seq
                 
                 for attr in target_attrs:
                     if model_name not in dfs_data[attr]: dfs_data[attr][model_name] = []
@@ -923,8 +892,11 @@ def latent_explore_test(encoders_list, decoders_list, shifts, data_loader, param
             
                 outputs = decoder(mod_mu)
                 seq_idx = outputs.permute(1, 2, 0).argmax(dim=1)
-                clean_mod_seq = clean_sequences(dataset_lib.decoded(seq_idx, ""))
-                generated_analog[key_suffix] = clean_mod_seq
+                clean_mod_seq = clean_sequences(data_describe.decoded(seq_idx, ""))
+                
+                # ADD 'analog' TO THE KEY HERE
+                analog_key = f"{base_name}_analog_{shift_label}"
+                generated_analog[analog_key] = clean_mod_seq
                 
                 for attr in target_attrs:
                     if model_name not in dfs_analog_data[attr]: dfs_analog_data[attr][model_name] = []
@@ -979,230 +951,6 @@ def calculate_pairwise_similarity(list1, list2):
         similarity = levenshtein_similarity(s1, list2[i])
         results.append((s1, list2[i], similarity))
     return results  
-    
-def hobbit(fitted_transformers, encoder_name, decoder_name, data_loader, params, attr_dict, shift_value = 0.2):
-    seed = 42
-    np.random.seed(seed)
-    random.seed(seed)
-    manual_seed(seed)
-    cuda.manual_seed(seed)
-    backends.cudnn.deterministic = True
-    backends.cudnn.benchmark = False
-    os.environ["PYTHONHASHSEED"] = str(seed)
-    DEVICE = torch.device('cpu')
-    generated_analog = {}
-    tmp_dict = {}
-    normalized_tmp_dict = {}
-    hobbit_path = {shift_value: [0,1,2],
-                   -shift_value: [0,1,2]}
-    encoder = EncoderRNN(
-        params["num_heads"],
-        params["num_layers"],
-        params["latent_dim"],
-        params["encoding"],
-        params["dropout"],
-        params["layer_norm"],
-    )
-    decoder = DecoderRNN(
-        params["num_heads"],
-        params["num_layers"],
-        params["latent_dim"],
-        params["encoding"],
-        params["dropout"],
-        params["layer_norm"],
-    )
-    encoder.load_state_dict(torch.load(f"./first_working_models/{encoder_name}", map_location=DEVICE))
-    encoder = encoder.to(DEVICE)
-    decoder.load_state_dict(torch.load(f"./first_working_models/{decoder_name}", map_location=DEVICE))
-    decoder = decoder.to(DEVICE)
-    encoder = encoder.eval()
-    decoder = decoder.eval()         
-
-    attr_name = [k for k in attr_dict.keys()]
-    hobbit_results = []
-    hobbit_normalized_results = []
-    hobbit_normalized_all_results = []
-    hobbit_all_results = []
-    model = encoder_name.split("_ar-vae")[0]
-
-    z_sample = torch.randn(10000, 56).to(DEVICE)
-    z_sample[:, :3] = 0.0
-    outputs = decoder(z_sample)
-    src = outputs.permute(1, 2, 0) 
-    seq = src.argmax(dim=1)
-    generated_sequences = dataset_lib.decoded(seq, "")
-    peptides = seq.permute(1, 0)
-    generated_sequences = [seq.strip().rstrip("0") for seq in generated_sequences]
-    generated_sequences = [seq for seq in generated_sequences if '0' not in seq]
-    cleaned_sequences = [seq for seq in generated_sequences if seq]
-    similarity_scores = calculate_pairwise_similarity(cleaned_sequences, cleaned_sequences)
-    scores_only = [score for s1, s2, score in similarity_scores]
-    mean_score = np.mean(scores_only)
-    base_sequences = cleaned_sequences
-    generated_analog[model+"_"+str(0)] = peptides
-    if 'Length' in attr_name:
-        if len(peptides) == 0:
-            # unconstrained_dfs_analog_dict_combo['Length'].append(f'nan ± nan')
-            curr_len = f'nan ± nan'
-            normalized_len = f'nan ± nan'
-        else:
-            attr = dataset_lib.calculate_length_test(cleaned_sequences)
-            length = np.array(attr).reshape(-1, 1)
-            # print(np.array(attr).reshape(-1, 1).shape)
-            # transformed_length_np = fitted_transformers[0].transform(np.array(attr).reshape(-1, 1))
-            data = np.array(attr).reshape(-1, 1)
-            data_min = np.min(data)
-            data_max = np.max(data)
-            transformed_length_np = (data - data_min) / (data_max - data_min)
-            curr_len = f'{np.mean(attr, dtype=np.float64):.2f} ± {np.std(attr, dtype=np.float64):.2f}'
-            normalized_len = f'{np.mean(transformed_length_np):.5f} ± {np.std(transformed_length_np):.5f}'
-            # unconstrained_dfs_analog_dict_combo['Length'].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-    if 'Charge' in attr_name:
-        if len(peptides) == 0:
-            # unconstrained_dfs_analog_dict_combo['Charge'].append(f'nan ± nan')
-            curr_charge = f'nan ± nan'
-            normalized_charge = f'nan ± nan'
-        else:
-            attr = dataset_lib.calculate_charge(cleaned_sequences)
-            charge = np.array(attr).reshape(-1, 1)
-            # transformed_charge_np = fitted_transformers[1].transform(np.array(attr).reshape(-1, 1))
-            data = np.array(attr).reshape(-1, 1)
-            data_min = np.min(data)
-            data_max = np.max(data)
-            transformed_charge_np = (data - data_min) / (data_max - data_min)
-            curr_charge = f'{np.mean(attr):.2f} ± {np.std(attr):.2f}'
-            normalized_charge = f'{np.mean(transformed_charge_np):.5f} ± {np.std(transformed_charge_np):.5f}'
-            # unconstrained_dfs_analog_dict_combo['Charge'].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-    if 'Hydrophobicity' in attr_name:
-        if len(peptides) == 0:
-            # unconstrained_dfs_analog_dict_combo['Hydrophobicity'].append(f'nan ± nan')
-            curr_hydr = f'nan ± nan'
-            normalized_hydr = f'nan ± nan'
-        else:
-            attr = dataset_lib.calculate_hydrophobicity(cleaned_sequences)
-            hydr = np.array(attr).reshape(-1, 1)
-            # transformed_hydrophobicity_np = fitted_transformers[2].transform(np.array(attr).reshape(-1, 1))
-            data = np.array(attr).reshape(-1, 1)
-            data_min = np.min(data)
-            data_max = np.max(data)
-            transformed_hydrophobicity_np = (data - data_min) / (data_max - data_min)
-            curr_hydr = f'{np.mean(attr):.2f} ± {np.std(attr):.2f}'
-            normalized_hydr = f'{np.mean(transformed_hydrophobicity_np):.5f} ± {np.std(transformed_hydrophobicity_np):.5f}'
-            # unconstrained_dfs_analog_dict_combo['Hydrophobicity'].append(f'{np.mean(attr):.2f} ± {np.std(attr):.2f}')
-    hobbit_results.append([0, curr_len, curr_charge, curr_hydr, mean_score])
-    hobbit_normalized_results.append([0, normalized_len, normalized_charge, normalized_hydr, mean_score])
-    hobbit_normalized_all_results.append([0, transformed_length_np, transformed_charge_np, transformed_hydrophobicity_np, scores_only])
-    hobbit_all_results.append([0, length, charge, hydr, scores_only])
-    for shift, dims in hobbit_path.items():    
-        for dim in dims:
-            x = dataset_lib.pad(dataset_lib.to_one_hot(cleaned_sequences)).reshape(25, -1)
-            x = x.int()
-            mu = encoder.encode(x)
-            mu, std = encoder(peptides)
-            mod_mu = mu.clone().detach()
-            mod_mu[:, dim] = mod_mu[:, dim] + shift
-            outputs = decoder(mod_mu)
-            src = outputs.permute(1, 2, 0) 
-            seq = src.argmax(dim=1)
-            modified_sequences = dataset_lib.decoded(seq, "")
-            peptides = seq.permute(1, 0)
-            # save_sequences(modified_sequences, f"{model}_modified_{attr_name}_{shift_value}.csv")
-    
-            modified_sequences = [seq.strip().rstrip("0") for seq in modified_sequences]
-            modified_sequences = [seq for seq in modified_sequences if '0' not in seq]
-            cleaned_sequences = [seq for seq in modified_sequences if seq]
-            generated_analog[model+'_'+str(dim)+"_"+str(shift)] = cleaned_sequences
-            similarity_scores = calculate_pairwise_similarity(base_sequences, cleaned_sequences)
-            scores_only = [score for s1, s2, score in similarity_scores]
-            mean_score = np.mean(scores_only)
-            if 'Length' in attr_name:
-                if len(cleaned_sequences) == 0:
-                    # unconstrained_dfs_analog_dict_combo['Length'].append(f'nan ± nan')
-                    curr_len = f'nan ± nan'
-                    normalized_len = f'nan ± nan'
-                else:
-                    attr = dataset_lib.calculate_length_test(cleaned_sequences)
-                    length = np.array(attr).reshape(-1, 1)
-                    # transformed_length_np = fitted_transformers[0].transform(np.array(attr).reshape(-1, 1))
-                    data = np.array(attr).reshape(-1, 1)
-                    data_min = np.min(data)
-                    data_max = np.max(data)
-                    transformed_length_np = (data - data_min) / (data_max - data_min)
-                    curr_len = f'{np.mean(attr):.2f} ± {np.std(attr):.2f}'
-                    normalized_len = f'{np.mean(transformed_length_np):.5f} ± {np.std(transformed_length_np):.5f}'
-            if 'Charge' in attr_name:
-                if len(cleaned_sequences) == 0:
-                    # unconstrained_dfs_analog_dict_combo['Charge'].append(f'nan ± nan')
-                    curr_charge = f'nan ± nan'
-                    normalized_charge = f'nan ± nan'
-                else:
-                    attr = dataset_lib.calculate_charge(cleaned_sequences)
-                    charge = np.array(attr).reshape(-1, 1)
-                    # transformed_charge_np = fitted_transformers[1].transform(np.array(attr).reshape(-1, 1))
-                    data = np.array(attr).reshape(-1, 1)
-                    data_min = np.min(data)
-                    data_max = np.max(data)
-                    transformed_charge_np = (data - data_min) / (data_max - data_min)
-                    curr_charge = f'{np.mean(attr):.2f} ± {np.std(attr):.2f}'
-                    normalized_charge = f'{np.mean(transformed_charge_np):.5f} ± {np.std(transformed_charge_np):.5f}'
-            if 'Hydrophobicity' in attr_name:
-                if len(cleaned_sequences) == 0:
-                    # unconstrained_dfs_analog_dict_combo['Hydrophobicity'].append(f'nan ± nan')
-                    curr_hydr = f'nan ± nan'
-                    normalized_hydr = f'nan ± nan'
-                else:
-                    attr = dataset_lib.calculate_hydrophobicity(cleaned_sequences)
-                    hydr = np.array(attr).reshape(-1, 1)
-                    # transformed_hydrophobicity_np = fitted_transformers[2].transform(np.array(attr).reshape(-1, 1))
-                    data = np.array(attr).reshape(-1, 1)
-                    data_min = np.min(data)
-                    data_max = np.max(data)
-                    transformed_hydrophobicity_np = (data - data_min) / (data_max - data_min)
-                    curr_hydr = f'{np.mean(attr):.2f} ± {np.std(attr):.2f}'
-                    normalized_hydr = f'{np.mean(transformed_hydrophobicity_np):.5f} ± {np.std(transformed_hydrophobicity_np):.5f}'
-            hobbit_results.append([shift, curr_len, curr_charge, curr_hydr, mean_score])
-            hobbit_normalized_results.append([shift, normalized_len, normalized_charge, normalized_hydr, mean_score])
-            hobbit_normalized_all_results.append([shift, transformed_length_np, transformed_charge_np, transformed_hydrophobicity_np, scores_only])
-            hobbit_all_results.append([0, length, charge, hydr, scores_only])
-    tmp_dict[str(attr_name)] = pd.DataFrame(hobbit_results)
-    normalized_tmp_dict[str(attr_name)] = pd.DataFrame(hobbit_normalized_results)
-    all_data = []
-    for i, (shift, transformed_length, transformed_charge, transformed_hydr, mean_score) in enumerate(hobbit_normalized_all_results):
-        num_rows = transformed_length.shape[0]
-    
-        data_block = {
-            'step': np.repeat('p'+str(i), num_rows),
-            'shift': np.repeat(shift, num_rows),  
-            'length': transformed_length.flatten(), 
-            'charge': transformed_charge.flatten(),
-            'hydrophobicity': transformed_hydr.flatten(),
-            'similarity': np.array(mean_score)
-        }
-        all_data.append(pd.DataFrame(data_block))
-    final_df = pd.concat(all_data, ignore_index=True)
-    df_normalized_melted = final_df.melt(id_vars=['step'],
-                              value_vars=['length', 'charge', 'hydrophobicity', 'similarity'],
-                              var_name='Metric',
-                              value_name='Value')
-    all_data = []
-    for i, (shift, length, charge, hydr, mean_score) in enumerate(hobbit_all_results):
-        num_rows = length.shape[0]
-    
-        data_block = {
-            'step': np.repeat('p'+str(i), num_rows),
-            'shift': np.repeat(shift, num_rows),  
-            'length': length.flatten(), 
-            'charge': charge.flatten(),
-            'hydrophobicity': hydr.flatten(),
-            'similarity': np.array(mean_score)
-        }
-        all_data.append(pd.DataFrame(data_block))
-    final_df = pd.concat(all_data, ignore_index=True)
-    df_melted = final_df.melt(id_vars=['step'],
-                              value_vars=['length', 'charge', 'hydrophobicity', 'similarity'],
-                              var_name='Metric',
-                              value_name='Value')
-    return tmp_dict, normalized_tmp_dict, df_melted, df_normalized_melted, generated_analog  
 
 def transform_string_to_filename(original_string, segment_name):
     replacement_with_shift = fr'\1_{segment_name}\2\3.csv'
@@ -1219,102 +967,102 @@ def generate_fixed_sequences(encoder_name, decoder_name, dim_to_shift, shifts, d
     DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
     encoder, decoder = load_model_pair(encoder_name, decoder_name, params, DEVICE)
     raw_seq = decoder.generate_from(5000, params["latent_dim"], dim_to_shift, shifts, dim_to_const_val=dim_to_const_val, val=const_val)
-    decoded_seq = dataset_lib.decoded(dataset_lib.from_one_hot(raw_seq.permute(1, 0, 2)), "0")
+    decoded_seq = data_describe.decoded(data_describe.from_one_hot(raw_seq.permute(1, 0, 2)), "0")
     clean_seq = clean_sequences(decoded_seq)
     return clean_seq
 
-def create_ridgeline_plot(df, title, s1='low activity (high MIC)', s2='high activity (low MIC)', e=40, x_min=None, x_max = None, ylabel = 'non-toxic', flip_axis=False):
-    min_x = df['Score'].min() if x_min is None else x_min
-    max_x = df['Score'].max() if x_max is None else x_max
-    x_range_margin = (max_x - min_x) * 0.05
-    x_range_min = min_x - x_range_margin 
-    x_range_max = max_x + x_range_margin 
+# def create_ridgeline_plot(df, title, s1='low activity (high MIC)', s2='high activity (low MIC)', e=40, x_min=None, x_max = None, ylabel = 'non-toxic', flip_axis=False):
+#     min_x = df['Score'].min() if x_min is None else x_min
+#     max_x = df['Score'].max() if x_max is None else x_max
+#     x_range_margin = (max_x - min_x) * 0.05
+#     x_range_min = min_x - x_range_margin 
+#     x_range_max = max_x + x_range_margin 
 
-    sns.set_theme(style="white", rc={"axes.facecolor": (0, 0, 0, 0)})
-    keys = df['Key'].unique()
-    keys.sort()
-    num_keys = len(keys)
+#     sns.set_theme(style="white", rc={"axes.facecolor": (0, 0, 0, 0)})
+#     keys = df['Key'].unique()
+#     keys.sort()
+#     num_keys = len(keys)
     
-    fig, axes = plt.subplots(nrows=num_keys, ncols=1, figsize=(8,2/3 * num_keys), 
-                             sharex=True)                      
-    if num_keys == 1:
-        axes = [axes]
-    if num_keys > 0:
-        axes[0].set_xlim(x_range_min, x_range_max)
-    palette = sns.color_palette("viridis", num_keys)
+#     fig, axes = plt.subplots(nrows=num_keys, ncols=1, figsize=(8,2/3 * num_keys), 
+#                              sharex=True)                      
+#     if num_keys == 1:
+#         axes = [axes]
+#     if num_keys > 0:
+#         axes[0].set_xlim(x_range_min, x_range_max)
+#     palette = sns.color_palette("viridis", num_keys)
     
-    for i, key in enumerate(keys):
-        subset = df[df['Key'] == key]
-        ax = axes[i]
+#     for i, key in enumerate(keys):
+#         subset = df[df['Key'] == key]
+#         ax = axes[i]
         
-        sns.kdeplot(
-            data=subset, 
-            x="Score", 
-            fill=True, 
-            alpha=0.8, 
-            linewidth=1.5, 
-            color=palette[i],
-            ax=ax
-        )
-        ax.axhline(0, color='black', linewidth=1, linestyle='-')
-        start_index = key.find('=')
-        new_key = key[start_index+1:]
-        end_index = ylabel.find("\n")
-        if end_index == -1:
-            end_index = len(ylabel)
-        ax.text(
-            x=0.0,
-            y=0.1,   
-            s = rf'$\alpha_{{{ylabel[:end_index]}}} = {new_key}$',
-            transform=ax.transAxes, 
-            fontsize=12, 
-            ha='left'
-        )
+#         sns.kdeplot(
+#             data=subset, 
+#             x="Score", 
+#             fill=True, 
+#             alpha=0.8, 
+#             linewidth=1.5, 
+#             color=palette[i],
+#             ax=ax
+#         )
+#         ax.axhline(0, color='black', linewidth=1, linestyle='-')
+#         start_index = key.find('=')
+#         new_key = key[start_index+1:]
+#         end_index = ylabel.find("\n")
+#         if end_index == -1:
+#             end_index = len(ylabel)
+#         ax.text(
+#             x=0.0,
+#             y=0.1,   
+#             s = rf'$\alpha_{{{ylabel[:end_index]}}} = {new_key}$',
+#             transform=ax.transAxes, 
+#             fontsize=12, 
+#             ha='left'
+#         )
         
-        ax.set_ylabel('')
-        ax.set_yticks([])  
-        ax.spines['left'].set_visible(False)
-        ax.spines['right'].set_visible(False) 
-        ax.spines['top'].set_visible(False) 
+#         ax.set_ylabel('')
+#         ax.set_yticks([])  
+#         ax.spines['left'].set_visible(False)
+#         ax.spines['right'].set_visible(False) 
+#         ax.spines['top'].set_visible(False) 
 
-        if i < num_keys - 1:
-            ax.set_xlabel('')
-            ax.tick_params(axis='x', length=0, width=0, labelbottom=False)
-        else:
-            ax.tick_params(axis='x', direction='in', length=5, width=1, 
-                            labelbottom=False, color='black') 
+#         if i < num_keys - 1:
+#             ax.set_xlabel('')
+#             ax.tick_params(axis='x', length=0, width=0, labelbottom=False)
+#         else:
+#             ax.tick_params(axis='x', direction='in', length=5, width=1, 
+#                             labelbottom=False, color='black') 
             
-            ax.set_xlabel('') 
-            ax.set_xticks([])
+#             ax.set_xlabel('') 
+#             ax.set_xticks([])
 
-            ax.text(
-                x=x_range_min + e, 
-                y=-0.002,
-                s=s1, 
-                fontsize=12,
-                ha='left', 
-                va='top',
-                transform=ax.transData
-            )
-            ax.text(
-                x=x_range_max - e, 
-                y=-0.002, 
-                s=s2, 
-                fontsize=12,
-                ha='right', 
-                va='top',
-                transform=ax.transData
-            )
+#             ax.text(
+#                 x=x_range_min + e, 
+#                 y=-0.002,
+#                 s=s1, 
+#                 fontsize=12,
+#                 ha='left', 
+#                 va='top',
+#                 transform=ax.transData
+#             )
+#             ax.text(
+#                 x=x_range_max - e, 
+#                 y=-0.002, 
+#                 s=s2, 
+#                 fontsize=12,
+#                 ha='right', 
+#                 va='top',
+#                 transform=ax.transData
+#             )
 
-    fig.supylabel(ylabel + ' →', fontsize=14, fontweight='bold', x=0.95) 
-    # fig.suptitle(title, fontsize=16, y=1.02)
-    plt.subplots_adjust(hspace=-0.5) 
+#     fig.supylabel(ylabel + ' →', fontsize=14, fontweight='bold', x=0.95) 
+#     # fig.suptitle(title, fontsize=16, y=1.02)
+#     plt.subplots_adjust(hspace=-0.5) 
 
-    if flip_axis:
-        if num_keys > 0:
-            axes[0].invert_xaxis()
+#     if flip_axis:
+#         if num_keys > 0:
+#             axes[0].invert_xaxis()
             
-    plt.show()
+#     plt.show()
     
 def autolabel(rects, ax, threshold=500):
     for rect in rects:

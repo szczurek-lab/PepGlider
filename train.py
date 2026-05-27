@@ -26,6 +26,6 @@ if __name__ == '__main__':
         # "hyperparams_tuning_pepglider_physchem_mic_01range_ar-vae_epoch1500_decoder.pt"
     )
     # run(['positiv_negativ_AMPs'])
-    run(['positiv_AMPs'], encoder_filepath, decoder_filepath)    
+    run(encoder_filepath, decoder_filepath)    
     # run(['positiv_AMPs'])
 

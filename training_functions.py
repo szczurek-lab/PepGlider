@@ -5,7 +5,7 @@ from torch.distributions import Normal
 torch.autograd.set_detect_anomaly(True)
 from model.model import EncoderRNN, DecoderRNN
 import numpy as np
-import clearml
+# import clearml
 from typing import Optional, Literal
 from torch.optim import Adam
 import itertools
@@ -29,7 +29,7 @@ def run_epoch_iwae(
     device: torch.device,
     epoch: int,
     kl_beta: float,
-    logger: Optional[clearml.Logger],
+    # logger: Optional[clearml.Logger],
     train_log_file: str,
     eval_log_file: str,
     optimizer: Optional[optim.Optimizer],
@@ -188,7 +188,7 @@ def run_epoch_iwae(
         ar_vae_metrics["SAP_score"] = m.compute_sap_score(latent_codes, attributes, attr_list)
     if eval_mode == "deep": 
         metrics_list = mn.report_sequence_char_test(
-                logger,
+                # logger,
                 hue=f"{mode} - z",
                 epoch=epoch,
                 seq_true=np.concatenate(seq_true, axis=1),
@@ -197,75 +197,75 @@ def run_epoch_iwae(
                 physchem_original = np.concatenate(all_physchem, axis=0)
             )
 
-    if logger is not None:
-        if ar_vae_flg:
-            mn.report_scalars(
-                logger,
-                mode,
-                epoch,
-                scalars=[
-                    ("Total Loss", stat_sum["total"] / len_data),
-                    (
-                        "Cross Entropy Loss",
-                        "sum over samples",
-                        stat_sum["ce_sum"] / len_data,
-                    ),
-                    (
-                        "KL Divergence",
-                        "mean over samples",
-                        stat_sum["kl_mean"] / len_data,
-                    ),
-                    ("Regularization Loss", stat_sum["reg_loss"]),
-                ],
-            )
-        else:
-            mn.report_scalars(
-                logger,
-                mode,
-                epoch,
-                scalars=[
-                    ("Total Loss", stat_sum["total"] / len_data),
-                    (
-                        "Cross Entropy Loss",
-                        "sum over samples",
-                        stat_sum["ce_sum"] / len_data,
-                    ),
-                    (
-                        "KL Divergence",
-                        "mean over samples",
-                        stat_sum["kl_mean"] / len_data,
-                    ),
-                ],
-            )
-    else:
-        data_row = [mode, epoch, stat_sum["total"] / len_data, 
-                        stat_sum["ce_sum"] / len_data, 
-                        stat_sum["kl_mean"] / len_data, 
-                        kl_beta * stat_sum["kl_mean"] / len_data]
-        if ar_vae_flg:
-            data_row = data_row + [stat_sum["reg_loss"].item(),
-                        stat_sum["reg_loss_gamma"].item(),
-                        factor]
-            if scale_factor_flg:
-                        data_row = data_row + [stat_sum["scale_factor"].item()] 
-        with open(ROOT_DIR / train_log_file, 'a', newline='') as csvfile:
+    # if logger is not None:
+    #     if ar_vae_flg:
+    #         mn.report_scalars(
+    #             logger,
+    #             mode,
+    #             epoch,
+    #             scalars=[
+    #                 ("Total Loss", stat_sum["total"] / len_data),
+    #                 (
+    #                     "Cross Entropy Loss",
+    #                     "sum over samples",
+    #                     stat_sum["ce_sum"] / len_data,
+    #                 ),
+    #                 (
+    #                     "KL Divergence",
+    #                     "mean over samples",
+    #                     stat_sum["kl_mean"] / len_data,
+    #                 ),
+    #                 ("Regularization Loss", stat_sum["reg_loss"]),
+    #             ],
+    #         )
+    #     else:
+    #         mn.report_scalars(
+    #             # logger,
+    #             mode,
+    #             epoch,
+    #             scalars=[
+    #                 ("Total Loss", stat_sum["total"] / len_data),
+    #                 (
+    #                     "Cross Entropy Loss",
+    #                     "sum over samples",
+    #                     stat_sum["ce_sum"] / len_data,
+    #                 ),
+    #                 (
+    #                     "KL Divergence",
+    #                     "mean over samples",
+    #                     stat_sum["kl_mean"] / len_data,
+    #                 ),
+    #             ],
+    #         )
+    # else:
+    data_row = [mode, epoch, stat_sum["total"] / len_data, 
+                    stat_sum["ce_sum"] / len_data, 
+                    stat_sum["kl_mean"] / len_data, 
+                    kl_beta * stat_sum["kl_mean"] / len_data]
+    if ar_vae_flg:
+        data_row = data_row + [stat_sum["reg_loss"].item(),
+                    stat_sum["reg_loss_gamma"].item(),
+                    factor]
+        if scale_factor_flg:
+                    data_row = data_row + [stat_sum["scale_factor"].item()] 
+    with open(ROOT_DIR / train_log_file, 'a', newline='') as csvfile:
+        csv_writer = csv.writer(csvfile)
+        csv_writer.writerow(data_row)
+    if eval_mode == "deep":
+        with open(ROOT_DIR / eval_log_file, 'a', newline='') as csvfile:
+            data_row = data_row + metrics_list
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(data_row)
-        if eval_mode == "deep":
-            with open(ROOT_DIR / eval_log_file, 'a', newline='') as csvfile:
-                data_row = data_row + metrics_list
-                csv_writer = csv.writer(csvfile)
-                csv_writer.writerow(data_row)
 
     return stat_sum["total"] / len_data
 
-def run(data_type, encoder_filepath=None, decoder_filepath=None):
+def run(encoder_filepath=None, decoder_filepath=None):
     global ROOT_DIR 
     ROOT_DIR = Path(__file__).parent
     DATA_DIR = ROOT_DIR / "data"
     global MODELS_DIR 
     MODELS_DIR = ROOT_DIR / "first_working_models"
-    params, train_log_file, eval_log_file, logger = set_params(ROOT_DIR)
+    params, train_log_file, eval_log_file = set_params(ROOT_DIR)
     encoder = EncoderRNN(
         params["num_heads"],
         params["num_layers"],
@@ -318,7 +318,7 @@ def run(data_type, encoder_filepath=None, decoder_filepath=None):
         betas=(0.9, 0.999),
     )
 
-    train_loader, eval_loader = dataset_lib.prepare_data_for_training(DATA_DIR, params['batch_size'], data_type, params['mic_flg'], params['toxicity_flg'], params['reg_dim'], params['normalize_properties_flg'])
+    train_loader, eval_loader = dataset_lib.prepare_data_for_training(DATA_DIR, params['batch_size'], params['mic_flg'], params['toxicity_flg'], params['reg_dim'], params['normalize_properties_flg'])
 
     for epoch in tqdm(range(params["epochs"])):
         epoch = epoch + (10000-params['epochs'])
@@ -338,7 +338,7 @@ def run(data_type, encoder_filepath=None, decoder_filepath=None):
                 decoder=decoder,
                 dataloader=train_loader,
                 device=DEVICE,
-                logger=logger,
+                # logger=logger,
                 train_log_file = train_log_file,
                 eval_log_file = eval_log_file,
                 epoch=epoch,
@@ -362,7 +362,7 @@ def run(data_type, encoder_filepath=None, decoder_filepath=None):
                     decoder=decoder,
                     dataloader=eval_loader,
                     device=DEVICE,
-                    logger=logger,
+                    # logger=logger,
                     train_log_file = train_log_file,
                     eval_log_file = eval_log_file,
                     epoch=epoch,

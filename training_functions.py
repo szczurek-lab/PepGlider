@@ -174,18 +174,20 @@ def run_epoch_iwae(
 
     if mode == 'test':
         latent_codes = np.concatenate(latent_codes, 0)
-        latent_codes_reg = np.concatenate(latent_codes_reg, 0)
         attributes = cat(attributes, dim=0).numpy()
-        attributes_reg = cat(attributes_reg, dim=0).numpy()
         attributes, attr_list = m.extract_relevant_attributes(attributes, reg_dim)
-        print(f'latent_codes_reg shape = {latent_codes_reg.shape}')
-        print(f'attributes shape = {attributes.shape}')
         ar_vae_metrics = {}
-        ar_vae_metrics["Interpretability"] = m.compute_interpretability_metric(latent_codes, attributes, attr_list)
-        ar_vae_metrics["Corr_score"] = m.compute_correlation_score(latent_codes, attributes, attr_list)
-        ar_vae_metrics["Modularity"] = m.compute_modularity(latent_codes, attributes, attr_list)
-        ar_vae_metrics["MIG"] = m.compute_mig(latent_codes, attributes,attr_list)
-        ar_vae_metrics["SAP_score"] = m.compute_sap_score(latent_codes, attributes, attr_list)
+
+        if ar_vae_flg:
+            latent_codes_reg = np.concatenate(latent_codes_reg, 0)
+            attributes_reg = cat(attributes_reg, dim=0).numpy()
+            print(f'latent_codes_reg shape = {latent_codes_reg.shape}')
+            print(f'attributes shape = {attributes.shape}')
+            ar_vae_metrics["Interpretability"] = m.compute_interpretability_metric(latent_codes, attributes, attr_list)
+            ar_vae_metrics["Corr_score"] = m.compute_correlation_score(latent_codes, attributes, attr_list)
+            ar_vae_metrics["Modularity"] = m.compute_modularity(latent_codes, attributes, attr_list)
+            ar_vae_metrics["MIG"] = m.compute_mig(latent_codes, attributes,attr_list)
+            ar_vae_metrics["SAP_score"] = m.compute_sap_score(latent_codes, attributes, attr_list)
     if eval_mode == "deep": 
         metrics_list = mn.report_sequence_char_test(
                 # logger,

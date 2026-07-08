@@ -130,7 +130,7 @@ def compute_modularity(latent_codes, attributes, attr_list):
             mi = mi_partly
         else:
             mi = np.column_stack((mi, padded_mi_partly))
-        modularity = _modularity(mi_partly.reshape(-1, 56))
+        modularity = _modularity(mi_partly.reshape(-1, latent_codes.shape[1]))
         scores[attr_name] = modularity.item()
     scores['mean'] = np.nanmean(_modularity(mi))
     return scores

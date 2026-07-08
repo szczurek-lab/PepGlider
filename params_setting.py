@@ -29,10 +29,10 @@ def set_params(root_dir):
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--kl_beta_schedule", type=float, nargs=3, default=[0.00001, 0.1, 8000])
     parser.add_argument("--train_size", type=int, default=None)
-    parser.add_argument("--epochs", type=int, default=8000)
+    parser.add_argument("--epochs", type=int, default=9020)
     parser.add_argument("--iwae_samples", type=int, default=10)
-    parser.add_argument("--model_name", type=str, default=os.getenv("CLEARML_PROJECT_NAME", 'ar-vae-v4'))
-    parser.add_argument("--task_name", type=str, default=os.getenv("CLEARML_TASK_NAME", "ar-vae 3 dims"))
+    parser.add_argument("--model_name", type=str, default=os.getenv("CLEARML_PROJECT_NAME", 'ar-vae'))
+    parser.add_argument("--task_name", type=str, default=os.getenv("CLEARML_TASK_NAME", "hyperparams_tuning_pepglider_mic_log2_01range_test_with_CDF"))
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--deeper_eval_every", type=int, default=20)
     parser.add_argument("--save_model_every", type=int, default=100)
@@ -46,7 +46,7 @@ def set_params(root_dir):
     parser.add_argument("--mic_flg", type=str2bool, default=True)
     parser.add_argument("--toxicity_flg", type=str2bool, default=True)
     parser.add_argument("--normalize_properties_flg", type=str2bool, default=True)
-    parser.add_argument("--signum_modification_of_dist_matrix_flg", type=str2bool, default=True)
+    parser.add_argument("--signum_modification_of_dist_matrix_flg", type=str2bool, default=False)
 
     args, _ = parser.parse_known_args()
 

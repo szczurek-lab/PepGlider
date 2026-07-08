@@ -5,7 +5,6 @@ from typing import Tuple, Dict, List
 # import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import data.data_describe as data_describe
 # import seaborn as sns
 import torch
 from Bio import SeqIO
@@ -189,50 +188,50 @@ from torch import tensor
 #     normalized_tensor = (tensor - min_vals) / range_vals
 #     return normalized_tensor
 
-def prepare_data_for_training(data_dir, batch_size, mic_flg, toxicity_flg, reg_dim, normalize_properties_flg):
-    # if 'positiv_negativ_AMPs' in data_type and 'uniprot' in data_type:
-    #     data_manager = AMPDataManager(
-    #         positive_filepath = data_dir / 'unlabelled_positive.csv',
-    #         negative_filepath = data_dir / 'unlabelled_negative.csv',
-    #         uniprot_filepath = [data_dir / i for i in ['Uniprot_0_25_train.csv','Uniprot_0_25_test.csv','Uniprot_0_25_val.csv']],
-    #         min_len=MIN_LENGTH,
-    #         max_len=MAX_LENGTH,
-    #         mic_flg = mic_flg,
-    #         data_dir = data_dir)
+def prepare_data_for_training(data_dir, batch_size, data_type,mic_flg, toxicity_flg, reg_dim, normalize_properties_flg):
+    if 'positiv_negativ_AMPs' in data_type and 'uniprot' in data_type:
+        data_manager = AMPDataManager(
+            positive_filepath = data_dir / 'unlabelled_positive.csv',
+            negative_filepath = data_dir / 'unlabelled_negative.csv',
+            uniprot_filepath = [data_dir / i for i in ['Uniprot_0_25_train.csv','Uniprot_0_25_test.csv','Uniprot_0_25_val.csv']],
+            min_len=MIN_LENGTH,
+            max_len=MAX_LENGTH,
+            mic_flg = mic_flg,
+            data_dir = data_dir)
 
-    #     amp_x, amp_y, attributes_input, _ = data_manager.get_uniform_data()
-    # elif 'positiv_negativ_AMPs' in data_type:
-    #     data_manager = AMPDataManager(
-    #         positive_filepath = data_dir / 'unlabelled_positive.csv',
-    #         negative_filepath = data_dir / 'unlabelled_negative.csv',
-    #         min_len=MIN_LENGTH,
-    #         max_len=MAX_LENGTH,
-    #         mic_flg = mic_flg,
-    #         toxicity_flg = toxicity_flg,
-    #         data_dir = data_dir)
+        amp_x, amp_y, attributes_input, _ = data_manager.get_uniform_data()
+    elif 'positiv_negativ_AMPs' in data_type:
+        data_manager = AMPDataManager(
+            positive_filepath = data_dir / 'unlabelled_positive.csv',
+            negative_filepath = data_dir / 'unlabelled_negative.csv',
+            min_len=MIN_LENGTH,
+            max_len=MAX_LENGTH,
+            mic_flg = mic_flg,
+            toxicity_flg = toxicity_flg,
+            data_dir = data_dir)
 
-    #     amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
-    # elif 'positiv_AMPs' in data_type:
-    data_manager = AMPDataManager(
-        positive_filepath = data_dir / 'amp_clean.fasta',
-        # negative_filepath = None,
-        min_len=MIN_LENGTH,
-        max_len=MAX_LENGTH,
-        mic_flg = mic_flg,
-        toxicity_flg = toxicity_flg,
-        data_dir = data_dir)
+        amp_x, amp_y, attributes_input, _ = data_manager.get_merged_data()
+    elif 'positiv_AMPs' in data_type:
+        data_manager = AMPDataManager(
+            positive_filepath = data_dir / 'amp_clean.fasta',
+            negative_filepath = None,
+            min_len=MIN_LENGTH,
+            max_len=MAX_LENGTH,
+            mic_flg = mic_flg,
+            toxicity_flg = toxicity_flg,
+            data_dir = data_dir)
 
-    amp_x, amp_y, attributes_input, _ = data_manager.get_positive_data()
-    # elif 'uniprot' in data_type:
-    #     data_manager = AMPDataManager(
-    #         uniprot_filepath = [data_dir / i for i in ['Uniprot_0_25_train.csv','Uniprot_0_25_test.csv','Uniprot_0_25_val.csv']],
-    #         min_len=MIN_LENGTH,
-    #         max_len=MAX_LENGTH,
-    #         mic_flg = mic_flg,
-    #         toxicity_flg = toxicity_flg,
-    #         data_dir = data_dir)
-    #     amp_x, amp_y, attributes_input, _ = data_manager.get_uniprot_data()
-    attributes = data_describe.normalize_attributes(attributes_input, reg_dim)
+        amp_x, amp_y, attributes_input, _ = data_manager.get_positive_data()
+    elif 'uniprot' in data_type:
+        data_manager = AMPDataManager(
+            uniprot_filepath = [data_dir / i for i in ['Uniprot_0_25_train.csv','Uniprot_0_25_test.csv','Uniprot_0_25_val.csv']],
+            min_len=MIN_LENGTH,
+            max_len=MAX_LENGTH,
+            mic_flg = mic_flg,
+            toxicity_flg = toxicity_flg,
+            data_dir = data_dir)
+        amp_x, amp_y, attributes_input, _ = data_manager.get_uniprot_data()
+    attributes = normalize_attributes(attributes_input, reg_dim)
     # print(f'attributes shape = {attributes.shape}')
     # for i in range(attributes_input.shape[1]):
         # print(f'{i} - min = {np.min(attributes_input[:,i].cpu().numpy())}, max = {np.max(attributes_input[:,i].cpu().numpy())}')
@@ -263,8 +262,8 @@ class AMPDataManager:
     def __init__(
             self,
             positive_filepath: str = None,
-            # negative_filepath: List[str] = None,
-            # uniprot_filepath: List[str] = [],
+            negative_filepath: List[str] = None,
+            uniprot_filepath: List[str] = [],
             min_len: int = 0,
             max_len: int = 25,
             mic_flg: bool = False,
@@ -315,30 +314,30 @@ class AMPDataManager:
                 # hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
                 features = hemolytic_classifier.get_input_features(self.positive_data['Sequence'].to_numpy())
                 self.positive_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
-        # if str(negative_filepath).endswith(".csv"):
-        #     self.negative_data = pd.read_csv(negative_filepath)
-        #     if toxicity_flg:
-        #         hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
-        #         # hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
-        #         features = hemolytic_classifier.get_input_features(self.negative_data['Sequence'].to_numpy())
-        #         self.negative_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
-        # else:
-        #     self.fasta_flg = True
-        #     self.negative_data = None
-        #     if negative_filepath is not None:
-        #         with open(negative_filepath) as fasta_file:  # Will close handle cleanly
-        #             identifiers = []
-        #             sequences = []
-        #             for seq_record in SeqIO.parse(fasta_file, 'fasta'):  # (generator)
-        #                 seq_str = str(seq_record.seq)  # Convert Seq object to string
-        #                 if seq_str:  # Only add non-empty sequences
-        #                     sequences.append(seq_str)
-        #                     identifiers.append(seq_record.id)
+        if str(negative_filepath).endswith(".csv"):
+            self.negative_data = pd.read_csv(negative_filepath)
+            if toxicity_flg:
+                hemolytic_classifier = c.HemolyticClassifier('new_hemolytic_model.xgb')
+                # hemolytic_classifier = c.HemolyticClassifier('./AR-VAE/new_hemolytic_model.xgb')
+                features = hemolytic_classifier.get_input_features(self.negative_data['Sequence'].to_numpy())
+                self.negative_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
+        else:
+            self.fasta_flg = True
+            self.negative_data = None
+            if negative_filepath is not None:
+                with open(negative_filepath) as fasta_file:  # Will close handle cleanly
+                    identifiers = []
+                    sequences = []
+                    for seq_record in SeqIO.parse(fasta_file, 'fasta'):  # (generator)
+                        seq_str = str(seq_record.seq)  # Convert Seq object to string
+                        if seq_str:  # Only add non-empty sequences
+                            sequences.append(seq_str)
+                            identifiers.append(seq_record.id)
                 
                 #converting lists to pandas Series    
-                # s2 = pd.Series(sequences, name='Sequence')
+                s2 = pd.Series(sequences, name='Sequence')
                 #Gathering Series into a pandas DataFrame and rename index as ID column
-                # self.negative_data = pd.DataFrame({'Sequence': s2})
+                self.negative_data = pd.DataFrame({'Sequence': s2})
                 # if mic_flg:
                 #     new_data1 = pd.read_csv(data_dir / 'apex-ecoli.tsv', sep='\t')
                 #     new_data2 = pd.read_csv(data_dir / 'apex-saureus.tsv', sep='\t')
@@ -355,11 +354,11 @@ class AMPDataManager:
         #         hemolytic_classifier = c.HemolyticClassifier('hemolytic_model.xgb')
         #         features = hemolytic_classifier.get_input_features(self.negative_data['Sequence'].to_numpy())
         #         self.negative_data['nontoxicity'] = hemolytic_classifier.predict_from_features(features, proba=True)
-        # if len(uniprot_filepath) != 0:
-        #     dfs = [pd.read_csv(f) for f in uniprot_filepath]
-        #     self.uniprot_data = pd.concat(dfs, ignore_index=True)
-        # else:
-        #     self.uniprot_data = None
+        if len(uniprot_filepath) != 0:
+            dfs = [pd.read_csv(f) for f in uniprot_filepath]
+            self.uniprot_data = pd.concat(dfs, ignore_index=True)
+        else:
+            self.uniprot_data = None
         self.mic_flg = mic_flg
         self.min_len = min_len
         self.max_len = max_len
@@ -374,95 +373,95 @@ class AMPDataManager:
         return df.loc[mask]
 
     def _filter_data(self):
-        # if self.positive_data is not None and self.negative_data is not None and self.uniprot_data is not None:
-        #     return self._filter_by_length(self.positive_data), self.negative_data, self._filter_by_length(self.uniprot_data)
-        # elif self.positive_data is not None and self.negative_data is not None:
-        #     return self._filter_by_length(self.positive_data), self.negative_data
-        # elif self.positive_data is not None and self.negative_data is None:
-        return self._filter_by_length(self.positive_data)
-        # else: 
-        #     return self._filter_by_length(self.uniprot_data)
+        if self.positive_data is not None and self.negative_data is not None and self.uniprot_data is not None:
+            return self._filter_by_length(self.positive_data), self.negative_data, self._filter_by_length(self.uniprot_data)
+        elif self.positive_data is not None and self.negative_data is not None:
+            return self._filter_by_length(self.positive_data), self.negative_data
+        elif self.positive_data is not None and self.negative_data is None:
+            return self._filter_by_length(self.positive_data)
+        else: 
+            return self._filter_by_length(self.uniprot_data)
 
-    # @staticmethod
-    # def _get_probs(peptide_lengths: List[int]) -> Dict[int, float]:
-    #     probs = defaultdict(lambda: 1)
-    #     for length in peptide_lengths:
-    #         probs[length] += 1
-    #     return {k: round(v / len(peptide_lengths), 4) for k, v in probs.items()}
+    @staticmethod
+    def _get_probs(peptide_lengths: List[int]) -> Dict[int, float]:
+        probs = defaultdict(lambda: 1)
+        for length in peptide_lengths:
+            probs[length] += 1
+        return {k: round(v / len(peptide_lengths), 4) for k, v in probs.items()}
 
-    # @staticmethod
-    # def _draw_subsequences(df, new_lengths):
-    #     new_lengths.sort(reverse=True)
-    #     df = df.sort_values(by="Sequence length", ascending=False)
+    @staticmethod
+    def _draw_subsequences(df, new_lengths):
+        new_lengths.sort(reverse=True)
+        df = df.sort_values(by="Sequence length", ascending=False)
 
-    #     d = []
-    #     for row, new_length in zip(df.itertuples(), new_lengths):
-    #         seq = row[2]
-    #         curr_length = row[3]
-    #         if new_length > curr_length:
-    #             new_seq = seq
-    #         elif new_length == curr_length:
-    #             new_seq = seq
-    #         else:
-    #             begin = random.randrange(0, int(curr_length) - new_length)
-    #             new_seq = seq[begin:begin + new_length]
-    #         d.append(
-    #             {
-    #                 'Name': row[1],
-    #                 'Sequence': new_seq,
-    #             }
-    #         )
-    #     new_df = pd.DataFrame(d)
-    #     return new_df
+        d = []
+        for row, new_length in zip(df.itertuples(), new_lengths):
+            seq = row[2]
+            curr_length = row[3]
+            if new_length > curr_length:
+                new_seq = seq
+            elif new_length == curr_length:
+                new_seq = seq
+            else:
+                begin = random.randrange(0, int(curr_length) - new_length)
+                new_seq = seq[begin:begin + new_length]
+            d.append(
+                {
+                    'Name': row[1],
+                    'Sequence': new_seq,
+                }
+            )
+        new_df = pd.DataFrame(d)
+        return new_df
 
-    # @staticmethod
-    # def _draw_subsequences_fasta(df, new_lengths):
-    #     new_lengths.sort(reverse=True)
-    #     df = df.sort_values(by="Sequence length", ascending=False)
+    @staticmethod
+    def _draw_subsequences_fasta(df, new_lengths):
+        new_lengths.sort(reverse=True)
+        df = df.sort_values(by="Sequence length", ascending=False)
 
-    #     d = []
-    #     for row, new_length in zip(df.itertuples(), new_lengths):
-    #         seq = row[1]
-    #         curr_length = row[2]
-    #         if new_length > curr_length:
-    #             new_seq = seq
-    #         elif new_length == curr_length:
-    #             new_seq = seq
-    #         else:
-    #             begin = random.randrange(0, int(curr_length) - new_length)
-    #             new_seq = seq[begin:begin + new_length]
-    #         d.append(
-    #             {
-    #                 'Name': row[1],
-    #                 'Sequence': new_seq,
-    #             }
-    #         )
-    #     new_df = pd.DataFrame(d)
-    #     return new_df
+        d = []
+        for row, new_length in zip(df.itertuples(), new_lengths):
+            seq = row[1]
+            curr_length = row[2]
+            if new_length > curr_length:
+                new_seq = seq
+            elif new_length == curr_length:
+                new_seq = seq
+            else:
+                begin = random.randrange(0, int(curr_length) - new_length)
+                new_seq = seq[begin:begin + new_length]
+            d.append(
+                {
+                    'Name': row[1],
+                    'Sequence': new_seq,
+                }
+            )
+        new_df = pd.DataFrame(d)
+        return new_df
         
-    # def _equalize_data(self, positive_data: pd.DataFrame, negative_data: pd.DataFrame, balanced_classes: bool = True):
-    #     positive_seq = positive_data['Sequence'].tolist()
-    #     positive_lengths = [len(seq) for seq in positive_seq]
+    def _equalize_data(self, positive_data: pd.DataFrame, negative_data: pd.DataFrame, balanced_classes: bool = True):
+        positive_seq = positive_data['Sequence'].tolist()
+        positive_lengths = [len(seq) for seq in positive_seq]
 
-    #     negative_seq = negative_data['Sequence'].tolist()
-    #     negative_lengths = [len(seq) for seq in negative_seq]
-    #     negative_data.loc[:, "Sequence length"] = negative_lengths
+        negative_seq = negative_data['Sequence'].tolist()
+        negative_lengths = [len(seq) for seq in negative_seq]
+        negative_data.loc[:, "Sequence length"] = negative_lengths
 
-    #     probs = self._get_probs(positive_lengths)
-    #     k = len(positive_lengths) if balanced_classes else len(negative_lengths)
+        probs = self._get_probs(positive_lengths)
+        k = len(positive_lengths) if balanced_classes else len(negative_lengths)
 
-    #     new_negative_lengths = random.choices(list(probs.keys()), probs.values(), k=k)
-    #     if self.fasta_flg:
-    #         negative_data_distributed = self._draw_subsequences_fasta(self.negative_data, new_negative_lengths)
-    #     else:
-    #         negative_data_distributed = self._draw_subsequences(self.negative_data, new_negative_lengths)
-    #     return positive_data, negative_data_distributed
+        new_negative_lengths = random.choices(list(probs.keys()), probs.values(), k=k)
+        if self.fasta_flg:
+            negative_data_distributed = self._draw_subsequences_fasta(self.negative_data, new_negative_lengths)
+        else:
+            negative_data_distributed = self._draw_subsequences(self.negative_data, new_negative_lengths)
+        return positive_data, negative_data_distributed
 
-    # def _join_datasets(self, pos_dataset: pd.DataFrame, neg_dataset: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
-    #     pos_dataset.loc[:, 'Label'] = 1
-    #     neg_dataset.loc[:, 'Label'] = 0
-    #     merged = pd.concat([pos_dataset, neg_dataset])
-    #     return merged
+    def _join_datasets(self, pos_dataset: pd.DataFrame, neg_dataset: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
+        pos_dataset.loc[:, 'Label'] = 1
+        neg_dataset.loc[:, 'Label'] = 0
+        merged = pd.concat([pos_dataset, neg_dataset])
+        return merged
     
     def output_data(self, df):
         x = np.asarray(df['Sequence'].tolist())
@@ -470,7 +469,7 @@ class AMPDataManager:
             y = np.asarray(df['Label'].tolist())
         else:
             y = np.zeros((x.shape[0]))
-        x_changed = data_describe.pad(data_describe.to_one_hot(x))
+        x_changed = data_describe.pad(data_secribe.to_one_hot(x))
         attributes = data_describe.calculate_physchem_test(data_describe.decoded(x_changed, ""),) 
         if self.mic_flg:
             mic_e_cola = torch.Tensor(df['mic_e_cola'].tolist()).unsqueeze(1)
@@ -484,13 +483,13 @@ class AMPDataManager:
                 return x_changed, y, result_tensor, x
         return x_changed, y, attributes, x
 
-    # def get_data(self, balanced: bool = True):
-    #     pos_dataset, neg_dataset = self._filter_data()
-    #     return self._equalize_data(pos_dataset, neg_dataset, balanced_classes=balanced)
+    def get_data(self, balanced: bool = True):
+        pos_dataset, neg_dataset = self._filter_data()
+        return self._equalize_data(pos_dataset, neg_dataset, balanced_classes=balanced)
 
-    # def get_merged_data(self, balanced: bool = True):
-    #     pos_dataset, neg_dataset = self.get_data(balanced=balanced)
-    #     return self.output_data(self._join_datasets(pos_dataset, neg_dataset))
+    def get_merged_data(self, balanced: bool = True):
+        pos_dataset, neg_dataset = self.get_data(balanced=balanced)
+        return self.output_data(self._join_datasets(pos_dataset, neg_dataset))
     
     # def calculate_lengths(self, dataset):
     #     seqs = dataset['Sequence'].tolist()
@@ -498,40 +497,35 @@ class AMPDataManager:
     #     dataset.loc[:, "Sequence length"] = lengths
     #     return dataset, lengths
   
-    # def get_uniprot_data(self):
-    #     uniprot_dataset = self._filter_data()
-    #     uniprot_dataset,uniprot_lengths = data_describe.calculate_lengths(uniprot_dataset)
+    def get_uniprot_data(self):
+        uniprot_dataset = self._filter_data()
+        uniprot_dataset,uniprot_lengths = data_describe.calculate_lengths(uniprot_dataset)
 
-    #     probs = self._get_probs(uniprot_lengths)
-    #     return self.output_data(uniprot_dataset)
+        probs = self._get_probs(uniprot_lengths)
+        return self.output_data(uniprot_dataset)
 
     def get_positive_data(self):
         positive_dataset = self._filter_data()
         positive_dataset.loc[:, 'Label'] = 1
         return self.output_data(positive_dataset)
+    
+    def get_uniform_data(self):
+        pos_dataset, neg_dataset, uniprot_dataset = self._filter_data()
+        pos_dataset, neg_dataset = self._equalize_data(pos_dataset, neg_dataset, balanced_classes=True)
+        pos_dataset,_ = data_describe.calculate_lengths(pos_dataset)
+        neg_dataset,_ = data_describe.calculate_lengths(neg_dataset)
+        uniprot_dataset,_ = data_describe.calculate_lengths(uniprot_dataset)
 
-    def attribute_correlation(self):
-        positive_dataset = self._filter_data()
-        corr_matrix = positive_dataset[['mic_e_cola', 'mic_s_aureus', 'nontoxicity']].corr()
-        
-        print(corr_matrix)
-    # def get_uniform_data(self):
-    #     pos_dataset, neg_dataset, uniprot_dataset = self._filter_data()
-    #     pos_dataset, neg_dataset = self._equalize_data(pos_dataset, neg_dataset, balanced_classes=True)
-    #     pos_dataset,_ = data_describe.calculate_lengths(pos_dataset)
-    #     neg_dataset,_ = data_describe.calculate_lengths(neg_dataset)
-    #     uniprot_dataset,_ = data_describe.calculate_lengths(uniprot_dataset)
-
-    #     pos_lengths = set(pos_dataset['Sequence length'].unique())
-    #     neg_lengths = set(neg_dataset['Sequence length'].unique())
-    #     uniprot_lengths = set(uniprot_dataset['Sequence length'].unique())
-    #     common_lengths = pos_lengths & neg_lengths & uniprot_lengths
-    #     if 7 in common_lengths:
-    #        common_lengths.remove(7)
-    #     df = pd.concat([pos_dataset[['Sequence', "Sequence length"]], neg_dataset[['Sequence', "Sequence length"]], uniprot_dataset], axis=0)
-    #     filtered_df = df[df['Sequence length'].isin(common_lengths)]
-    #     counts = filtered_df['Sequence length'].value_counts().min()
-    #     final_df = pd.DataFrame()
-    #     for i in pd.unique(filtered_df['Sequence length']):
-    #         final_df = pd.concat([final_df, filtered_df[filtered_df['Sequence length'] == i].iloc[:counts,:]])
-    #     return self.output_data(final_df)
+        pos_lengths = set(pos_dataset['Sequence length'].unique())
+        neg_lengths = set(neg_dataset['Sequence length'].unique())
+        uniprot_lengths = set(uniprot_dataset['Sequence length'].unique())
+        common_lengths = pos_lengths & neg_lengths & uniprot_lengths
+        if 7 in common_lengths:
+           common_lengths.remove(7)
+        df = pd.concat([pos_dataset[['Sequence', "Sequence length"]], neg_dataset[['Sequence', "Sequence length"]], uniprot_dataset], axis=0)
+        filtered_df = df[df['Sequence length'].isin(common_lengths)]
+        counts = filtered_df['Sequence length'].value_counts().min()
+        final_df = pd.DataFrame()
+        for i in pd.unique(filtered_df['Sequence length']):
+            final_df = pd.concat([final_df, filtered_df[filtered_df['Sequence length'] == i].iloc[:counts,:]])
+        return self.output_data(final_df)

@@ -10,7 +10,15 @@ import copy
 import matplotlib.patches as mpatches
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import torch
-from torch.utils.data import TensorDataset, DataLoader, random_split
+from torch.utils.data import TensorDataset, DataLoader, random_split, Dataset
+from transformers import AutoTokenizer, EsmModel
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+from sklearn.manifold import TSNE
+from sklearn.preprocessing import LabelEncoder
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, f1_score, roc_curve, auc, precision_recall_curve
 from model.model import EncoderRNN, DecoderRNN
 import random
 from pathlib import Path
@@ -23,6 +31,7 @@ import seaborn as sns
 from tqdm import tqdm
 import data.dataset as dataset_lib
 import data.data_describe as data_describe
+from params_setting import set_params
 from model.constants import MIN_LENGTH, MAX_LENGTH, VOCAB_SIZE
 import ar_vae_metrics as m
 from itertools import combinations
@@ -203,11 +212,11 @@ def plot_one_dim(data, target, epoch_number, models_prefixs_to_compare, filename
             figsize=(5 * 3, 5),
             dpi=150
         )
-    for ax in np.atleast_1d(axes).flatten():
+    # for ax in np.atleast_1d(axes).flatten():
         # Iterujemy po wszystkich czterech ramkach
-        for spine in ax.spines.values():
-            spine.set_linewidth(0.5)  # Ustawienie cieńszej linii
-            spine.set_color('gray')
+        # for spine in ax.spines.values():
+            # spine.set_linewidth(0.5)  # Ustawienie cieńszej linii
+            # spine.set_color('gray')
     if isinstance(axes, np.ndarray):
         axes = axes.flatten()
     elif not isinstance(axes, list):
@@ -232,7 +241,7 @@ def plot_one_dim(data, target, epoch_number, models_prefixs_to_compare, filename
                             s=24,
                             linewidths=0,
                             cmap="viridis",
-                            alpha=0.5,
+                            alpha=0.7,
                             vmin=current_vmin,
                             vmax=current_vmax
                         )
@@ -244,7 +253,7 @@ def plot_one_dim(data, target, epoch_number, models_prefixs_to_compare, filename
                             s=24,
                             linewidths=0,
                             cmap="viridis",
-                            alpha=0.5,
+                            alpha=0.7,
                             vmin=current_vmin,
                             vmax=current_vmax
                         )
@@ -268,26 +277,28 @@ def plot_one_dim(data, target, epoch_number, models_prefixs_to_compare, filename
                             y_center - (target_y_span / 2.0), 
                             y_center + (target_y_span / 2.0)
                         )
-                    if attr[i] == 'Nontoxicity':
-                        axes[z].set_xlabel(f'dimension: Non-toxicity', fontsize=14)
-                    else:
-                        axes[z].set_xlabel(f'dimension: {attr[i]}', fontsize=14)
-                    axes[z].tick_params(axis='both', which='major', labelsize=12)
-                    
-                    if z % n_real_cols == 0:
-                        axes[z].set_ylabel(f'not regularized dimension', fontsize=12)
-                    
                     divider1 = make_axes_locatable(axes[z])
                     cax1 = divider1.append_axes("right", size="5%", pad=0.1)
                     
                     cbar = fig.colorbar(im, cax=cax1) 
                     cbar.ax.tick_params(labelsize=12)
-                    # Po utworzeniu paska kolorów (i zapisaniu go do zmiennej 'cb'):
-                    if cbar:
-                        # Colorbar jest również obiektem Axes (axes to jego wewnętrzny atrybut)
-                        for spine in cbar.ax.spines.values():
-                            spine.set_linewidth(0.5)
-                            spine.set_color('gray')
+                    if attr[i] == 'Nontoxicity':
+                        axes[z].set_xlabel(f'Nontoxicity', fontsize=14)
+                        cbar.set_label("Nontoxicity ↑", fontsize=12)
+                    else:
+                        axes[z].set_xlabel(f'{attr[i]}', fontsize=14)
+                        cbar.set_label("MIC ↓", fontsize=12)
+                    axes[z].tick_params(axis='both', which='major', labelsize=12)
+                    
+                    if z % n_real_cols == 0:
+                        axes[z].set_ylabel(f'non-regularized', fontsize=14)
+                
+                    # # Po utworzeniu paska kolorów (i zapisaniu go do zmiennej 'cb'):
+                    # if cbar:
+                    #     # Colorbar jest również obiektem Axes (axes to jego wewnętrzny atrybut)
+                    #     for spine in cbar.ax.spines.values():
+                    #         spine.set_linewidth(0.5)
+                    #         spine.set_color('gray')
                     z += 1
     
     # fig.suptitle(f'{models_prefixs_to_compare}', fontsize=20, fontweight='bold')
@@ -568,6 +579,8 @@ def plot_latent_surface(train_loader, encoders_list, decoders_list, dim1, dim2=1
                     src_decoded = src.argmax(dim=1) # B x S
                     decoded = data_describe.decoded(src_decoded, "") 
                     filtered_list = [item for item in decoded if item.strip()]
+                    if not filtered_list:
+                        continue
                     indexes = [index for index, item in enumerate(decoded) if item.strip()]
                     labels = data_describe.calculate_physchem_test(filtered_list)
                     mics = MIC_calc(filtered_list)
@@ -681,25 +694,32 @@ def calculate_metric_stats(sequences, attr_name, device, classifiers=None):
         return f"{np.mean(val):.2f} ± {np.std(val):.2f}"
     return "nan ± nan"
 
-def load_model_pair(enc_name, dec_name, params, device):
-    encoder = EncoderRNN(params["num_heads"],
-                    params["num_layers"],
-                    params["latent_dim"],
-                    params["encoding"],
-                    params["dropout"],
-                    params["layer_norm"],).to(device)
-    decoder = DecoderRNN(params["num_heads"],
-                    params["num_layers"],
-                    params["latent_dim"],
-                    params["encoding"],
-                    params["dropout"],
-                    params["layer_norm"],).to(device)
+def load_model_pair(enc_name, dec_name, final_params, device):
+    encoder = EncoderRNN(
+        final_params["num_heads"],
+        final_params["num_layers"],
+        final_params["latent_dim"],
+        final_params["encoding"],
+        final_params["dropout"],
+        final_params["layer_norm"],
+    ).to(device)
+    
+    decoder = DecoderRNN(
+        final_params["num_heads"],
+        final_params["num_layers"],
+        final_params["latent_dim"],
+        final_params["encoding"],
+        final_params["dropout"],
+        final_params["layer_norm"],
+    ).to(device)
     
     enc_path = f"./first_working_models/{enc_name}"
     dec_path = f"./first_working_models/{dec_name}"
     
     encoder.load_state_dict(torch.load(enc_path, map_location=device))
     decoder.load_state_dict(torch.load(dec_path, map_location=device))
+    
+    # Ensure this line is aligned with the rest of the function body
     return encoder.eval(), decoder.eval()
     
 def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, attr_dict, mode='', submode='', val=None):
@@ -807,7 +827,7 @@ def latent_explore(encoders_list, decoders_list, shifts, data_loader, params, at
 
     return tmp_dict, tmp_analog_dict, generated, generated_analog
 
-def latent_explore_test(encoders_list, decoders_list, shifts, data_loader, params, attr_dict, mode='', submode='', val=None):
+def latent_explore_test(encoders_list, decoders_list, shifts, data_loader, params, attr_dict, mode='', submode='', val=None, invert_flg = True):
     DEVICE = torch.device(f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu')
     
     # 1. Setup Classifiers and Direction Logic
@@ -858,12 +878,12 @@ def latent_explore_test(encoders_list, decoders_list, shifts, data_loader, param
             for shift_val in current_shifts:
                 # --- CALC DIRECTIONAL SHIFTS ---
                 if isinstance(shift_val, list):
-                    s_arg = [s * (-1 if attr in inverted_attrs else 1) for s, attr in zip(shift_val, target_attrs)]
+                    s_arg = [s * (-1 if attr in inverted_attrs and invert_flg else 1) for s, attr in zip(shift_val, target_attrs)]
                     shift_label = "_".join(map(str, shift_val)) # For multi-shift lists
                 else:
-                    s_arg = [shift_val * (-1 if attr in inverted_attrs else 1) for attr in target_attrs]
-                    shift_label = str(shift_val)
-
+                    s_arg = [shift_val * (-1 if attr in inverted_attrs and invert_flg else 1) for attr in target_attrs]
+                    # Move the closing parenthesis of str() to right after the math calculation
+                    shift_label = "".join(str(shift_val * (-1 if attr in inverted_attrs and invert_flg else 1)) for attr in target_attrs)
                 # Instead of one key_suffix, use a base string
                 base_name = f"{model_name}_{attr_str}"
                 
@@ -874,7 +894,7 @@ def latent_explore_test(encoders_list, decoders_list, shifts, data_loader, param
                 clean_seq = clean_sequences(data_describe.decoded(data_describe.from_one_hot(raw_seq.permute(1, 0, 2)), "0"))
                 
                 # ADD 'unconstrained' TO THE KEY HERE
-                unconstrained_key = f"{base_name}_unconstrained_{shift_label}"
+                unconstrained_key = f"{base_name}_unconstrained_{shift_val}"
                 generated[unconstrained_key] = clean_seq
                 
                 for attr in target_attrs:
@@ -888,14 +908,14 @@ def latent_explore_test(encoders_list, decoders_list, shifts, data_loader, param
                 mod_mu = mu.clone().detach()
                 
                 for i, dim in enumerate(target_dims):
-                    mod_mu[:, dim] += s_arg[i]
+                    mod_mu[:, dim] = s_arg[i]
             
                 outputs = decoder(mod_mu)
                 seq_idx = outputs.permute(1, 2, 0).argmax(dim=1)
                 clean_mod_seq = clean_sequences(data_describe.decoded(seq_idx, ""))
                 
                 # ADD 'analog' TO THE KEY HERE
-                analog_key = f"{base_name}_analog_{shift_label}"
+                analog_key = f"{base_name}_analog_{shift_val}"
                 generated_analog[analog_key] = clean_mod_seq
                 
                 for attr in target_attrs:
@@ -1151,4 +1171,106 @@ def sequences_counts_bar_plots(df, cols, title = 'MIC E.coli for Nontoxicity con
     
     fig.tight_layout()
     plt.show()
+
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, f1_score, roc_curve, auc, RocCurveDisplay
+
+def run_lr_analysis(X_data, y_data, title):
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_data, y_data, test_size=0.2, random_state=42, stratify=y_data
+    )
     
+    scaler = StandardScaler()
+    X_train_sc = scaler.fit_transform(X_train)
+    X_test_sc = scaler.transform(X_test)
+    
+    model = LogisticRegression(max_iter=1000)
+    model.fit(X_train_sc, y_train)
+    
+    # 1. Get predicted probabilities for the positive class (class 1)
+    # y_score shape is (n_samples, 2). We take the second column [:, 1]
+    y_score = model.predict_proba(X_test_sc)[:, 1]
+    
+    # 2. Compute ROC curve and ROC area
+    fpr, tpr, _ = roc_curve(y_test, y_score)
+    roc_auc = auc(fpr, tpr)
+    
+    # 3. Print the text results
+    y_pred = model.predict(X_test_sc)
+    f1 = f1_score(y_test, y_pred, average='macro')
+    
+    print(f"\n=== {title} ===")
+    print(f"Overall Macro F1-Score: {f1:.4f}")
+    print(f"ROC-AUC Score: {roc_auc:.4f}")
+    print("\nDetailed Report:")
+    print(classification_report(y_test, y_pred, target_names=['>32', '<=32']))
+
+def helper_get_roc(X_data, y_data):
+    """Helper function to train LR and return ROC metrics."""
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_data, y_data, test_size=0.2, random_state=42, stratify=y_data
+    )
+    
+    scaler = StandardScaler()
+    X_train_sc = scaler.fit_transform(X_train)
+    X_test_sc = scaler.transform(X_test)
+    
+    model = LogisticRegression(max_iter=1000)
+    model.fit(X_train_sc, y_train)
+    
+    y_score = model.predict_proba(X_test_sc)[:, 1]
+    fpr, tpr, _ = roc_curve(y_test, y_score)
+    roc_auc = auc(fpr, tpr)
+    
+    return fpr, tpr, roc_auc
+
+def helper_get_class_roc(X_data, y_data):
+    """Trains LR and returns ROC metrics for BOTH Class 0 and Class 1."""
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_data, y_data, test_size=0.2, random_state=42, stratify=y_data
+    )
+    
+    scaler = StandardScaler()
+    X_train_sc = scaler.fit_transform(X_train)
+    X_test_sc = scaler.transform(X_test)
+    
+    model = LogisticRegression(max_iter=1000)
+    model.fit(X_train_sc, y_train)
+    
+    # Get probabilities for all classes shape: (n_samples, 2)
+    y_scores = model.predict_proba(X_test_sc)
+    
+    # --- Class 1 (<=32) Metrics ---
+    fpr_c1, tpr_c1, _ = roc_curve(y_test, y_scores[:, 1], pos_label=1)
+    auc_c1 = auc(fpr_c1, tpr_c1)
+    
+    # --- Class 0 (>32) Metrics ---
+    fpr_c0, tpr_c0, _ = roc_curve(y_test, y_scores[:, 0], pos_label=0)
+    auc_c0 = auc(fpr_c0, tpr_c0)
+    
+    return (fpr_c1, tpr_c1, auc_c1), (fpr_c0, tpr_c0, auc_c0)
+
+def helper_get_binary_prc(X_data, y_data):
+    """Trenuje model LR i zwraca ogólne metryki Precision-Recall dla klasy pozytywnej (1)."""
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_data, y_data, test_size=0.2, random_state=42, stratify=y_data
+    )
+    
+    scaler = StandardScaler()
+    X_train_sc = scaler.fit_transform(X_train)
+    X_test_sc = scaler.transform(X_test)
+    
+    model = LogisticRegression(max_iter=1000)
+    model.fit(X_train_sc, y_train)
+    
+    # Pobieramy prawdopodobieństwo klasy 1 (kolumna index 1)
+    y_scores = model.predict_proba(X_test_sc)[:, 1]
+    
+    # Obliczamy precyzję i czułość
+    precision, recall, _ = precision_recall_curve(y_test, y_scores)
+    pr_auc = auc(recall, precision)
+    
+    return precision, recall, pr_auc

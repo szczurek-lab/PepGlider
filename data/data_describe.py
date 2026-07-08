@@ -176,12 +176,13 @@ def normalize_attributes(physchem_tensor_original, reg_dim):
                         output_distribution='uniform',
                         n_quantiles=10,                )
             non_nan_mask = ~np.isnan(data_to_transform_np)
-            # normalized_values = adaptive_range_normalize(data_to_transform_np[non_nan_mask])
             normalized_values_input = np.log2(data_to_transform_np)
-            normalized_values = qt.fit_transform(normalized_values_input)
+            normalized_values = adaptive_range_normalize(normalized_values_input[non_nan_mask])
+            # normalized_values = qt.fit_transform(normalized_values_input)
             # normalized_values = z_score_normalize(data_to_transform_np[non_nan_mask])
             transformed_data_np = np.full_like(data_to_transform_np, np.nan)
-            transformed_data_np = normalized_values
+            transformed_data_np[non_nan_mask] = normalized_values
+            # transformed_data_np = normalized_values
         else:
             qt = QuantileTransformer(
                         output_distribution='uniform',

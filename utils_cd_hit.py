@@ -2,7 +2,7 @@ from Bio import SeqIO
 import subprocess
 from itertools import groupby
 import shlex
-from utils import read_fasta_file
+from local_utils import read_fasta_file
 
 
 def run_cdhit(cd_hit_path, input_path, output_path, threshold, vocab_size=5, verbose=True):
